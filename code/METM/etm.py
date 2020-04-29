@@ -143,6 +143,7 @@ class ETM(nn.Module):
 
         #return recon_loss, kld_theta
 
-        total_loss = Variable(torch.FloatTensor(total_loss), requires_grad=True)
+        # Bruce: why wrap it and requires grad?
+        # total_loss = Variable(torch.FloatTensor(total_loss), requires_grad=True)
         return total_loss, kld_theta
 
