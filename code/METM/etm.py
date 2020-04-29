@@ -36,8 +36,6 @@ class ETM(nn.Module):
         # self.alphas = nn.Linear(rho_size, num_topics, bias=False)#nn.Parameter(torch.randn(rho_size, num_topics))
         self.alphas = {}
         for country in countries:
-            if country == "'Macau":
-                print("Yes")
             self.alphas[country] = nn.Linear(rho_size, num_topics, bias=False)
     
         ## define variational distribution for \theta_{1:D} via amortizartion
