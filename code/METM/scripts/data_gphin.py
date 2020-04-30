@@ -81,7 +81,7 @@ def read_data(data_file):
 	train_data = Bunch(data=train_data_x, country=train_country) 
 	test_data = Bunch(data=test_data_x, country=test_country)
 
-	return train_data, test_data
+	return train_data, test_data, countries
 
 # function checks for presence of any punctuation 
 def contains_punctuation(w):
@@ -297,7 +297,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries):
 	return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va
 
 
-def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va):
+def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, all_countries):
 
 	# Write the vocabulary to a file
 	path_save = save_dir + 'min_df_' + str(min_df) + '/'
@@ -307,6 +307,10 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 	with open(path_save + 'vocab.pkl', 'wb') as f:
 	    pickle.dump(vocab, f)
 	del vocab
+	
+	# all countries
+	pkl.dump(all_countries, open(path_save + 'all_countries.pkl',"wb"))
+	del all_countries
 
 	# Split bow intro token/value pairs
 	print('splitting bow intro token/value pairs and saving to disk...')
@@ -372,7 +376,7 @@ if __name__ == '__main__':
 	args = get_args()
 
 	# read in the data file
-	train, test = read_data(args.data_file_path)
+	train, test, all_countries = read_data(args.data_file_path)
 
 	# preprocess the news articles
 	all_docs, train_docs, test_docs, all_countries = preprocess(train, test)
@@ -386,4 +390,4 @@ if __name__ == '__main__':
 	# split data into train, test and validation and corresponding countries in BOW format
 	bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va = split_data(all_docs, train_docs, test_docs, word2id, all_countries)
 
-	save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va)
+	save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, all_countries)
