@@ -37,7 +37,8 @@ class ETM(nn.Module):
         self.alphas = {}
         for country in countries:
             self.alphas[country] = nn.Linear(rho_size, num_topics, bias=False)
-    
+	self.alphas = nn.ModuleDict(self.alphas)
+
         ## define variational distribution for \theta_{1:D} via amortizartion
         self.q_theta = nn.Sequential(
                 nn.Linear(vocab_size, t_hidden_size), 
