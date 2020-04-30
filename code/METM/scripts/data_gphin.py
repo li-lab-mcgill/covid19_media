@@ -12,7 +12,7 @@ from scipy.io import savemat, loadmat
 import re
 import string
 import os
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from sklearn.datasets.base import Bunch
 import pickle as pkl
 from argparse import ArgumentParser
