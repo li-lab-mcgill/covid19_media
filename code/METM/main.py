@@ -143,9 +143,10 @@ else:
             args.lr, args.batch_size, args.rho_size, args.train_embeddings))
 
 ## define model and optimizer
-all_countries = pickle.load(open(args.data_path+"all_countries.pkl","rb"))
+countries_to_idx = pickle.load(open(args.data_path+"all_countries.pkl","rb"))
+all_countries = list(countries_to_idx.keys())
 model = ETM(args.num_topics, vocab_size, args.t_hidden_size, args.rho_size, args.emb_size, 
-                args.theta_act, all_countries, embeddings, args.train_embeddings, args.enc_drop).to(device)
+                args.theta_act, countries_to_idx, embeddings, args.train_embeddings, args.enc_drop).to(device)
 
 print('model: {}'.format(model))
 

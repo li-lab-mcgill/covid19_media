@@ -61,6 +61,7 @@ def read_data(data_file):
 	# In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
 	g_data = {'data':[], 'country':[]}
 	countries = gphin_data.country.unique()
+	countries_to_idx = {country: str(idx) for idx, country in enumerate(gphin_data.country.unique())}
 
 	for country in tqdm(countries):
 	    summary = gphin_data[gphin_data.country == country].SUMMARY.values
@@ -81,7 +82,7 @@ def read_data(data_file):
 	train_data = Bunch(data=train_data_x, country=train_country) 
 	test_data = Bunch(data=test_data_x, country=test_country)
 
-	return train_data, test_data, countries
+	return train_data, test_data, countries_to_idx
 
 # function checks for presence of any punctuation 
 def contains_punctuation(w):
@@ -297,7 +298,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries):
 	return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va
 
 
-def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, all_countries):
+def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx):
 
 	# Write the vocabulary to a file
 	path_save = save_dir + 'min_df_' + str(min_df) + '/'
@@ -309,8 +310,8 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 	del vocab
 	
 	# all countries
-	pkl.dump(all_countries, open(path_save + 'all_countries.pkl',"wb"))
-	del all_countries
+	pkl.dump(countries_to_idx, open(path_save + 'all_countries.pkl',"wb"))
+	del countries_to_idx
 
 	# Split bow intro token/value pairs
 	print('splitting bow intro token/value pairs and saving to disk...')
@@ -376,10 +377,10 @@ if __name__ == '__main__':
 	args = get_args()
 
 	# read in the data file
-	train, test, all_countries = read_data(args.data_file_path)
+	train, test, countries_to_idx = read_data(args.data_file_path)
 
 	# preprocess the news articles
-	all_docs, train_docs, test_docs, all_countries = preprocess(train, test)
+	all_docs, train_docs, test_docs, init_countries = preprocess(train, test)
 
 	# get a list of stopwords
 	stopwords = get_stopwords(args.stopwords_path)
@@ -388,6 +389,6 @@ if __name__ == '__main__':
 	vocab, word2id, id2word = get_features(all_docs, stopwords)
 
 	# split data into train, test and validation and corresponding countries in BOW format
-	bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va = split_data(all_docs, train_docs, test_docs, word2id, all_countries)
+	bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va = split_data(all_docs, train_docs, test_docs, word2id, init_countries)
 
-	save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, all_countries)
+	save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx)

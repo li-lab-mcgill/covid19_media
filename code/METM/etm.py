@@ -10,7 +10,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ETM(nn.Module):
     def __init__(self, num_topics, vocab_size, t_hidden_size, rho_size, emsize, 
-                    theta_act, countries, embeddings=None, train_embeddings=True, enc_drop=0.5):
+                    theta_act, countries_to_idx, embeddings=None, train_embeddings=True, enc_drop=0.5):
         super(ETM, self).__init__()
 
         ## define hyperparameters
@@ -35,8 +35,9 @@ class ETM(nn.Module):
         ## define the matrix containing the topic embeddings
         # self.alphas = nn.Linear(rho_size, num_topics, bias=False)#nn.Parameter(torch.randn(rho_size, num_topics))
         self.alphas = {}
-        for country in countries:
-            self.alphas[country] = nn.Linear(rho_size, num_topics, bias=False)
+        self.countries_to_idx = countries_to_idx
+        for idx in countries_to_idx.values():
+            self.alphas[idx] = nn.Linear(rho_size, num_topics, bias=False)
         self.alphas = nn.ModuleDict(self.alphas)
         
         ## define variational distribution for \theta_{1:D} via amortizartion
@@ -98,10 +99,10 @@ class ETM(nn.Module):
 
     def get_beta(self, country):
         try:
-            layer = self.alphas[country]
+            layer = self.alphas[self.countries_to_idx[country]]
             logit = layer(self.rho.weight) # torch.mm(self.rho, self.alphas)
         except:
-            layer = self.alphas[country]
+            layer = self.alphas[self.countries_to_idx(country)]
             logit = layer(self.rho)
         beta = F.softmax(logit, dim=0).transpose(1, 0) ## softmax over vocab dimension
         return beta
