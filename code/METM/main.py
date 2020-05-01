@@ -65,7 +65,7 @@ args = parser.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if torch.cuda.is_available():
-    print("Using", torch.cuda.device_count(), "GPUs")
+    print('GPU available')
 
 print('\n')
 np.random.seed(args.seed)
