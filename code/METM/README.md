@@ -12,6 +12,8 @@ After preprocessing, the ETM code can be run using the following command,
 
 ```python main.py --mode train --dataset "GPHIN" --data_path data/GPHIN --num_topics 10 --train_embeddings 1 --epochs 10```
 
+or simply run ```./run.sh```. If running on Compute Canada, run ```./submit_job.sh```.
+
 The above command is used to learn interpretable embeddings and topics together using ETM. The trained model is saved in `./results` directory.
 
 To evaluate perplexity on document completion, topic coherence, topic diversity, and visualize the topics/embeddings run the following command,
