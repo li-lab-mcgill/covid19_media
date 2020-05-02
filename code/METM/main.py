@@ -177,6 +177,14 @@ def train(epoch):
         optimizer.zero_grad()
         model.zero_grad()
         data_batch, data_countries = data.get_batch(train_tokens, train_counts, train_countries, ind, args.vocab_size, device)
+        
+        # freeze the weights of those alpha layers which do not appear in the current training batch
+        for country in all_countries:
+            if country not in data_countries:
+                model.alphas[model.countries_to_idx[country]].weight.requires_grad=False
+            else:
+                model.alphas[model.countries_to_idx[country]].weight.requires_grad=True                
+
         sums = data_batch.sum(1).unsqueeze(1)
         if args.bow_norm:
             normalized_data_batch = data_batch / sums
@@ -184,6 +192,7 @@ def train(epoch):
             normalized_data_batch = data_batch
         recon_loss, kld_theta = model(data_batch, normalized_data_batch, data_countries)
         total_loss = recon_loss + kld_theta
+
         total_loss.backward()
 
         if args.clip > 0:
