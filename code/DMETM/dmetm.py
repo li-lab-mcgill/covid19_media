@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F 
 import numpy as np 
 import math 
+from torch.distributions import MultivariateNormal
 
 from torch import nn
 
@@ -114,6 +115,19 @@ class DMETM(nn.Module):
         return kl
 
 
+    def get_kl_mvn(self, q_mu_mvn, q_logsigma_mvn, p_mu_mvn, p_logsigma_mvn):
+        """Returns KL( N(q_mu_mvn, q_logsigma_mvn) || N(p_mu_mvn, p_logsigma_mvn) ).
+        """                
+        sigma_q_sq = torch.exp(q_logsigma_mvn)
+        sigma_p_sq = torch.exp(p_logsigma_mvn)
+        sigma_q_sq_inv = torch.inverse(sigma_q_sq)
+
+        p_mu_mvn_vec = p_mu_mvn.reshape(p_mu_mvn.shape[0],1)
+        q_mu_mvn_vec = q_mu_mvn.reshape(q_mu_mvn.shape[0],1)
+
+        return torch.logdet(sigma_q_sq) - torch.logdet(sigma_p_sq) - sigma_p_sq.shape[0] + \
+            torch.trace(sigma_q_sq_inv.mm(sigma_q_sq)) + \
+            (q_mu_mvn_vec - p_mu_mvn_vec).t().mm(sigma_q_sq_inv).mm(q_mu_mvn_vec - p_mu_mvn_vec)
 
 
     def get_alpha(self): ## mean field for multivariate Gaussian one dimension per source
