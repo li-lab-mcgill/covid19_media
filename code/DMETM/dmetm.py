@@ -30,7 +30,7 @@ class DMETM(nn.Module):
 
         self.theta_act = self.get_activation(args.theta_act)
 
-        ## define the word embedding matrix \rho
+        ## define the word embedding matrix \rho: L x V
         if args.train_embeddings:
             self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
         else:
@@ -40,11 +40,8 @@ class DMETM(nn.Module):
             self.rho = rho.weight.data.clone().float().to(device)
 
         
-
-        ## define the source-specific embedding \lambda
-        
-
-
+        ## define the source-specific embedding \lambda S x L (DMETM)
+        self.rho = nn.Linear(args.num_sources, args.rho_size, bias=False)
 
 
 

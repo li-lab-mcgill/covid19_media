@@ -1,4 +1,6 @@
-# Multi-modal Embedded Topic Model
+# Multi-modal Dynamic Embedded Topic Model
+
+![scGan](images/model_sketch.jpg)
 
 The code for preprocessing GPHIN dataset is in `scripts/data_gphin.py`. The default settings are configured for GPHIN dataset and in order to preprocess this datast, simply run the following command
 
