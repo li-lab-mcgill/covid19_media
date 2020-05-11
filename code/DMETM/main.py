@@ -39,7 +39,7 @@ parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho'
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
-parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
+parser.add_argument('--train_embeddings', type=int, default=0, help='whether to fix rho or train it')
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
@@ -67,6 +67,7 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
+
 args = parser.parse_args()
 
 pca = PCA(n_components=2)
@@ -84,8 +85,6 @@ data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
 vocab, train, valid, test = data.get_data(data_file, temporal=True)
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
-
-
 
 
 # 1. training data
