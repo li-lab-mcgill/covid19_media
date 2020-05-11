@@ -41,7 +41,7 @@ class DMETM(nn.Module):
 
         
         ## define the source-specific embedding \lambda S x L (DMETM)
-        self.lambda = nn.Linear(args.num_sources, args.rho_size, bias=False)
+        self.source_lambda = nn.Linear(args.num_sources, args.rho_size, bias=False)        
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
         self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
@@ -176,27 +176,27 @@ class DMETM(nn.Module):
 
 
 
-
-
-
-
-
     # incorporate source-specific embedding lambda
     def get_beta(self, alpha):
         """Returns the topic matrix beta of shape K x V
         """
-        if self.train_embeddings:
-            logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
-        else:
-            tmp = alpha.view(alpha.size(0)*alpha.size(1), self.rho_size)
-            logit = torch.mm(tmp, self.rho.permute(1, 0)) 
-        logit = logit.view(alpha.size(0), alpha.size(1), -1)
-        beta = F.softmax(logit, dim=-1)
-        return beta 
+        betas = torch.zeros(self.num_sources, self.num_times, self.num_topics, self.rho_size) # S x T x K x V
 
+        for s in range(self.num_sources):
 
+            alpha_s = alpha * self.source_lambda[s] # T x S x L elem-prod 1 x L
 
+            if self.train_embeddings:
+                logit = self.rho(alpha_s.view(alpha_s.size(0)*alpha_s.size(1), self.rho_size))
+            else:
+                tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1), self.rho_size) # (T x K) x L
+                logit = torch.mm(tmp, self.rho.permute(1, 0)) # (T x K) x L prod L x V = (T x K) x V
 
+            logit = logit.view(alpha.size(0), alpha.size(1), alpha.size(2), -1) # T x K x V
+
+            betas[s] = F.softmax(logit, dim=-1)
+
+        return betas # S x T x K x V
 
 
 
@@ -217,12 +217,19 @@ class DMETM(nn.Module):
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
         kl_theta = kl_theta.sum() * coeff
 
-        beta = self.get_beta(alpha)
-        beta = beta[times.type('torch.LongTensor')]
+        beta = self.get_beta(alpha) # S x T x K x V
+
+        # first index sources
+        # second index times
+        beta = beta[sources.type('torch.LongTensor')][:,times.type('torch.LongTensor'),:,:]
+        
+        beta = beta.view(times.shape[0],beta.shape[2],-1) # D' x K x V
+
         nll = self.get_nll(theta, beta, bows)
         nll = nll.sum() * coeff
         nelbo = nll + kl_alpha + kl_eta + kl_theta
         return nelbo, nll, kl_alpha, kl_eta, kl_theta
+
 
     def init_hidden(self):
         """Initializes the first hidden state of the RNN used as inference network for eta.
@@ -231,3 +238,23 @@ class DMETM(nn.Module):
         nlayers = self.eta_nlayers
         nhid = self.eta_hidden_size
         return (weight.new_zeros(nlayers, 1, nhid), weight.new_zeros(nlayers, 1, nhid))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
