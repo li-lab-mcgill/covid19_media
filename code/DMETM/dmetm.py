@@ -41,9 +41,7 @@ class DMETM(nn.Module):
 
         
         ## define the source-specific embedding \lambda S x L (DMETM)
-        self.rho = nn.Linear(args.num_sources, args.rho_size, bias=False)
-
-
+        self.lambda = nn.Linear(args.num_sources, args.rho_size, bias=False)
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
         self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
@@ -176,8 +174,16 @@ class DMETM(nn.Module):
         kl_theta = self.get_kl(mu_theta, logsigma_theta, eta_td, torch.zeros(self.num_topics).to(device))
         return theta, kl_theta
 
+
+
+
+
+
+
+
+    # incorporate source-specific embedding lambda
     def get_beta(self, alpha):
-        """Returns the topic matrix \beta of shape K x V
+        """Returns the topic matrix beta of shape K x V
         """
         if self.train_embeddings:
             logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
@@ -187,6 +193,12 @@ class DMETM(nn.Module):
         logit = logit.view(alpha.size(0), alpha.size(1), -1)
         beta = F.softmax(logit, dim=-1)
         return beta 
+
+
+
+
+
+
 
     def get_nll(self, theta, beta, bows):
         theta = theta.unsqueeze(1)
@@ -213,7 +225,7 @@ class DMETM(nn.Module):
         return nelbo, nll, kl_alpha, kl_eta, kl_theta
 
     def init_hidden(self):
-        """Initializes the first hidden state of the RNN used as inference network for \eta.
+        """Initializes the first hidden state of the RNN used as inference network for eta.
         """
         weight = next(self.parameters())
         nlayers = self.eta_nlayers
