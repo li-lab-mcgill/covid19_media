@@ -11,8 +11,8 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DMETM(nn.Module):
-    def __init__(self, args, word_embeddings, source_embeddings):
-        super(DETM, self).__init__()
+    def __init__(self, args, word_embeddings, source_embeddings=None):
+        super(DMETM, self).__init__()
 
         ## define hyperparameters
         self.num_topics = args.num_topics

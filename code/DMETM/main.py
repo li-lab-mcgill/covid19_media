@@ -76,7 +76,6 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
 parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix rho or train it')
 
-
 args = parser.parse_args()
 
 pca = PCA(n_components=2)
@@ -191,7 +190,7 @@ if args.load_from != '':
     with open(args.load_from, 'rb') as f:
         model = torch.load(f)
 else:
-    model = DETM(args, embeddings)
+    model = DMETM(args, embeddings)
 print('\nDETM architecture: {}'.format(model))
 model.to(device)
 
