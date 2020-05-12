@@ -41,7 +41,7 @@ parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho'
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
-parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
+parser.add_argument('--train_word_embeddings', type=int, default=1, help='whether to fix rho or train it')
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
@@ -180,7 +180,7 @@ else:
     ckpt = os.path.join(args.save_path, 
         'detm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
-            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_embeddings))
+            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_word_embeddings))
 
 ## define model and optimizer
 if args.load_from != '':
@@ -519,7 +519,7 @@ if args.mode == 'train':
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha).cpu().numpy()
         scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True)
-        if args.train_embeddings:
+        if args.train_word_embeddings:
             print('saving word embedding matrix rho...')
             # rho = model.rho.weight.cpu().numpy()
             rho = model.rho.weight.detach().numpy()

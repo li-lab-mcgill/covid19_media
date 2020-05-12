@@ -26,12 +26,12 @@ class DMETM(nn.Module):
         self.eta_nlayers = args.eta_nlayers
         self.t_drop = nn.Dropout(args.enc_drop)
         self.delta = args.delta
-        self.train_embeddings = args.train_embeddings
+        self.train_word_embeddings = args.train_word_embeddings
 
         self.theta_act = self.get_activation(args.theta_act)
 
         ## define the word embedding matrix \rho: L x V
-        if args.train_embeddings:
+        if args.train_word_embeddings:
             self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
         else:
             num_embeddings, emsize = word_embeddings.size()
@@ -191,7 +191,7 @@ class DMETM(nn.Module):
 
             alpha_s = alpha * self.source_lambda[s] # T x S x L elem-prod 1 x L
 
-            if self.train_embeddings:
+            if self.train_word_embeddings:
                 logit = self.rho(alpha_s.view(alpha_s.size(0)*alpha_s.size(1), self.rho_size))
             else:
                 tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1), self.rho_size) # (T x K) x L
