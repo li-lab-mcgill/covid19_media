@@ -20,18 +20,20 @@ from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
-from detm import DETM
+from dmetm import DMETM
 from utils import nearest_neighbors, get_topic_coherence
 
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='acl', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='acl/', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+
 parser.add_argument('--emb_path', type=str, default='skipgram/embeddings.txt', help='directory containing embeddings')
+
 parser.add_argument('--save_path', type=str, default='./results', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
-parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
+parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
@@ -39,7 +41,7 @@ parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho'
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
-parser.add_argument('--train_embeddings', type=int, default=0, help='whether to fix rho or train it')
+parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
@@ -68,6 +70,10 @@ parser.add_argument('--load_from', type=str, default='', help='the name of the c
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
 
+### number of sources
+parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries')
+
+
 args = parser.parse_args()
 
 pca = PCA(n_components=2)
@@ -82,7 +88,9 @@ torch.manual_seed(args.seed)
 # 1. vocabulary
 print('Getting vocabulary ...')
 data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
+
 vocab, train, valid, test = data.get_data(data_file, temporal=True)
+
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
 
@@ -92,8 +100,13 @@ print('Getting training data ...')
 train_tokens = train['tokens']
 train_counts = train['counts']
 train_times = train['times']
+train_sources = train['sources']
+
 args.num_times = len(np.unique(train_times))
 args.num_docs_train = len(train_tokens)
+args.num_sources = len(np.unique(train_sources))
+
+
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, args.num_times, args.vocab_size, args.num_docs_train)
 

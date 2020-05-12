@@ -83,7 +83,7 @@ class ETM(nn.Module):
             return mu
 
     def encode(self, bows):
-        """Returns paramters of the variational distribution for \theta.
+        """Returns paramters of the variational distribution for theta.
 
         input: bows
                 batch of bag-of-words...tensor of shape bsz x V

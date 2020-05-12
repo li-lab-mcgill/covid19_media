@@ -32,26 +32,33 @@ def _fetch(path, name):
     return {'tokens': tokens, 'counts': counts}
 
 def _fetch_temporal(path, name):
+    
     if name == 'train':
-        token_file = os.path.join(path, 'bow_tr_tokens.mat')
-        count_file = os.path.join(path, 'bow_tr_counts.mat')
-        time_file = os.path.join(path, 'bow_tr_timestamps.mat')
+        token_file = os.path.join(path, 'bow_tr_tokens')
+        count_file = os.path.join(path, 'bow_tr_counts')
+        time_file = os.path.join(path, 'bow_tr_timestamps')
+        source_file = os.path.join(path, 'bow_tr_sources.pkl')
     elif name == 'valid':
-        token_file = os.path.join(path, 'bow_va_tokens.mat')
-        count_file = os.path.join(path, 'bow_va_counts.mat')
-        time_file = os.path.join(path, 'bow_va_timestamps.mat')
+        token_file = os.path.join(path, 'bow_va_tokens')
+        count_file = os.path.join(path, 'bow_va_counts')
+        time_file = os.path.join(path, 'bow_va_timestamps')
+        source_file = os.path.join(path, 'bow_va_sources.pkl')
     else:
-        token_file = os.path.join(path, 'bow_ts_tokens.mat')
-        count_file = os.path.join(path, 'bow_ts_counts.mat')
-        time_file = os.path.join(path, 'bow_ts_timestamps.mat')
+        token_file = os.path.join(path, 'bow_ts_tokens')
+        count_file = os.path.join(path, 'bow_ts_counts')
+        time_file = os.path.join(path, 'bow_ts_timestamps')
+        source_file = os.path.join(path, 'bow_ts_sources.pkl')
+    
     tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
     counts = scipy.io.loadmat(count_file)['counts'].squeeze()
     times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
+    sources = np.array(pickle.load(open(source_file, 'rb')))
+
     if name == 'test':
-        token_1_file = os.path.join(path, 'bow_ts_h1_tokens.mat')
-        count_1_file = os.path.join(path, 'bow_ts_h1_counts.mat')
-        token_2_file = os.path.join(path, 'bow_ts_h2_tokens.mat')
-        count_2_file = os.path.join(path, 'bow_ts_h2_counts.mat')
+        token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
+        count_1_file = os.path.join(path, 'bow_ts_h1_counts')
+        token_2_file = os.path.join(path, 'bow_ts_h2_tokens')
+        count_2_file = os.path.join(path, 'bow_ts_h2_counts')
         tokens_1 = scipy.io.loadmat(token_1_file)['tokens'].squeeze()
         counts_1 = scipy.io.loadmat(count_1_file)['counts'].squeeze()
         tokens_2 = scipy.io.loadmat(token_2_file)['tokens'].squeeze()
@@ -59,7 +66,8 @@ def _fetch_temporal(path, name):
         return {'tokens': tokens, 'counts': counts, 'times': times, 
                     'tokens_1': tokens_1, 'counts_1': counts_1, 
                         'tokens_2': tokens_2, 'counts_2': counts_2} 
-    return {'tokens': tokens, 'counts': counts, 'times': times}
+
+    return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources}
 
 def get_data(path, temporal=False):
     ### load vocabulary
