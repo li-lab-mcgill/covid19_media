@@ -11,7 +11,7 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DMETM(nn.Module):
-    def __init__(self, args, embeddings):
+    def __init__(self, args, word_embeddings, source_embeddings):
         super(DETM, self).__init__()
 
         ## define hyperparameters
@@ -34,14 +34,19 @@ class DMETM(nn.Module):
         if args.train_embeddings:
             self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
         else:
-            num_embeddings, emsize = embeddings.size()
+            num_embeddings, emsize = word_embeddings.size()
             rho = nn.Embedding(num_embeddings, emsize)
-            rho.weight.data = embeddings
+            rho.weight.data = word_embeddings
             self.rho = rho.weight.data.clone().float().to(device)
-
         
         ## define the source-specific embedding \lambda S x L (DMETM)
-        self.source_lambda = nn.Linear(args.num_sources, args.rho_size, bias=False)        
+        if args.train_source_embeddings:
+            self.source_lambda = nn.Linear(args.num_sources, args.rho_size, bias=False)
+        else:            
+            source_lambda = nn.Embedding(num_sources, num_embeddings)
+            source_lambda.weight.data = source_embeddings
+            self.source_lambda = source_lambda.weight.data.clone().float().to(device)
+
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
         self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
