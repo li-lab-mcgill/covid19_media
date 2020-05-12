@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
 parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-parser.add_argument('--emb_path', type=str, default='skipgram/embeddings.txt', help='directory containing embeddings')
+parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
 
 parser.add_argument('--save_path', type=str, default='./results', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
@@ -41,7 +41,9 @@ parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho'
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
-parser.add_argument('--train_word_embeddings', type=int, default=1, help='whether to fix rho or train it')
+
+parser.add_argument('--train_word_embeddings', type=int, default=0, help='whether to fix rho or train it')
+
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
@@ -70,8 +72,9 @@ parser.add_argument('--load_from', type=str, default='', help='the name of the c
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
 
-### number of sources
-parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries')
+### multi-sources-related parameters (DMETM)
+parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
+parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix rho or train it')
 
 
 args = parser.parse_args()
