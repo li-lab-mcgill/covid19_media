@@ -224,7 +224,7 @@ def train(epoch):
         optimizer.zero_grad()
         model.zero_grad()
         data_batch, times_batch = data.get_batch(
-            train_tokens, train_counts, ind, args.vocab_size, args.emb_size, temporal=True, times=train_times)
+            train_tokens, train_counts, ind, args.vocab_size, args.emb_size, train_sources, temporal=True, times=train_times)
         sums = data_batch.sum(1).unsqueeze(1)
         if args.bow_norm:
             normalized_data_batch = data_batch / sums
