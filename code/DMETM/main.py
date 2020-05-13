@@ -183,7 +183,9 @@ args.embeddings_dim = word_embeddings.size()
 
 
 ### get source embeddings
-#### REPLACE THIS WITH REAL SOURCE EMBEDDINGS
+##################################################
+#### REPLACE THIS WITH REAL SOURCE EMBEDDINGS ####
+##################################################
 source_embeddings = torch.ones(args.rho_size, args.vocab_size)
 
 
