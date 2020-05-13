@@ -186,7 +186,7 @@ args.embeddings_dim = word_embeddings.size()
 ##################################################
 #### REPLACE THIS WITH REAL SOURCE EMBEDDINGS ####
 ##################################################
-source_embeddings = torch.ones(args.rho_size, args.vocab_size)
+source_embeddings = torch.ones(args.num_sources, args.embeddings_dim[1])
 
 
 print('\n')
@@ -212,7 +212,7 @@ if args.load_from != '':
     with open(args.load_from, 'rb') as f:
         model = torch.load(f)
 else:
-    model = DMETM(args, word_embeddings)
+    model = DMETM(args, word_embeddings, source_embeddings)
 print('\nDETM architecture: {}'.format(model))
 model.to(device)
 
@@ -255,6 +255,8 @@ def train(epoch):
 
         loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
             sources_batch, train_rnn_inp, args.num_docs_train)
+
+        print("train: loss computed")
 
         loss.backward()
         if args.clip > 0:

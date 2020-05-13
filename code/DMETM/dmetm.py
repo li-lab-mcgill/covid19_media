@@ -195,6 +195,7 @@ class DMETM(nn.Module):
         betas = torch.zeros(self.num_sources, self.num_times, 
             self.num_topics, self.vocab_size) # S x T x K x V
 
+        # set_trace()
         for i in range(self.num_sources):
 
             alpha_s = alpha * self.source_lambda[i] # T x K x L elem-prod 1 x L
