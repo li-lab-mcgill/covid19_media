@@ -41,7 +41,7 @@ class DMETM(nn.Module):
         
         ## define the source-specific embedding \lambda S x L (DMETM)
         if args.train_source_embeddings:
-            self.source_lambda = nn.Linear(args.num_sources, args.rho_size, bias=False)
+            self.source_lambda = torch.randn(args.num_sources, args.rho_size, requires_grad=True)
         else:            
             source_lambda = nn.Embedding(num_sources, num_embeddings)
             source_lambda.weight.data = source_embeddings
@@ -189,13 +189,10 @@ class DMETM(nn.Module):
 
         for s in range(self.num_sources):
 
-            if self.train_source_embeddings:
-                #
-            else:
-                alpha_s = alpha * self.source_lambda[s] # T x S x L elem-prod 1 x L
+            alpha_s = alpha * self.source_lambda[s] # T x S x L elem-prod 1 x L
 
             if self.train_word_embeddings:
-                logit = self.rho(alpha_s.view(alpha_s.size(0)*alpha_s.size(1), self.rho_size))
+                logit = self.rho(alpha_s.view(alpha_s.size(0) * alpha_s.size(1), self.rho_size))
             else:
                 tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1), self.rho_size) # (T x K) x L
                 logit = torch.mm(tmp, self.rho.permute(1, 0)) # (T x K) x L prod L x V = (T x K) x V
