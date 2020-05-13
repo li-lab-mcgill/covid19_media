@@ -223,15 +223,17 @@ def train(epoch):
     for idx, ind in enumerate(indices):
         optimizer.zero_grad()
         model.zero_grad()
-        data_batch, times_batch = data.get_batch(
-            train_tokens, train_counts, ind, args.vocab_size, args.emb_size, train_sources, temporal=True, times=train_times)
+        data_batch, times_batch, sources_batch = data.get_batch(
+            train_tokens, train_counts, ind, args.vocab_size, train_sources, args.emb_size, temporal=True, times=train_times)
         sums = data_batch.sum(1).unsqueeze(1)
         if args.bow_norm:
             normalized_data_batch = data_batch / sums
         else:
             normalized_data_batch = data_batch
 
-        loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, train_rnn_inp, args.num_docs_train)
+        loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
+            sources_batch, train_rnn_inp, args.num_docs_train)
+
         loss.backward()
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)

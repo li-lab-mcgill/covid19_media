@@ -99,6 +99,7 @@ def get_batch(tokens, counts, ind, vocab_size, sources, emsize=300, temporal=Fal
         
         doc = tokens[doc_id]
         count = counts[doc_id]
+        
         source = sources[doc_id]
         sources_batch[i] = source
 
@@ -120,7 +121,7 @@ def get_batch(tokens, counts, ind, vocab_size, sources, emsize=300, temporal=Fal
     sources_batch = torch.from_numpy(sources_batch).to(device)
 
     if temporal:
-        times_batch = torch.from_numpy(times_batch).to(device)    
+        times_batch = torch.from_numpy(times_batch).to(device)
         return data_batch, times_batch, sources_batch
 
     return data_batch, sources_batch

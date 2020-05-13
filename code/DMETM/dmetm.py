@@ -189,7 +189,10 @@ class DMETM(nn.Module):
 
         for s in range(self.num_sources):
 
-            alpha_s = alpha * self.source_lambda[s] # T x S x L elem-prod 1 x L
+            if self.train_source_embeddings:
+                #
+            else:
+                alpha_s = alpha * self.source_lambda[s] # T x S x L elem-prod 1 x L
 
             if self.train_word_embeddings:
                 logit = self.rho(alpha_s.view(alpha_s.size(0)*alpha_s.size(1), self.rho_size))
@@ -214,7 +217,7 @@ class DMETM(nn.Module):
         nll = nll.sum(-1)
         return nll  
 
-    def forward(self, bows, normalized_bows, times, rnn_inp, num_docs):
+    def forward(self, bows, normalized_bows, times, sources, rnn_inp, num_docs):
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz 
         alpha, kl_alpha = self.get_alpha()
