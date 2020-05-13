@@ -237,9 +237,13 @@ else:
     print('Defaulting to vanilla SGD')
     optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
+
 def train(epoch):
     """Train DETM on data for one epoch.
     """
+
+    print("inside train ...")
+
     model.train()
     acc_loss = 0
     acc_nll = 0
@@ -260,10 +264,14 @@ def train(epoch):
         else:
             normalized_data_batch = data_batch
 
+        print("forward pass ...")
+
         loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
             sources_batch, train_rnn_inp, args.num_docs_train)
+        
+        print("train: loss computed. loss: ", loss)
 
-        print("train: loss computed")
+        print("backward pass ...")
 
         loss.backward()
 
@@ -528,12 +536,18 @@ def get_topic_quality():
         print('Topic Quality is: {}'.format(quality))
         print('#'*100)
 
+
+print("right here")
+
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
     best_epoch = 0
     best_val_ppl = 1e9
     all_val_ppls = []
     for epoch in range(1, args.epochs):
+
+        print("epoch", epoch)
+
         train(epoch)
         if epoch % args.visualize_every == 0:
             visualize()

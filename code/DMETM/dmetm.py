@@ -192,10 +192,11 @@ class DMETM(nn.Module):
         """Returns the topic matrix beta of shape T x K x V
         """
         # S x T x K x V
-        beta = torch.zeros(self.num_sources, self.num_times, self.num_topics, self.vocab_size).to(device)
+        beta = torch.zeros(self.num_sources, self.num_times, 
+            self.num_topics, self.vocab_size).to(device)
 
         # set_trace()
-        for i in range(self.num_sources):
+        for i in range(self.num_sources):            
 
             alpha_s = alpha * self.source_lambda[i] # T x K x L elem-prod 1 x L
             # alpha_s = alpha # T x K x L elem-prod 1 x L            
@@ -244,14 +245,24 @@ class DMETM(nn.Module):
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
         kl_theta = kl_theta.sum() * coeff
 
-        beta = self.get_beta(alpha) # D' x K x V
+        beta = self.get_beta(alpha) # D' x K x V        
         
-        beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor'),:,:] # D' x K x V    
+        beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor'),:,:] # D' x K x V        
         # beta = beta[times.type('torch.LongTensor')]
 
+        print("forward: beta computed. beta.shape: ")
+        print(beta.shape)
+
+
         nll = self.get_nll(theta, beta, bows)
+
+        print("forward: nll computed")
+
         nll = nll.sum() * coeff
         nelbo = nll + kl_alpha + kl_eta + kl_theta
+
+        print("nelbo", nelbo)
+
         return nelbo, nll, kl_alpha, kl_eta, kl_theta
 
 
