@@ -142,3 +142,6 @@ def get_rnn_input(tokens, counts, times, num_times, sources, vocab_size, num_doc
             print('idx: {}/{}'.format(idx, len(indices)))
     rnn_input = rnn_input / cnt.unsqueeze(1)
     return rnn_input
+
+def get_source_embeddings(path):
+    return np.load(os.path.join(path, 'source_matrix.npy'))
