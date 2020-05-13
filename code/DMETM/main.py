@@ -183,11 +183,12 @@ args.embeddings_dim = word_embeddings.size()
 
 
 ### get source embeddings
-##################################################
-#### REPLACE THIS WITH REAL SOURCE EMBEDDINGS ####
-##################################################
-source_embeddings = torch.ones(args.num_sources, args.embeddings_dim[1])
+# source_embeddings = torch.ones(args.num_sources, args.embeddings_dim[1])
 
+# assuming the file is located with other data files and named source_matrix.npy
+source_embedding_path = os.path.join(data_file, 'source_matrix.npy')
+# may need to convert to torch.tensor before using
+source_embeddings = data.get_source_embeddings(source_embedding_path)   # S x L numpy array
 
 print('\n')
 print('=*'*100)
