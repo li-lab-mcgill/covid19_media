@@ -126,13 +126,13 @@ def get_batch(tokens, counts, ind, vocab_size, sources, emsize=300, temporal=Fal
 
     return data_batch, sources_batch
 
-def get_rnn_input(tokens, counts, times, num_times, vocab_size, num_docs):
+def get_rnn_input(tokens, counts, times, num_times, sources, vocab_size, num_docs):
     indices = torch.randperm(num_docs)
     indices = torch.split(indices, 1000) 
     rnn_input = torch.zeros(num_times, vocab_size).to(device)
     cnt = torch.zeros(num_times, ).to(device)
     for idx, ind in enumerate(indices):
-        data_batch, times_batch = get_batch(tokens, counts, ind, vocab_size, temporal=True, times=times)
+        data_batch, times_batch, sources_batch = get_batch(tokens, counts, ind, vocab_size, sources, temporal=True, times=times)
         for t in range(num_times):
             tmp = (times_batch == t).nonzero()
             docs = data_batch[tmp].squeeze().sum(0)

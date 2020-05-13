@@ -23,6 +23,13 @@ from torch.nn import functional as F
 from dmetm import DMETM
 from utils import nearest_neighbors, get_topic_coherence
 
+from IPython.core.debugger import set_trace
+
+
+import sys, importlib
+importlib.reload(sys.modules['data'])
+
+
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
@@ -97,6 +104,8 @@ vocab_size = len(vocab)
 args.vocab_size = vocab_size
 
 
+
+
 # 1. training data
 print('Getting training data ...')
 train_tokens = train['tokens']
@@ -106,11 +115,16 @@ train_sources = train['sources']
 
 args.num_times = len(np.unique(train_times))
 args.num_docs_train = len(train_tokens)
-args.num_sources = len(np.unique(train_sources))
+
+
+# get all sources
+sources_map_file = os.path.join(data_file, 'sources_map.pkl')
+sources_map = pickle.load(open(sources_map_file, 'rb'))
+args.num_sources = len(sources_map)
 
 
 train_rnn_inp = data.get_rnn_input(
-    train_tokens, train_counts, train_times, args.num_times, args.vocab_size, args.num_docs_train)
+    train_tokens, train_counts, train_times, args.num_times, train_sources, args.vocab_size, args.num_docs_train)
 
 # 2. dev set
 print('Getting validation data ...')
@@ -119,7 +133,7 @@ valid_counts = valid['counts']
 valid_times = valid['times']
 args.num_docs_valid = len(valid_tokens)
 valid_rnn_inp = data.get_rnn_input(
-    valid_tokens, valid_counts, valid_times, args.num_times, args.vocab_size, args.num_docs_valid)
+    valid_tokens, valid_counts, valid_times, args.num_times, train_sources, args.vocab_size, args.num_docs_valid)
 
 # 3. test data
 print('Getting testing data ...')
@@ -128,21 +142,21 @@ test_counts = test['counts']
 test_times = test['times']
 args.num_docs_test = len(test_tokens)
 test_rnn_inp = data.get_rnn_input(
-    test_tokens, test_counts, test_times, args.num_times, args.vocab_size, args.num_docs_test)
+    test_tokens, test_counts, test_times, args.num_times, train_sources, args.vocab_size, args.num_docs_test)
 
 test_1_tokens = test['tokens_1']
 test_1_counts = test['counts_1']
 test_1_times = test_times
 args.num_docs_test_1 = len(test_1_tokens)
 test_1_rnn_inp = data.get_rnn_input(
-    test_1_tokens, test_1_counts, test_1_times, args.num_times, args.vocab_size, args.num_docs_test)
+    test_1_tokens, test_1_counts, test_1_times, args.num_times, train_sources, args.vocab_size, args.num_docs_test)
 
 test_2_tokens = test['tokens_2']
 test_2_counts = test['counts_2']
 test_2_times = test_times
 args.num_docs_test_2 = len(test_2_tokens)
 test_2_rnn_inp = data.get_rnn_input(
-    test_2_tokens, test_2_counts, test_2_times, args.num_times, args.vocab_size, args.num_docs_test)
+    test_2_tokens, test_2_counts, test_2_times, args.num_times, train_sources, args.vocab_size, args.num_docs_test)
 
 ## get embeddings 
 print('Getting embeddings ...')

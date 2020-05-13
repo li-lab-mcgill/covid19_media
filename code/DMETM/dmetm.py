@@ -8,6 +8,10 @@ import math
 
 from torch import nn
 
+# from IPython.core.debugger import set_trace
+from pdb import set_trace
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DMETM(nn.Module):
@@ -27,6 +31,8 @@ class DMETM(nn.Module):
         self.t_drop = nn.Dropout(args.enc_drop)
         self.delta = args.delta
         self.train_word_embeddings = args.train_word_embeddings
+
+        self.num_sources = args.num_sources
 
         self.theta_act = self.get_activation(args.theta_act)
 
@@ -184,12 +190,14 @@ class DMETM(nn.Module):
     # incorporate source-specific embedding lambda
     def get_beta(self, alpha):
         """Returns the topic matrix beta of shape K x V
-        """
-        betas = torch.zeros(self.num_sources, self.num_times, self.num_topics, self.rho_size) # S x T x K x V
+        """        
 
-        for s in range(self.num_sources):
+        betas = torch.zeros(self.num_sources, self.num_times, 
+            self.num_topics, self.vocab_size) # S x T x K x V
 
-            alpha_s = alpha * self.source_lambda[s] # T x S x L elem-prod 1 x L
+        for i in range(self.num_sources):
+
+            alpha_s = alpha * self.source_lambda[i] # T x K x L elem-prod 1 x L
 
             if self.train_word_embeddings:
                 logit = self.rho(alpha_s.view(alpha_s.size(0) * alpha_s.size(1), self.rho_size))
@@ -197,9 +205,9 @@ class DMETM(nn.Module):
                 tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1), self.rho_size) # (T x K) x L
                 logit = torch.mm(tmp, self.rho.permute(1, 0)) # (T x K) x L prod L x V = (T x K) x V
 
-            logit = logit.view(alpha.size(0), alpha.size(1), alpha.size(2), -1) # T x K x V
+            logit = logit.view(alpha.size(0), alpha.size(1), -1) # T x K x V
 
-            betas[s] = F.softmax(logit, dim=-1)
+            betas[i] = F.softmax(logit, dim=-1)
 
         return betas # S x T x K x V
 
@@ -207,8 +215,7 @@ class DMETM(nn.Module):
 
     def get_nll(self, theta, beta, bows):
         theta = theta.unsqueeze(1)
-        loglik = torch.bmm(theta, beta).squeeze(1)
-        loglik = loglik
+        loglik = torch.bmm(theta, beta).squeeze(1)        
         loglik = torch.log(loglik+1e-6)
         nll = -loglik * bows
         nll = nll.sum(-1)
@@ -226,9 +233,7 @@ class DMETM(nn.Module):
 
         # first index sources
         # second index times
-        beta = beta[sources.type('torch.LongTensor')][:,times.type('torch.LongTensor'),:,:]
-        
-        beta = beta.view(times.shape[0],beta.shape[2],-1) # D' x K x V
+        beta = beta[sources.type('torch.LongTensor'),times.type('torch.LongTensor'),:,:] # D' x K x V        
 
         nll = self.get_nll(theta, beta, bows)
         nll = nll.sum() * coeff
