@@ -189,16 +189,16 @@ class DMETM(nn.Module):
 
     # incorporate source-specific embedding lambda
     def get_beta(self, alpha):
-        """Returns the topic matrix beta of shape K x V
-        """        
-
-        betas = torch.zeros(self.num_sources, self.num_times, 
-            self.num_topics, self.vocab_size) # S x T x K x V
+        """Returns the topic matrix beta of shape T x K x V
+        """
+        # S x T x K x V
+        beta = torch.zeros(self.num_sources, self.num_times, self.num_topics, self.vocab_size).to(device)
 
         # set_trace()
         for i in range(self.num_sources):
 
             alpha_s = alpha * self.source_lambda[i] # T x K x L elem-prod 1 x L
+            # alpha_s = alpha # T x K x L elem-prod 1 x L            
 
             if self.train_word_embeddings:
                 logit = self.rho(alpha_s.view(alpha_s.size(0) * alpha_s.size(1), self.rho_size))
@@ -208,10 +208,24 @@ class DMETM(nn.Module):
 
             logit = logit.view(alpha.size(0), alpha.size(1), -1) # T x K x V
 
-            betas[i] = F.softmax(logit, dim=-1)
+            beta[i] = F.softmax(logit, dim=-1)
+            
+            # return F.softmax(logit, dim=-1)
 
-        return betas # S x T x K x V
+        return beta # S x T x K x V
 
+
+    # def get_beta(self, alpha):
+    #     """Returns the topic matrix \beta of shape T x K x V
+    #     """
+    #     if self.train_word_embeddings:
+    #         logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
+    #     else:
+    #         tmp = alpha.view(alpha.size(0)*alpha.size(1), self.rho_size)
+    #         logit = torch.mm(tmp, self.rho.permute(1, 0)) 
+    #     logit = logit.view(alpha.size(0), alpha.size(1), -1)
+    #     beta = F.softmax(logit, dim=-1)
+    #     return beta 
 
 
     def get_nll(self, theta, beta, bows):
@@ -230,11 +244,10 @@ class DMETM(nn.Module):
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
         kl_theta = kl_theta.sum() * coeff
 
-        beta = self.get_beta(alpha) # S x T x K x V
-
-        # first index sources
-        # second index times
-        beta = beta[sources.type('torch.LongTensor'),times.type('torch.LongTensor'),:,:] # D' x K x V        
+        beta = self.get_beta(alpha) # D' x K x V
+        
+        beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor'),:,:] # D' x K x V    
+        # beta = beta[times.type('torch.LongTensor')]
 
         nll = self.get_nll(theta, beta, bows)
         nll = nll.sum() * coeff

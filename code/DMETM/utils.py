@@ -1,15 +1,24 @@
+from sklearn.manifold import TSNE
 import torch 
 import numpy as np
+import bokeh.plotting as bp
 
-def get_topic_diversity(beta, topk):
-    num_topics = beta.shape[0]
-    list_w = np.zeros((num_topics, topk))
-    for k in range(num_topics):
-        idx = beta[k,:].argsort()[-topk:][::-1]
-        list_w[k,:] = idx
-    n_unique = len(np.unique(list_w))
-    TD = n_unique / (topk * num_topics)
-    print('Topic diveristy is: {}'.format(TD))
+from bokeh.plotting import save
+from bokeh.models import HoverTool
+import matplotlib.pyplot as plt 
+import matplotlib 
+
+tiny = 1e-6
+
+def _reparameterize(mu, logvar, num_samples):
+    """Applies the reparameterization trick to return samples from a given q"""
+    std = torch.exp(0.5 * logvar) 
+    bsz, zdim = logvar.size()
+    eps = torch.randn(num_samples, bsz, zdim).to(mu.device)
+    mu = mu.unsqueeze(0)
+    std = std.unsqueeze(0)
+    res = eps.mul_(std).add_(mu)
+    return res
 
 def get_document_frequency(data, wi, wj=None):
     if wj is None:
@@ -18,6 +27,7 @@ def get_document_frequency(data, wi, wj=None):
             doc = data[l].squeeze(0)
             if len(doc) == 1: 
                 continue
+                #doc = [doc.squeeze()]
             else:
                 doc = doc.squeeze()
             if wi in doc:
@@ -70,15 +80,47 @@ def get_topic_coherence(beta, data, vocab):
         TC.append(TC_k)
     print('counter: ', counter)
     print('num topics: ', len(TC))
-    TC = np.mean(TC) / counter
-    print('Topic coherence is: {}'.format(TC))
+    #TC = np.mean(TC) / counter
+    print('Topic Coherence is: {}'.format(TC))
+    return TC, counter
 
-def nearest_neighbors(word, embeddings, vocab):
-    vectors = embeddings.data.cpu().numpy() 
+def log_gaussian(z, mu=None, logvar=None):
+    sz = z.size()
+    d = z.size(2)
+    bsz = z.size(1)
+    if mu is None or logvar is None:
+        mu = torch.zeros(bsz, d).to(z.device)
+        logvar = torch.zeros(bsz, d).to(z.device)
+    mu = mu.unsqueeze(0)
+    logvar = logvar.unsqueeze(0)
+    var = logvar.exp()
+    log_density = ((z - mu)**2 / (var+tiny)).sum(2) # b
+    log_det = logvar.sum(2) # b
+    log_density = log_density + log_det + d*np.log(2*np.pi)
+    return -0.5*log_density
+
+def logsumexp(x, dim=0):
+    d = torch.max(x, dim)[0]   
+    if x.dim() == 1:
+        return torch.log(torch.exp(x - d).sum(dim)) + d
+    else:
+        return torch.log(torch.exp(x - d.unsqueeze(dim).expand_as(x)).sum(dim) + tiny) + d
+
+def flatten_docs(docs): #to get words and doc_indices
+    words = [x for y in docs for x in y]
+    doc_indices = [[j for _ in doc] for j, doc in enumerate(docs)]
+    doc_indices = [x for y in doc_indices for x in y]
+    return words, doc_indices
+    
+def onehot(data, min_length):
+    return list(np.bincount(data, minlength=min_length))
+
+def nearest_neighbors(word, embeddings, vocab, num_words):
+    # vectors = embeddings.cpu().numpy()
+    vectors = embeddings.detach().numpy()
     index = vocab.index(word)
-    print('vectors: ', vectors.shape)
-    query = vectors[index]
-    print('query: ', query.shape)
+    # query = embeddings[index].cpu().numpy() 
+    query = embeddings[index].detach().numpy() 
     ranks = vectors.dot(query).squeeze()
     denom = query.T.dot(query).squeeze()
     denom = denom * np.sum(vectors**2, 1)
@@ -86,6 +128,29 @@ def nearest_neighbors(word, embeddings, vocab):
     ranks = ranks / denom
     mostSimilar = []
     [mostSimilar.append(idx) for idx in ranks.argsort()[::-1]]
-    nearest_neighbors = mostSimilar[:20]
+    nearest_neighbors = mostSimilar[:num_words]
     nearest_neighbors = [vocab[comp] for comp in nearest_neighbors]
     return nearest_neighbors
+
+def visualize(docs, _lda_keys, topics, theta):
+    tsne_model = TSNE(n_components=2, verbose=1, random_state=0, angle=.99, init='pca')
+    # project to 2D
+    tsne_lda = tsne_model.fit_transform(theta)
+    colormap = []
+    for name, hex in matplotlib.colors.cnames.items():
+        colormap.append(hex)
+
+    colormap = colormap[:len(theta[0, :])]
+    colormap = np.array(colormap)
+
+    title = '20 newsgroups TE embedding V viz'
+    num_example = len(docs)
+
+    plot_lda = bp.figure(plot_width=1400, plot_height=1100,
+                     title=title,
+                     tools="pan,wheel_zoom,box_zoom,reset,hover,previewsave",
+                     x_axis_type=None, y_axis_type=None, min_border=1)
+
+    plt.scatter(x=tsne_lda[:, 0], y=tsne_lda[:, 1],
+                 color=colormap[_lda_keys][:num_example])
+    plt.show()

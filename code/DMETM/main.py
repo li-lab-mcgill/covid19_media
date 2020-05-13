@@ -81,7 +81,7 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 ### multi-sources-related parameters (DMETM)
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
-parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix rho or train it')
+parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix lambda or train it')
 
 args = parser.parse_args()
 
@@ -131,6 +131,7 @@ print('Getting validation data ...')
 valid_tokens = valid['tokens']
 valid_counts = valid['counts']
 valid_times = valid['times']
+valid_sources = valid['sources']
 args.num_docs_valid = len(valid_tokens)
 valid_rnn_inp = data.get_rnn_input(
     valid_tokens, valid_counts, valid_times, args.num_times, train_sources, args.vocab_size, args.num_docs_valid)
@@ -182,13 +183,18 @@ word_embeddings = torch.from_numpy(word_embeddings).to(device)
 args.embeddings_dim = word_embeddings.size()
 
 
-### get source embeddings
+## get source embeddings
+print('Getting source embeddings ...')
 # source_embeddings = torch.ones(args.num_sources, args.embeddings_dim[1])
+source_embeddings = torch.randn(args.num_sources, args.embeddings_dim[1], requires_grad=False).to(device)
 
 # assuming the file is located with other data files and named source_matrix.npy
-source_embedding_path = os.path.join(data_file, 'source_matrix.npy')
+# source_embedding_path = os.path.join(data_file, 'source_matrix.npy')
 # may need to convert to torch.tensor before using
-source_embeddings = data.get_source_embeddings(source_embedding_path)   # S x L numpy array
+# source_embeddings = data.get_source_embeddings(source_embedding_path)   # S x L numpy array
+
+
+
 
 print('\n')
 print('=*'*100)
@@ -260,6 +266,9 @@ def train(epoch):
         print("train: loss computed")
 
         loss.backward()
+
+        print("backward pass fininshed")
+
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         optimizer.step()
@@ -312,17 +321,18 @@ def visualize():
                 top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])                
                 topic_words = [vocab[a] for a in top_words]
                 topics_words.append(' '.join(topic_words))
-                print('Topic {} .. Time: {} ===> {}'.format(k, t, topic_words)) 
+                # print('Topic {} .. Time: {} ===> {}'.format(k, t, topic_words)) # COMMENT OUT AFTERWARDS
 
         print('\n')
         print('Visualize word embeddings ...')
         # queries = ['economic', 'assembly', 'security', 'management', 'debt', 'rights',  'africa']
-        queries = ['economic', 'assembly', 'security', 'management', 'rights',  'africa']
+        # queries = ['economic', 'assembly', 'security', 'management', 'rights',  'africa']
+        queries = ['economic', 'security', 'management', 'africa']        
         try:
             word_embeddings = model.rho.weight  # Vocab_size x E
         except:
             word_embeddings = model.rho         # Vocab_size x E
-        neighbors = []
+        # neighbors = []
         for word in queries:
             print('word: {} .. neighbors: {}'.format(
                 word, nearest_neighbors(word, word_embeddings, vocab, args.num_words)))
@@ -388,14 +398,15 @@ def get_completion_ppl(source):
             tokens = valid_tokens
             counts = valid_counts
             times = valid_times
+            sources = valid_sources
 
             eta = get_eta('val')
 
             acc_loss = 0
             cnt = 0
             for idx, ind in enumerate(indices):
-                data_batch, times_batch = data.get_batch(
-                    tokens, counts, ind, args.vocab_size, args.emb_size, temporal=True, times=times)
+                data_batch, times_batch, sources_batch = data.get_batch(
+                    tokens, counts, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=times)
                 sums = data_batch.sum(1).unsqueeze(1)
                 if args.bow_norm:
                     normalized_data_batch = data_batch / sums
