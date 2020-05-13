@@ -81,7 +81,7 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 ### multi-sources-related parameters (DMETM)
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
-parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix rho or train it')
+parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix rho or train it')
 
 args = parser.parse_args()
 
@@ -158,8 +158,8 @@ args.num_docs_test_2 = len(test_2_tokens)
 test_2_rnn_inp = data.get_rnn_input(
     test_2_tokens, test_2_counts, test_2_times, args.num_times, train_sources, args.vocab_size, args.num_docs_test)
 
-## get embeddings 
-print('Getting embeddings ...')
+## get word embeddings 
+print('Getting word embeddings ...')
 emb_path = args.emb_path
 vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')   
 vectors = {}
@@ -170,16 +170,22 @@ with open(emb_path, 'rb') as f:
         if word in vocab:
             vect = np.array(line[1:]).astype(np.float)
             vectors[word] = vect
-embeddings = np.zeros((vocab_size, args.emb_size))
+word_embeddings = np.zeros((vocab_size, args.emb_size))
 words_found = 0
 for i, word in enumerate(vocab):
     try: 
-        embeddings[i] = vectors[word]
+        word_embeddings[i] = vectors[word]
         words_found += 1
     except KeyError:
-        embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
-embeddings = torch.from_numpy(embeddings).to(device)
-args.embeddings_dim = embeddings.size()
+        word_embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
+word_embeddings = torch.from_numpy(word_embeddings).to(device)
+args.embeddings_dim = word_embeddings.size()
+
+
+### get source embeddings
+#### REPLACE THIS WITH REAL SOURCE EMBEDDINGS
+source_embeddings = torch.ones(args.rho_size, args.vocab_size)
+
 
 print('\n')
 print('=*'*100)
@@ -204,7 +210,7 @@ if args.load_from != '':
     with open(args.load_from, 'rb') as f:
         model = torch.load(f)
 else:
-    model = DMETM(args, embeddings)
+    model = DMETM(args, word_embeddings)
 print('\nDETM architecture: {}'.format(model))
 model.to(device)
 
@@ -308,13 +314,13 @@ def visualize():
         # queries = ['economic', 'assembly', 'security', 'management', 'debt', 'rights',  'africa']
         queries = ['economic', 'assembly', 'security', 'management', 'rights',  'africa']
         try:
-            embeddings = model.rho.weight  # Vocab_size x E
+            word_embeddings = model.rho.weight  # Vocab_size x E
         except:
-            embeddings = model.rho         # Vocab_size x E
+            word_embeddings = model.rho         # Vocab_size x E
         neighbors = []
         for word in queries:
             print('word: {} .. neighbors: {}'.format(
-                word, nearest_neighbors(word, embeddings, vocab, args.num_words)))
+                word, nearest_neighbors(word, word_embeddings, vocab, args.num_words)))
         print('#'*100)
 
         # print('\n')

@@ -15,7 +15,7 @@ from pdb import set_trace
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DMETM(nn.Module):
-    def __init__(self, args, word_embeddings, source_embeddings=None):
+    def __init__(self, args, word_embeddings, source_embeddings):
         super(DMETM, self).__init__()
 
         ## define hyperparameters
@@ -48,7 +48,7 @@ class DMETM(nn.Module):
         ## define the source-specific embedding \lambda S x L (DMETM)
         if args.train_source_embeddings:
             self.source_lambda = torch.randn(args.num_sources, args.rho_size, requires_grad=True)
-        else:            
+        else:
             source_lambda = nn.Embedding(args.num_sources, num_embeddings)
             source_lambda.weight.data = source_embeddings
             self.source_lambda = source_lambda.weight.data.clone().float().to(device)
