@@ -49,7 +49,7 @@ class DMETM(nn.Module):
         if args.train_source_embeddings:
             self.source_lambda = torch.randn(args.num_sources, args.rho_size, requires_grad=True)
         else:            
-            source_lambda = nn.Embedding(num_sources, num_embeddings)
+            source_lambda = nn.Embedding(args.num_sources, num_embeddings)
             source_lambda.weight.data = source_embeddings
             self.source_lambda = source_lambda.weight.data.clone().float().to(device)
 
