@@ -466,7 +466,7 @@ def get_completion_ppl(source):
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
                 data_batch_1, times_batch_1 = data.get_batch(
-                    tokens_1, counts_1, ind, args.vocab_size, args.emb_size, temporal=True, times=test_times)
+                    tokens_1, counts_1, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=test_times)
                 sums_1 = data_batch_1.sum(1).unsqueeze(1)
                 if args.bow_norm:
                     normalized_data_batch_1 = data_batch_1 / sums_1
@@ -480,11 +480,16 @@ def get_completion_ppl(source):
                     tokens_2, counts_2, ind, args.vocab_size, args.emb_size, temporal=True, times=test_times)
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
 
-                alpha_td = alpha[:, times_batch_2.type('torch.LongTensor'), :]
-                beta = model.get_beta(alpha_td).permute(1, 0, 2)
-                loglik = theta.unsqueeze(2) * beta
-                loglik = loglik.sum(1)
-                loglik = torch.log(loglik)
+                # alpha_td = alpha[:, times_batch_2.type('torch.LongTensor'), :]
+                # beta = model.get_beta(alpha_td).permute(1, 0, 2)
+                # loglik = theta.unsqueeze(2) * beta
+                # loglik = loglik.sum(1)
+
+                beta = model.get_beta(alpha)
+                beta = beta[sources_batch.type('torch.LongTensor'), :, times_batch.type('torch.LongTensor'), :] # D' x K x V
+                loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
+
+                loglik = torch.log(loglik+1e-6)
                 nll = -loglik * data_batch_2
                 nll = nll.sum(-1)
                 loss = nll / sums_2.squeeze()
