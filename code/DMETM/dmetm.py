@@ -192,7 +192,7 @@ class DMETM(nn.Module):
 
     # incorporate source-specific embedding lambda
     def get_beta(self, alpha):
-        """Returns the topic matrix beta of shape K x T x V
+        """Returns the topic matrix beta of shape S x K x T x V
         """        
 
         # alpha: K x T x L
@@ -207,7 +207,7 @@ class DMETM(nn.Module):
         print("alpha_s.shape: ", alpha_s.shape)
         print("source_lambda_s.shape: ", source_lambda_s.shape)
 
-        set_trace()
+        # set_trace()
 
         alpha_s = alpha_s * source_lambda_s
 

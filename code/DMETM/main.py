@@ -315,21 +315,26 @@ def visualize():
     model.eval()
     with torch.no_grad():
         alpha = model.mu_q_alpha # KxTxL
-        beta = model.get_beta(alpha) 
+        beta = model.get_beta(alpha) # SxKxTxV
         print('beta: ', beta.size())
         print('\n')
         print('#'*100)
         print('Visualize topics...')
-        # times = [0, 10, 40]
-        times = [0, int(beta.shape[1]/2), beta.shape[1]-1]
+        
+        topics = [0, int(beta.shape[1]/2), beta.shape[1]-1]
+        times = [0, int(beta.shape[2]/2), beta.shape[2]-1]
+
         topics_words = []
-        for k in range(args.num_topics):
-            for t in times:
-                gamma = beta[k, t, :]
-                top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])                
-                topic_words = [vocab[a] for a in top_words]
-                topics_words.append(' '.join(topic_words))
-                # print('Topic {} .. Time: {} ===> {}'.format(k, t, topic_words)) # COMMENT OUT AFTERWARDS
+
+        for s in range(min(3,args.num_sources)):
+            for k in topics:
+                for t in times:                
+                    gamma = beta[s, k, t, :]
+                    top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])
+                    topic_words = [vocab[a] for a in top_words]
+                    topics_words.append(' '.join(topic_words))
+                    
+                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(s, k, t, topic_words))
 
         print('\n')
         print('Visualize word embeddings ...')
