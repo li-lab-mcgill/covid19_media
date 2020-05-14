@@ -533,19 +533,20 @@ def get_topic_quality():
         print('\n')
         print('Get topic coherence...')
         print('train_tokens: ', train_tokens[0])
-        TC_all = []
-        cnt_all = []
+        TC_all = np.zeros((args.num_sources, args.num_times))
+        cnt_all = np.zeros((args.num_sources, args.num_times))
         for ss in range(args.num_sources):
             for tt in range(args.num_times):
                 tc, cnt = get_topic_coherence(beta[ss, :, tt, :].detach().numpy(), train_tokens, vocab)
-                TC_all.append(tc)
-                cnt_all.append(cnt)
+                TC_all[ss,tt] = tc
+                cnt_all[ss,tt] = cnt
         print('TC_all: ', TC_all)
-        TC_all = torch.tensor(TC_all)
+        TC_all = torch.tensor(TC_all)        
+        TC = np.mean(TC_all)
         print('TC_all: ', TC_all.size())
         print('\n')
         print('Get topic quality...')
-        quality = tc * diversity
+        quality = TC * TD
         print('Topic Quality is: {}'.format(quality))
         print('#'*100)
 
