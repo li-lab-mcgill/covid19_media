@@ -38,7 +38,7 @@ parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directo
 
 parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
 
-parser.add_argument('--save_path', type=str, default='./results', help='path to save results')
+parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
 parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 
@@ -58,10 +58,10 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
-parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
-parser.add_argument('--seed', type=int, default=2019, help='random seed (default: 1)')
+parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
 parser.add_argument('--enc_drop', type=float, default=0.0, help='dropout rate on encoder')
 parser.add_argument('--eta_dropout', type=float, default=0.0, help='dropout rate on rnn for eta')
 parser.add_argument('--clip', type=float, default=0.0, help='gradient clipping')
@@ -122,6 +122,12 @@ sources_map_file = os.path.join(data_file, 'sources_map.pkl')
 sources_map = pickle.load(open(sources_map_file, 'rb'))
 args.num_sources = len(sources_map)
 
+# swap keys and values (done once only)
+# sources_map={v:k for k,v in sources_map.items()}
+# with open(sources_map_file, 'wb') as f:
+#     pickle.dump(sources_map, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+
 
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, args.num_times, train_sources, args.vocab_size, args.num_docs_train)
@@ -134,30 +140,31 @@ valid_times = valid['times']
 valid_sources = valid['sources']
 args.num_docs_valid = len(valid_tokens)
 valid_rnn_inp = data.get_rnn_input(
-    valid_tokens, valid_counts, valid_times, args.num_times, train_sources, args.vocab_size, args.num_docs_valid)
+    valid_tokens, valid_counts, valid_times, args.num_times, valid_sources, args.vocab_size, args.num_docs_valid)
 
 # 3. test data
 print('Getting testing data ...')
 test_tokens = test['tokens']
 test_counts = test['counts']
 test_times = test['times']
+test_sources = test['sources']
 args.num_docs_test = len(test_tokens)
 test_rnn_inp = data.get_rnn_input(
-    test_tokens, test_counts, test_times, args.num_times, train_sources, args.vocab_size, args.num_docs_test)
+    test_tokens, test_counts, test_times, args.num_times, test_sources, args.vocab_size, args.num_docs_test)
 
 test_1_tokens = test['tokens_1']
 test_1_counts = test['counts_1']
 test_1_times = test_times
 args.num_docs_test_1 = len(test_1_tokens)
 test_1_rnn_inp = data.get_rnn_input(
-    test_1_tokens, test_1_counts, test_1_times, args.num_times, train_sources, args.vocab_size, args.num_docs_test)
+    test_1_tokens, test_1_counts, test_1_times, args.num_times, test_sources, args.vocab_size, args.num_docs_test)
 
 test_2_tokens = test['tokens_2']
 test_2_counts = test['counts_2']
 test_2_times = test_times
 args.num_docs_test_2 = len(test_2_tokens)
 test_2_rnn_inp = data.get_rnn_input(
-    test_2_tokens, test_2_counts, test_2_times, args.num_times, train_sources, args.vocab_size, args.num_docs_test)
+    test_2_tokens, test_2_counts, test_2_times, args.num_times, test_sources, args.vocab_size, args.num_docs_test)
 
 ## get word embeddings 
 print('Getting word embeddings ...')
@@ -189,11 +196,9 @@ print('Getting source embeddings ...')
 source_embeddings = torch.randn(args.num_sources, args.embeddings_dim[1], requires_grad=False).to(device)
 
 # assuming the file is located with other data files and named source_matrix.npy
-# source_embedding_path = os.path.join(data_file, 'source_matrix.npy')
+# source_embedding_path = os.path.join(data_file, 'sources_matrix.npy')
 # may need to convert to torch.tensor before using
 # source_embeddings = data.get_source_embeddings(source_embedding_path)   # S x L numpy array
-
-
 
 
 print('\n')
@@ -209,7 +214,7 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'detm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
+        'dmetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
             args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_word_embeddings))
 
@@ -455,9 +460,8 @@ def get_completion_ppl(source):
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             tokens_1 = test_1_tokens
             counts_1 = test_1_counts
-
             tokens_2 = test_2_tokens
-            counts_2 = test_2_counts
+            counts_2 = test_2_counts            
 
             eta_1 = get_eta('test')
 
@@ -465,8 +469,8 @@ def get_completion_ppl(source):
             cnt = 0
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
-                data_batch_1, times_batch_1 = data.get_batch(
-                    tokens_1, counts_1, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=test_times)
+                data_batch_1, times_batch_1, sources_batch_1 = data.get_batch(
+                    tokens_1, counts_1, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
                 sums_1 = data_batch_1.sum(1).unsqueeze(1)
                 if args.bow_norm:
                     normalized_data_batch_1 = data_batch_1 / sums_1
@@ -476,8 +480,8 @@ def get_completion_ppl(source):
                 eta_td_1 = eta_1[times_batch_1.type('torch.LongTensor')]
                 theta = get_theta(eta_td_1, normalized_data_batch_1)
 
-                data_batch_2, times_batch_2 = data.get_batch(
-                    tokens_2, counts_2, ind, args.vocab_size, args.emb_size, temporal=True, times=test_times)
+                data_batch_2, times_batch_2, sources_batch_2 = data.get_batch(
+                    tokens_2, counts_2, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
 
                 # alpha_td = alpha[:, times_batch_2.type('torch.LongTensor'), :]
@@ -486,7 +490,7 @@ def get_completion_ppl(source):
                 # loglik = loglik.sum(1)
 
                 beta = model.get_beta(alpha)
-                beta = beta[sources_batch.type('torch.LongTensor'), :, times_batch.type('torch.LongTensor'), :] # D' x K x V
+                beta = beta[sources_batch_2.type('torch.LongTensor'), :, times_batch_2.type('torch.LongTensor'), :] # D' x K x V
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
 
                 loglik = torch.log(loglik+1e-6)

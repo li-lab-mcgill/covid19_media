@@ -189,7 +189,6 @@ class DMETM(nn.Module):
         return theta, kl_theta
 
 
-
     # incorporate source-specific embedding lambda
     def get_beta(self, alpha):
         """Returns the topic matrix beta of shape S x K x T x V

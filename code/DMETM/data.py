@@ -58,12 +58,12 @@ def _fetch_temporal(path, name):
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
         count_1_file = os.path.join(path, 'bow_ts_h1_counts')
         token_2_file = os.path.join(path, 'bow_ts_h2_tokens')
-        count_2_file = os.path.join(path, 'bow_ts_h2_counts')
+        count_2_file = os.path.join(path, 'bow_ts_h2_counts')        
         tokens_1 = scipy.io.loadmat(token_1_file)['tokens'].squeeze()
         counts_1 = scipy.io.loadmat(count_1_file)['counts'].squeeze()
         tokens_2 = scipy.io.loadmat(token_2_file)['tokens'].squeeze()
         counts_2 = scipy.io.loadmat(count_2_file)['counts'].squeeze()
-        return {'tokens': tokens, 'counts': counts, 'times': times, 
+        return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources,
                     'tokens_1': tokens_1, 'counts_1': counts_1, 
                         'tokens_2': tokens_2, 'counts_2': counts_2} 
 
@@ -145,3 +145,4 @@ def get_rnn_input(tokens, counts, times, num_times, sources, vocab_size, num_doc
 
 def get_source_embeddings(path):
     return np.load(path)
+
