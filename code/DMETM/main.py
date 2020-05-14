@@ -500,7 +500,7 @@ def _diversity_helper(beta, num_tops):
     list_w = np.zeros((args.num_topics, num_tops))
     for k in range(args.num_topics):
         gamma = beta[k, :]
-        top_words = gamma.cpu().numpy().argsort()[-num_tops:][::-1]
+        top_words = gamma.detach().numpy().argsort()[-num_tops:][::-1]
         list_w[k, :] = top_words
     list_w = np.reshape(list_w, (-1))
     list_w = list(list_w)
@@ -515,15 +515,18 @@ def get_topic_quality():
     with torch.no_grad():
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha) 
-        print('beta: ', beta.size())
+        print('beta: ', beta.size()) # SxKxTxV
 
         print('\n')
         print('#'*100)
         print('Get topic diversity...')
         num_tops = 25
-        TD_all = np.zeros((args.num_times,))
-        for tt in range(args.num_times):
-            TD_all[tt] = _diversity_helper(beta[:, tt, :], num_tops)
+        TD_all = np.zeros((args.num_sources, args.num_times))
+
+        for ss in range(args.num_sources):
+            for tt in range(args.num_times):
+                TD_all[ss,tt] = _diversity_helper(beta[ss, :, tt, :], num_tops)
+
         TD = np.mean(TD_all)
         print('Topic Diversity is: {}'.format(TD))
 
@@ -532,10 +535,11 @@ def get_topic_quality():
         print('train_tokens: ', train_tokens[0])
         TC_all = []
         cnt_all = []
-        for tt in range(args.num_times):
-            tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().numpy(), train_tokens, vocab)
-            TC_all.append(tc)
-            cnt_all.append(cnt)
+        for ss in range(args.num_sources):
+            for tt in range(args.num_times):
+                tc, cnt = get_topic_coherence(beta[ss, :, tt, :].detach().numpy(), train_tokens, vocab)
+                TC_all.append(tc)
+                cnt_all.append(cnt)
         print('TC_all: ', TC_all)
         TC_all = torch.tensor(TC_all)
         print('TC_all: ', TC_all.size())
@@ -591,8 +595,7 @@ else:
     model = model.to(device)
         
     print('saving alpha...')
-    with torch.no_grad():
-        # alpha = model.mu_q_alpha.cpu().numpy()
+    with torch.no_grad():        
         alpha = model.mu_q_alpha.detach().numpy()
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
