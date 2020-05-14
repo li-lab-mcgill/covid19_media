@@ -551,10 +551,7 @@ if args.mode == 'train':
     best_epoch = 0
     best_val_ppl = 1e9
     all_val_ppls = []
-    for epoch in range(1, args.epochs):
-
-        print("epoch", epoch)
-
+    for epoch in range(1, args.epochs):        
         train(epoch)
         if epoch % args.visualize_every == 0:
             visualize()
