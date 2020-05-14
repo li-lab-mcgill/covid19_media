@@ -428,17 +428,17 @@ def get_completion_ppl(source):
 
                 eta_td = eta[times_batch.type('torch.LongTensor')]
                 theta = get_theta(eta_td, normalized_data_batch)
-                alpha_td = alpha[:, times_batch.type('torch.LongTensor'), :]
                 
+                # alpha_td = alpha[:, times_batch.type('torch.LongTensor'), :]                
                 # beta = model.get_beta(alpha_td).permute(1, 0, 2)
                 # loglik = theta.unsqueeze(2) * beta
+                # loglik = loglik.sum(1)
 
-                beta = model.get_beta(alpha_td)
-                beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')]
-                loglik = torch.bmm(theta,  beta).unsqueeze(1)
-
-                loglik = loglik.sum(1)
-                loglik = torch.log(loglik)
+                beta = model.get_beta(alpha)
+                beta = beta[sources_batch.type('torch.LongTensor'), :, times_batch.type('torch.LongTensor'), :] # D' x K x V
+                loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
+                
+                loglik = torch.log(loglik+1e-6)
                 nll = -loglik * data_batch
                 nll = nll.sum(-1)
                 loss = nll / sums.squeeze()
