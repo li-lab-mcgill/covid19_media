@@ -140,7 +140,7 @@ def get_rnn_input(tokens, counts, times, num_times, sources, vocab_size, num_doc
             cnt[t] += len(tmp)
         if idx % 20 == 0:
             print('idx: {}/{}'.format(idx, len(indices)))
-    rnn_input = rnn_input / cnt.unsqueeze(1)
+    rnn_input = (rnn_input + 1e-16) / (cnt.unsqueeze(1) + 1e-16)
     return rnn_input
 
 def get_source_embeddings(path):

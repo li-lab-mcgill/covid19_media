@@ -192,14 +192,15 @@ class DMETM(nn.Module):
         """Returns the topic matrix beta of shape T x K x V
         """
         # S x T x K x V
-        beta = torch.zeros(self.num_sources, self.num_times, 
+        betas = torch.zeros(self.num_sources, self.num_times, 
             self.num_topics, self.vocab_size).to(device)
 
-        # set_trace()
-        for i in range(self.num_sources):            
+        # beta = torch.zeros(self.num_times, self.num_topics, self.vocab_size).to(device)
 
-            alpha_s = alpha * self.source_lambda[i] # T x K x L elem-prod 1 x L
-            # alpha_s = alpha # T x K x L elem-prod 1 x L            
+        # set_trace()
+        for i in range(self.num_sources):
+
+            alpha_s = alpha * self.source_lambda[i] # T x K x L elem-prod 1 x L                    
 
             if self.train_word_embeddings:
                 logit = self.rho(alpha_s.view(alpha_s.size(0) * alpha_s.size(1), self.rho_size))
@@ -209,11 +210,14 @@ class DMETM(nn.Module):
 
             logit = logit.view(alpha.size(0), alpha.size(1), -1) # T x K x V
 
-            beta[i] = F.softmax(logit, dim=-1)
-            
+            # beta[i] = F.softmax(logit, dim=-1)
+
+            betas[i] = F.softmax(logit, dim=-1)
+
+            # return beta            
             # return F.softmax(logit, dim=-1)
 
-        return beta # S x T x K x V
+        return betas # S x T x K x V
 
 
     # def get_beta(self, alpha):
@@ -247,7 +251,8 @@ class DMETM(nn.Module):
 
         beta = self.get_beta(alpha) # D' x K x V        
         
-        beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor'),:,:] # D' x K x V        
+        
+        beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor'),:,:] # D' x K x V
         # beta = beta[times.type('torch.LongTensor')]
 
         print("forward: beta computed. beta.shape: ")
