@@ -137,6 +137,9 @@ class DMETM(nn.Module):
             kl_t = self.get_kl(self.mu_q_alpha[:, t, :], self.logsigma_q_alpha[:, t, :], p_mu_t, logsigma_p_t)
             kl_alpha.append(kl_t)
         kl_alpha = torch.stack(kl_alpha).sum()
+
+        alphas = alphas.permute(1,0,2) # TxKxL -> KxTxL
+
         return alphas, kl_alpha.sum()
 
     def get_eta(self, rnn_inp): ## structured amortized inference
@@ -189,18 +192,17 @@ class DMETM(nn.Module):
 
     # incorporate source-specific embedding lambda
     def get_beta(self, alpha):
-        """Returns the topic matrix beta of shape T x K x V
+        """Returns the topic matrix beta of shape K x T x V
         """        
 
-        # alpha: T x K x L
+        # alpha: K x T x L
         # source_lambda: S x L        
 
-        # 1 x T x K x L -> S x T x K x L
+        # 1 x K x T x L -> S x K x T x L
         alpha_s = alpha.unsqueeze(0).repeat(self.num_sources, 1, 1, 1)
 
-        # S x 1 x L -> S x 1 x 1 x L -> S x T x K x L
-        source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1,
-            self.num_times,self.num_topics,1)
+        # S x 1 x L -> S x 1 x 1 x L -> S x K x T x L
+        source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics,self.num_times,1)
 
         print("alpha_s.shape: ", alpha_s.shape)
         print("source_lambda_s.shape: ", source_lambda_s.shape)
@@ -219,7 +221,7 @@ class DMETM(nn.Module):
         
         betas = F.softmax(logit, dim=-1)            
 
-        return betas # S x T x K x V
+        return betas # S x K x T x V
 
 
     # def get_beta(self, alpha):
@@ -246,13 +248,18 @@ class DMETM(nn.Module):
     def forward(self, bows, normalized_bows, times, sources, rnn_inp, num_docs):
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz 
-        alpha, kl_alpha = self.get_alpha()
+
+        # set_trace()
+
+        alpha, kl_alpha = self.get_alpha()        
+
+
         eta, kl_eta = self.get_eta(rnn_inp)
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
         kl_theta = kl_theta.sum() * coeff
 
-        beta = self.get_beta(alpha) # S x T x K x V                
-        beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D' x K x V
+        beta = self.get_beta(alpha) # S x K x T x V
+        beta = beta[sources.type('torch.LongTensor'), :, times.type('torch.LongTensor'), :] # D' x K x V
         # beta = beta[times.type('torch.LongTensor')]            
 
         print("forward: beta computed. beta.shape: ")

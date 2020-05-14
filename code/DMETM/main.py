@@ -314,7 +314,7 @@ def visualize():
     """
     model.eval()
     with torch.no_grad():
-        alpha = model.mu_q_alpha
+        alpha = model.mu_q_alpha # KxTxL
         beta = model.get_beta(alpha) 
         print('beta: ', beta.size())
         print('\n')
@@ -400,7 +400,7 @@ def get_completion_ppl(source):
     """
     model.eval()
     with torch.no_grad():
-        alpha = model.mu_q_alpha
+        alpha = model.mu_q_alpha # KxTxL
         if source == 'val':
             indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)
             tokens = valid_tokens
@@ -424,8 +424,14 @@ def get_completion_ppl(source):
                 eta_td = eta[times_batch.type('torch.LongTensor')]
                 theta = get_theta(eta_td, normalized_data_batch)
                 alpha_td = alpha[:, times_batch.type('torch.LongTensor'), :]
-                beta = model.get_beta(alpha_td).permute(1, 0, 2)
-                loglik = theta.unsqueeze(2) * beta
+                
+                # beta = model.get_beta(alpha_td).permute(1, 0, 2)
+                # loglik = theta.unsqueeze(2) * beta
+
+                beta = model.get_beta(alpha_td)
+                beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')]
+                loglik = torch.bmm(theta,  beta).unsqueeze(1)
+
                 loglik = loglik.sum(1)
                 loglik = torch.log(loglik)
                 nll = -loglik * data_batch
@@ -536,8 +542,6 @@ def get_topic_quality():
         print('Topic Quality is: {}'.format(quality))
         print('#'*100)
 
-
-print("right here")
 
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
