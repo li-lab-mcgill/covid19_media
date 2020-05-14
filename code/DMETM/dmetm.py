@@ -190,32 +190,34 @@ class DMETM(nn.Module):
     # incorporate source-specific embedding lambda
     def get_beta(self, alpha):
         """Returns the topic matrix beta of shape T x K x V
-        """
-        # S x T x K x V
-        betas = torch.zeros(self.num_sources, self.num_times, 
-            self.num_topics, self.vocab_size).to(device)
+        """        
 
-        # beta = torch.zeros(self.num_times, self.num_topics, self.vocab_size).to(device)
+        # alpha: T x K x L
+        # source_lambda: S x L        
 
-        # set_trace()
-        for i in range(self.num_sources):
+        # 1 x T x K x L -> S x T x K x L
+        alpha_s = alpha.unsqueeze(0).repeat(self.num_sources, 1, 1, 1)
 
-            alpha_s = alpha * self.source_lambda[i] # T x K x L elem-prod 1 x L                    
+        # S x 1 x L -> S x 1 x 1 x L -> S x T x K x L
+        source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1,
+            self.num_times,self.num_topics,1)
 
-            if self.train_word_embeddings:
-                logit = self.rho(alpha_s.view(alpha_s.size(0) * alpha_s.size(1), self.rho_size))
-            else:
-                tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1), self.rho_size) # (T x K) x L
-                logit = torch.mm(tmp, self.rho.permute(1, 0)) # (T x K) x L prod L x V = (T x K) x V
+        print("alpha_s.shape: ", alpha_s.shape)
+        print("source_lambda_s.shape: ", source_lambda_s.shape)
 
-            logit = logit.view(alpha.size(0), alpha.size(1), -1) # T x K x V
+        set_trace()
 
-            # beta[i] = F.softmax(logit, dim=-1)
+        alpha_s = alpha_s * source_lambda_s
 
-            betas[i] = F.softmax(logit, dim=-1)
+        if self.train_word_embeddings:
+            logit = self.rho(alpha_s.view(alpha_s.size(0) * alpha_s.size(1) * alpha_s.size(2), self.rho_size))
+        else:
+            tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S x T x K) x L
+            logit = torch.mm(tmp, self.rho.permute(1, 0)) # (S x T x K) x L prod L x V = (S x T x K) x V
 
-            # return beta            
-            # return F.softmax(logit, dim=-1)
+        logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S x T x K x V
+        
+        betas = F.softmax(logit, dim=-1)            
 
         return betas # S x T x K x V
 
@@ -249,11 +251,9 @@ class DMETM(nn.Module):
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
         kl_theta = kl_theta.sum() * coeff
 
-        beta = self.get_beta(alpha) # D' x K x V        
-        
-        
-        beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor'),:,:] # D' x K x V
-        # beta = beta[times.type('torch.LongTensor')]
+        beta = self.get_beta(alpha) # S x T x K x V                
+        beta = beta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D' x K x V
+        # beta = beta[times.type('torch.LongTensor')]            
 
         print("forward: beta computed. beta.shape: ")
         print(beta.shape)
