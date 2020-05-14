@@ -15,7 +15,7 @@ from pdb import set_trace
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DMETM(nn.Module):
-    def __init__(self, args, word_embeddings, source_embeddings):
+    def __init__(self, args, word_embeddings, sources_embeddings):
         super(DMETM, self).__init__()
 
         ## define hyperparameters
@@ -50,7 +50,7 @@ class DMETM(nn.Module):
             self.source_lambda = torch.randn(args.num_sources, args.rho_size, requires_grad=True)
         else:
             source_lambda = nn.Embedding(args.num_sources, num_embeddings)
-            source_lambda.weight.data = source_embeddings
+            source_lambda.weight.data = sources_embeddings
             self.source_lambda = source_lambda.weight.data.clone().float().to(device)
 
 
@@ -192,8 +192,7 @@ class DMETM(nn.Module):
     # incorporate source-specific embedding lambda
     def get_beta(self, alpha):
         """Returns the topic matrix beta of shape S x K x T x V
-        """        
-
+        """
         # alpha: K x T x L
         # source_lambda: S x L        
 
@@ -201,12 +200,7 @@ class DMETM(nn.Module):
         alpha_s = alpha.unsqueeze(0).repeat(self.num_sources, 1, 1, 1)
 
         # S x 1 x L -> S x 1 x 1 x L -> S x K x T x L
-        source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics,self.num_times,1)
-
-        print("alpha_s.shape: ", alpha_s.shape)
-        print("source_lambda_s.shape: ", source_lambda_s.shape)
-
-        # set_trace()
+        source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics,self.num_times,1)        
 
         alpha_s = alpha_s * source_lambda_s
 
@@ -218,7 +212,7 @@ class DMETM(nn.Module):
 
         logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S x T x K x V
         
-        betas = F.softmax(logit, dim=-1)            
+        betas = F.softmax(logit, dim=-1)
 
         return betas # S x K x T x V
 
@@ -252,27 +246,19 @@ class DMETM(nn.Module):
 
         alpha, kl_alpha = self.get_alpha()        
 
-
         eta, kl_eta = self.get_eta(rnn_inp)
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
         kl_theta = kl_theta.sum() * coeff
 
         beta = self.get_beta(alpha) # S x K x T x V
         beta = beta[sources.type('torch.LongTensor'), :, times.type('torch.LongTensor'), :] # D' x K x V
-        # beta = beta[times.type('torch.LongTensor')]            
-
-        print("forward: beta computed. beta.shape: ")
-        print(beta.shape)
-
+        
 
         nll = self.get_nll(theta, beta, bows)
-
-        print("forward: nll computed")
-
+        
         nll = nll.sum() * coeff
         nelbo = nll + kl_alpha + kl_eta + kl_theta
-
-        print("nelbo", nelbo)
+        
 
         return nelbo, nll, kl_alpha, kl_eta, kl_theta
 

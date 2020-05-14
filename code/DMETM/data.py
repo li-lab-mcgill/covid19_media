@@ -144,5 +144,5 @@ def get_rnn_input(tokens, counts, times, num_times, sources, vocab_size, num_doc
     return rnn_input
 
 def get_source_embeddings(path):
-    return np.load(path)
+    return torch.tensor(np.load(path))
 

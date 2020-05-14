@@ -58,7 +58,7 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
-parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train')
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
@@ -127,8 +127,6 @@ args.num_sources = len(sources_map)
 # with open(sources_map_file, 'wb') as f:
 #     pickle.dump(sources_map, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-
-
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, args.num_times, train_sources, args.vocab_size, args.num_docs_train)
 
@@ -192,13 +190,13 @@ args.embeddings_dim = word_embeddings.size()
 
 ## get source embeddings
 print('Getting source embeddings ...')
-# source_embeddings = torch.ones(args.num_sources, args.embeddings_dim[1])
-source_embeddings = torch.randn(args.num_sources, args.embeddings_dim[1], requires_grad=False).to(device)
+# sources_embeddings = torch.ones(args.num_sources, args.embeddings_dim[1])
+# sources_embeddings = torch.randn(args.num_sources, args.embeddings_dim[1], requires_grad=False).to(device)
 
 # assuming the file is located with other data files and named source_matrix.npy
-# source_embedding_path = os.path.join(data_file, 'sources_matrix.npy')
+sources_embedding_path = os.path.join(data_file, 'sources_matrix.npy')
 # may need to convert to torch.tensor before using
-# source_embeddings = data.get_source_embeddings(source_embedding_path)   # S x L numpy array
+sources_embeddings = data.get_source_embeddings(sources_embedding_path)   # S x L numpy array
 
 
 print('\n')
@@ -224,7 +222,7 @@ if args.load_from != '':
     with open(args.load_from, 'rb') as f:
         model = torch.load(f)
 else:
-    model = DMETM(args, word_embeddings, source_embeddings)
+    model = DMETM(args, word_embeddings, sources_embeddings)
 print('\nDETM architecture: {}'.format(model))
 model.to(device)
 
@@ -245,9 +243,7 @@ else:
 
 def train(epoch):
     """Train DETM on data for one epoch.
-    """
-
-    print("inside train ...")
+    """    
 
     model.train()
     acc_loss = 0
@@ -267,20 +263,12 @@ def train(epoch):
         if args.bow_norm:
             normalized_data_batch = data_batch / sums
         else:
-            normalized_data_batch = data_batch
-
-        print("forward pass ...")
+            normalized_data_batch = data_batch        
 
         loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
             sources_batch, train_rnn_inp, args.num_docs_train)
         
-        print("train: loss computed. loss: ", loss)
-
-        print("backward pass ...")
-
-        loss.backward()
-
-        print("backward pass fininshed")
+        loss.backward()        
 
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -321,17 +309,18 @@ def visualize():
     with torch.no_grad():
         alpha = model.mu_q_alpha # KxTxL
         beta = model.get_beta(alpha) # SxKxTxV
-        print('beta: ', beta.size())
+        # print('beta: ', beta.size())
         print('\n')
         print('#'*100)
         print('Visualize topics...')
         
         topics = [0, int(beta.shape[1]/2), beta.shape[1]-1]
         times = [0, int(beta.shape[2]/2), beta.shape[2]-1]
+        demo_sources = [35, 40, 195] # expected: Canada, China, United States
 
         topics_words = []
 
-        for s in range(min(3,args.num_sources)):
+        for s in demo_sources:
             for k in topics:
                 for t in times:                
                     gamma = beta[s, k, t, :]
@@ -339,13 +328,13 @@ def visualize():
                     topic_words = [vocab[a] for a in top_words]
                     topics_words.append(' '.join(topic_words))
                     
-                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(s, k, t, topic_words))
+                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[s], k, t, topic_words))
 
         print('\n')
         print('Visualize word embeddings ...')
         # queries = ['economic', 'assembly', 'security', 'management', 'debt', 'rights',  'africa']
         # queries = ['economic', 'assembly', 'security', 'management', 'rights',  'africa']
-        queries = ['economic', 'security', 'management', 'africa']        
+        queries = ['economic', 'security', 'management', 'africa']
         try:
             word_embeddings = model.rho.weight  # Vocab_size x E
         except:
@@ -573,7 +562,7 @@ if args.mode == 'train':
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
             with open(ckpt, 'wb') as f:
-                torch.save(model, f)
+                torch.save(model, f) # UNCOMMENT FOR REAL RUN
             best_epoch = epoch
             best_val_ppl = val_ppl
         else:
@@ -590,12 +579,11 @@ if args.mode == 'train':
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha).cpu().numpy()
-        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True)
+        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
         if args.train_word_embeddings:
-            print('saving word embedding matrix rho...')
-            # rho = model.rho.weight.cpu().numpy()
+            print('saving word embedding matrix rho...')            
             rho = model.rho.weight.detach().numpy()
-            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
+            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')
         print('computing test perplexity...')
@@ -609,7 +597,7 @@ else:
     with torch.no_grad():
         # alpha = model.mu_q_alpha.cpu().numpy()
         alpha = model.mu_q_alpha.detach().numpy()
-        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
+        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
     print('computing validation perplexity...')
     val_ppl = get_completion_ppl('val')
