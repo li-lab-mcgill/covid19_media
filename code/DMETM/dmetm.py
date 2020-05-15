@@ -45,14 +45,15 @@ class DMETM(nn.Module):
             rho.weight.data = word_embeddings
             self.rho = rho.weight.data.clone().float().to(device)
         
-        ## define the source-specific embedding \lambda S x L (DMETM)
+        ## define the source-specific embedding \lambda S x L' (DMETM)                
         if args.train_source_embeddings:
-            self.source_lambda = torch.randn(args.num_sources, args.rho_size, requires_grad=True)
+            self.source_lambda = nn.Parameter(torch.randn(args.num_sources, args.rho_size))
+            # self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))
+            # self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))
         else:
-            source_lambda = nn.Embedding(args.num_sources, num_embeddings)
+            source_lambda = nn.Embedding(args.num_sources, args.rho_size)
             source_lambda.weight.data = sources_embeddings
             self.source_lambda = source_lambda.weight.data.clone().float().to(device)
-
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
         self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))

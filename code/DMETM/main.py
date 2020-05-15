@@ -36,14 +36,16 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
 parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
+# parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
+parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
 
 parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
 parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=20, help='number of topics')
+
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
@@ -81,6 +83,7 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 ### multi-sources-related parameters (DMETM)
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
+
 parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix lambda or train it')
 
 args = parser.parse_args()
@@ -331,10 +334,26 @@ def visualize():
                     print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[s], k, t, topic_words))
 
         print('\n')
+        print('#'*100)
+        print('Visualize source embeddings ...')        
+        queries = ['China', 'Canada', 'United States', 'Italy']
+        try:
+            src_emb = model.source_lambda.weight  # Source_size x L
+        except:
+            src_emb = model.source_lambda         # Source_size x L
+        # neighbors = []
+        src_list = [v for k,v in sources_map.items()]
+        for src in queries:
+            print('source: {} .. neighbors: {}'.format(
+                src, nearest_neighbors(src, src_emb, src_list, min(5, args.num_sources))))
+
+        print(model.source_lambda[0:10])
+        
+
+        print('\n')
+        print('#'*100)
         print('Visualize word embeddings ...')
-        # queries = ['economic', 'assembly', 'security', 'management', 'debt', 'rights',  'africa']
-        # queries = ['economic', 'assembly', 'security', 'management', 'rights',  'africa']
-        queries = ['economic', 'security', 'management', 'africa']
+        queries = ['border', 'vaccines', 'coronaviruses', 'masks']
         try:
             word_embeddings = model.rho.weight  # Vocab_size x E
         except:
@@ -546,9 +565,10 @@ def get_topic_quality():
         print('TC_all: ', TC_all.size())
         print('\n')
         print('Get topic quality...')
-        quality = TC * TD
-        print('Topic Quality is: {}'.format(quality))
+        TQ = TC * TD
+        print('Topic Quality is: {}'.format(TQ))
         print('#'*100)
+        return {"TD":TD, "TC":TC, "TQ":TQ}
 
 
 if args.mode == 'train':
@@ -563,8 +583,8 @@ if args.mode == 'train':
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
-            with open(ckpt, 'wb') as f:
-                torch.save(model, f) # UNCOMMENT FOR REAL RUN
+            # with open(ckpt, 'wb') as f:
+            #     torch.save(model, f) # UNCOMMENT FOR REAL RUN
             best_epoch = epoch
             best_val_ppl = val_ppl
         else:
@@ -573,23 +593,29 @@ if args.mode == 'train':
             if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
                 optimizer.param_groups[0]['lr'] /= args.lr_factor
         all_val_ppls.append(val_ppl)
-    with open(ckpt, 'rb') as f:
-        model = torch.load(f)
+    # with open(ckpt, 'rb') as f:
+    #     model = torch.load(f)
     model = model.to(device)
     model.eval()
     with torch.no_grad():
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha).cpu().numpy()
-        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
+        # scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
         if args.train_word_embeddings:
             print('saving word embedding matrix rho...')            
             rho = model.rho.weight.detach().numpy()
-            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
+            # scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')
         print('computing test perplexity...')
         test_ppl = get_completion_ppl('test')
+
+        f=open(ckpt+'_ppl.txt','w')
+        s1='\n'.join([str(i) for i in all_val_ppls])
+        s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
+        f.write(s1)
+        f.close()
 else: 
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
@@ -605,6 +631,17 @@ else:
     print('computing test perplexity...')
     test_ppl = get_completion_ppl('test')
     print('computing topic coherence and topic diversity...')
-    get_topic_quality()
+    tq = get_topic_quality()
+
+    f=open(ckpt+'_tq.txt','w')
+    s1='\n'.join([k+': '+str(v) for k,v in tq.items()])
+    f.write(s1)
+    f.close()
+
     print('visualizing topics and embeddings...')
     visualize()
+
+
+
+
+
