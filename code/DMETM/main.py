@@ -60,7 +60,7 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
-parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
@@ -84,7 +84,7 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 ### multi-sources-related parameters (DMETM)
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
 
-parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix lambda or train it')
+parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix lambda or train it')
 
 args = parser.parse_args()
 
@@ -583,8 +583,8 @@ if args.mode == 'train':
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
-            # with open(ckpt, 'wb') as f:
-            #     torch.save(model, f) # UNCOMMENT FOR REAL RUN
+            with open(ckpt, 'wb') as f:
+                torch.save(model, f) # UNCOMMENT FOR REAL RUN
             best_epoch = epoch
             best_val_ppl = val_ppl
         else:
@@ -601,11 +601,15 @@ if args.mode == 'train':
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha).cpu().numpy()
-        # scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
+        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
         if args.train_word_embeddings:
             print('saving word embedding matrix rho...')            
             rho = model.rho.weight.detach().numpy()
-            # scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
+            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
+        if args.train_source_embeddings:
+            print('saving source embedding matrix rho...')            
+            source_lambda = model.source_lambda.detach().numpy()
+            scipy.io.savemat(ckpt+'_lambda.mat', {'values': source_lambda}, do_compression=True) # UNCOMMENT FOR REAL RUN            
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')
         print('computing test perplexity...')

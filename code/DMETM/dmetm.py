@@ -47,9 +47,9 @@ class DMETM(nn.Module):
         
         ## define the source-specific embedding \lambda S x L' (DMETM)                
         if args.train_source_embeddings:
-            self.source_lambda = nn.Parameter(torch.randn(args.num_sources, args.rho_size))
-            # self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))
-            # self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))
+            # self.source_lambda = nn.Parameter(torch.randn(args.num_sources, args.rho_size))
+            # self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))            
+            self.source_lambda = nn.Parameter(sources_embeddings) # gives error
         else:
             source_lambda = nn.Embedding(args.num_sources, args.rho_size)
             source_lambda.weight.data = sources_embeddings
