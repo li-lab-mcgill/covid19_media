@@ -45,7 +45,7 @@ parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_a
 
 parser.add_argument('--save_path', type=str, default='~/Projects/covid19_media/results/dmetm', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=100, help='number of documents in a batch for training')
-parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
+parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
