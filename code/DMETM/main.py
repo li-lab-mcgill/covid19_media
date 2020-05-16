@@ -36,15 +36,19 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
 parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
+# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='data/Aylien', help='directory containing data')
+
+
 # parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
 parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
 
-parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
-parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
+parser.add_argument('--save_path', type=str, default='~/Projects/covid19_media/results/dmetm', help='path to save results')
+parser.add_argument('--batch_size', type=int, default=100, help='number of documents in a batch for training')
 parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=20, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
@@ -55,6 +59,9 @@ parser.add_argument('--train_word_embeddings', type=int, default=0, help='whethe
 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
+
+# parser.add_argument('--eta_hidden_size', type=int, default=10, help='number of hidden units for rnn')
+
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 ### optimization-related arguments
@@ -105,8 +112,6 @@ vocab, train, valid, test = data.get_data(data_file, temporal=True)
 
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
-
-
 
 
 # 1. training data
