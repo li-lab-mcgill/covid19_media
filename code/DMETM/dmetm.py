@@ -51,9 +51,10 @@ class DMETM(nn.Module):
             # self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))            
             self.source_lambda = nn.Parameter(sources_embeddings) # gives error
         else:
-            source_lambda = nn.Embedding(args.num_sources, args.rho_size)
-            source_lambda.weight.data = sources_embeddings
-            self.source_lambda = source_lambda.weight.data.clone().float().to(device)
+            # source_lambda = nn.Embedding(args.num_sources, args.rho_size)
+            # source_lambda.weight.data = sources_embeddings
+            # self.source_lambda = source_lambda.weight.data.clone().float().to(device)
+            self.source_lambda = sources_embeddings.clone().float().to(device)
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
         self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
