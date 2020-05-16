@@ -95,7 +95,8 @@ parser.add_argument('--train_source_embeddings', type=int, default=1, help='whet
 
 args = parser.parse_args()
 
-pca = PCA(n_components=2)
+# pca seems unused
+# pca = PCA(n_components=2)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## set seed
