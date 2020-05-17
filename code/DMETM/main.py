@@ -23,7 +23,7 @@ from torch.nn import functional as F
 from dmetm import DMETM
 from utils import nearest_neighbors, get_topic_coherence
 
-from IPython.core.debugger import set_trace
+# from IPython.core.debugger import set_trace
 
 
 import sys, importlib
