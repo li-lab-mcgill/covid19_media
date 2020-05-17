@@ -178,6 +178,9 @@ class DMETM(nn.Module):
     def get_theta(self, eta, bows, times): ## amortized inference
         """Returns the topic proportions.
         """
+        
+        set_trace()
+        
         eta_td = eta[times.type('torch.LongTensor')]
         inp = torch.cat([bows, eta_td], dim=1)
         q_theta = self.q_theta(inp)

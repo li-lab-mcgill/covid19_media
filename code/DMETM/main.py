@@ -33,11 +33,11 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='data/Aylien', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='~/Projects/covid19_media/data/Aylien', help='directory containing data')
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
@@ -45,6 +45,7 @@ parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_a
 
 parser.add_argument('--save_path', type=str, default='~/Projects/covid19_media/results/dmetm', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=100, help='number of documents in a batch for training')
+# parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
@@ -122,7 +123,11 @@ train_counts = train['counts']
 train_times = train['times']
 train_sources = train['sources']
 
-args.num_times = len(np.unique(train_times))
+# args.num_times = len(np.unique(train_times))
+timestamps_file = os.path.join(data_file, 'timestamps.pkl')
+all_timestamps = pickle.load(open(timestamps_file, 'rb'))
+args.num_times = len(all_timestamps)
+
 args.num_docs_train = len(train_tokens)
 
 
