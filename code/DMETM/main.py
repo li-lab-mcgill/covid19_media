@@ -37,14 +37,16 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
 parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='~/Projects/covid19_media/data/Aylien', help='directory containing data')
+parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
 parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
 
 parser.add_argument('--save_path', type=str, default='~/Projects/covid19_media/results/dmetm', help='path to save results')
+
 parser.add_argument('--batch_size', type=int, default=100, help='number of documents in a batch for training')
+
 # parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
@@ -59,9 +61,9 @@ parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplu
 parser.add_argument('--train_word_embeddings', type=int, default=0, help='whether to fix rho or train it')
 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
-parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
 
-# parser.add_argument('--eta_hidden_size', type=int, default=10, help='number of hidden units for rnn')
+# parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
+parser.add_argument('--eta_hidden_size', type=int, default=64, help='number of hidden units for rnn')
 
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
@@ -135,6 +137,8 @@ args.num_docs_train = len(train_tokens)
 sources_map_file = os.path.join(data_file, 'sources_map.pkl')
 sources_map = pickle.load(open(sources_map_file, 'rb'))
 args.num_sources = len(sources_map)
+
+demo_source_indices = [k for k,v in sources_map.items() if v in ["China", "Canada", "United States"]]
 
 # swap keys and values (done once only)
 # sources_map={v:k for k,v in sources_map.items()}
@@ -279,10 +283,18 @@ def train(epoch):
         else:
             normalized_data_batch = data_batch        
 
+        # print("forward passing ...")
+
         loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
             sources_batch, train_rnn_inp, args.num_docs_train)
-        
+
+        # print("forward done.")
+
+        # print("backward passing ...")
+
         loss.backward()        
+
+        # print("backward done.")
 
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -330,7 +342,8 @@ def visualize():
         
         topics = [0, int(beta.shape[1]/2), beta.shape[1]-1]
         times = [0, int(beta.shape[2]/2), beta.shape[2]-1]
-        demo_sources = [35, 40, 195] # expected: Canada, China, United States
+        # demo_sources = [35, 40, 195] # expected: Canada, China, United States # gphin
+        demo_sources = demo_source_indices
 
         topics_words = []
 
@@ -619,7 +632,7 @@ if args.mode == 'train':
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
         if args.train_source_embeddings:
             print('saving source embedding matrix rho...')            
-            source_lambda = model.source_lambda.detach().numpy()
+            source_lambda = model.source_lambda.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_lambda.mat', {'values': source_lambda}, do_compression=True) # UNCOMMENT FOR REAL RUN            
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')
