@@ -11,3 +11,5 @@ CUDA_VISIBLE_DEVICES=0 python main.py \
     --train_source_embeddings 0 \
     --eta_nlayers 2 \
     --eta_hidden_size 128 \
+    --t_hidden_size 256 \
+    --eval_batch_size 100 \
