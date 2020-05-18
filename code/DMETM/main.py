@@ -317,7 +317,7 @@ def visualize():
     model.eval()
     with torch.no_grad():
         alpha = model.mu_q_alpha # KxTxL
-        beta = model.get_beta(alpha) # SxKxTxV
+        beta = get_all_beta(alpha) # SxKxTxV
         # print('beta: ', beta.size())
         print('\n')
         print('#'*100)
@@ -419,6 +419,10 @@ def get_theta(eta, bows):
         theta = F.softmax(mu_theta, dim=-1)
         return theta    
 
+def get_all_beta(alpha):
+    source_batches = np.array_split(np.arange(model.source_lambda.shape[0]), np.ceil(model.source_lambda.shape[0] / args.eval_batch_size))
+    return torch.cat([model.get_beta(alpha, torch.tensor(source_batch)) for source_batch in source_batches])
+
 def get_completion_ppl(source):
     """Returns document completion perplexity.
     """
@@ -453,7 +457,7 @@ def get_completion_ppl(source):
                 # loglik = theta.unsqueeze(2) * beta
                 # loglik = loglik.sum(1)
 
-                beta = model.get_beta(alpha)
+                beta = get_all_beta(alpha)
                 beta = beta[sources_batch.type('torch.LongTensor'), :, times_batch.type('torch.LongTensor'), :] # D' x K x V
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
                 
@@ -503,7 +507,7 @@ def get_completion_ppl(source):
                 # loglik = theta.unsqueeze(2) * beta
                 # loglik = loglik.sum(1)
 
-                beta = model.get_beta(alpha)
+                beta = get_all_beta(alpha)
                 beta = beta[sources_batch_2.type('torch.LongTensor'), :, times_batch_2.type('torch.LongTensor'), :] # D' x K x V
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
 
@@ -539,7 +543,7 @@ def get_topic_quality():
     model.eval()
     with torch.no_grad():
         alpha = model.mu_q_alpha
-        beta = model.get_beta(alpha) 
+        beta = get_all_beta(alpha) 
         print('beta: ', beta.size()) # SxKxTxV
 
         print('\n')
@@ -606,7 +610,7 @@ if args.mode == 'train':
     with torch.no_grad():
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
-        beta = model.get_beta(alpha).cpu().numpy()
+        beta = get_all_beta(alpha).cpu().numpy()
         scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
         if args.train_word_embeddings:
             print('saving word embedding matrix rho...')            
