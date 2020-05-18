@@ -7,7 +7,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py \
     --emb_path skipgram/trained_word_emb_aylien.txt \
     --save_path ./results \
     --epochs 100 \
-    --num_topics 5 \
+    --num_topics 50 \
     --batch_size 8 \
     --min_df 100 \
     --train_source_embeddings 0 \
