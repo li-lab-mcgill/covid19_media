@@ -55,7 +55,9 @@ parser.add_argument('--num_topics', type=int, default=50, help='number of topics
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
+
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
+
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
 parser.add_argument('--train_word_embeddings', type=int, default=0, help='whether to fix rho or train it')
