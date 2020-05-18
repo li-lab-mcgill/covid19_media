@@ -444,7 +444,7 @@ def get_completion_ppl(source):
     with torch.no_grad():
         alpha = model.mu_q_alpha # KxTxL
         if source == 'val':
-            indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)
+            indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)            
             tokens = valid_tokens
             counts = valid_counts
             times = valid_times
