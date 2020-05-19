@@ -25,6 +25,8 @@ from utils import nearest_neighbors, get_topic_coherence, get_all_beta
 
 # from IPython.core.debugger import set_trace
 
+from pytorch_memlab import MemReporter
+
 
 import sys, importlib
 importlib.reload(sys.modules['data'])
@@ -293,8 +295,11 @@ def train(epoch):
         # print("forward done.")
 
         # print("backward passing ...")
-
-        loss.backward()        
+        try:
+            loss.backward()        
+        except:
+            reporter.report()
+            raise Exception()
 
         # print("backward done.")
 
@@ -602,12 +607,13 @@ if args.mode == 'train':
     best_epoch = 0
     best_val_ppl = 1e9
     all_val_ppls = []
+    reporter = MemReporter(model)
     for epoch in range(1, args.epochs):        
         train(epoch)
         if epoch % args.visualize_every == 0:
             # visualize()
             pass
-        val_ppl = get_completion_ppl('val').detach()
+        val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
             with open(ckpt, 'wb') as f:
