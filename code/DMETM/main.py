@@ -302,6 +302,7 @@ def train(epoch):
             raise Exception(torch.cuda.memory_summary())
 
         if idx % 50 == 0:
+            torch.cuda.empty_cache()
             print(torch.cuda.memory_summary())
 
         # print("backward done.")
