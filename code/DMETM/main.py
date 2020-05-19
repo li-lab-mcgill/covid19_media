@@ -10,20 +10,20 @@ import os
 import math 
 import random 
 import sys
-import matplotlib.pyplot as plt 
+# import matplotlib.pyplot as plt 
 import seaborn as sns
 import scipy.io
 
 import data 
 
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
 from dmetm import DMETM
 from utils import nearest_neighbors, get_topic_coherence, get_all_beta
 
-from IPython.core.debugger import set_trace
+# from IPython.core.debugger import set_trace
 
 
 import sys, importlib
