@@ -155,6 +155,6 @@ def visualize(docs, _lda_keys, topics, theta):
     #              color=colormap[_lda_keys][:num_example])
     # plt.show()
 
-def get_all_beta(alpha, model):
-    source_batches = np.array_split(np.arange(model.source_lambda.shape[0]), np.ceil(model.source_lambda.shape[0] / args.eval_batch_size))
+def get_all_beta(alpha, model, batch_size=100):
+    source_batches = np.array_split(np.arange(model.source_lambda.shape[0]), np.ceil(model.source_lambda.shape[0] / batch_size))
     return torch.cat([model.get_beta(alpha, torch.tensor(source_batch)) for source_batch in source_batches])
