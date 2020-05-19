@@ -11,7 +11,7 @@ import math
 import random 
 import sys
 # import matplotlib.pyplot as plt 
-import seaborn as sns
+# import seaborn as sns
 import scipy.io
 
 import data 
