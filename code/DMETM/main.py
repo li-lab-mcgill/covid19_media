@@ -299,7 +299,10 @@ def train(epoch):
             loss.backward()        
         except:
             reporter.report()
-            raise Exception()
+            raise Exception(torch.cuda.memory_summary())
+
+        if idx % 50 == 0:
+            print(torch.cuda.memory_summary())
 
         # print("backward done.")
 
