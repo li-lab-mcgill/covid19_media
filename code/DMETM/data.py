@@ -54,6 +54,12 @@ def _fetch_temporal(path, name):
     times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
     sources = np.array(pickle.load(open(source_file, 'rb')))
 
+    idxs = np.argsort(sources)
+    sources = sources[idxs]
+    tokens = tokens[idxs]
+    counts = counts[idxs]
+    times = times[idxs]
+
     if name == 'test':
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
         count_1_file = os.path.join(path, 'bow_ts_h1_counts')
