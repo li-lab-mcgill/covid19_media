@@ -607,7 +607,7 @@ if args.mode == 'train':
         if epoch % args.visualize_every == 0:
             # visualize()
             pass
-        val_ppl = get_completion_ppl('val')
+        val_ppl = get_completion_ppl('val').detach()
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
             with open(ckpt, 'wb') as f:
