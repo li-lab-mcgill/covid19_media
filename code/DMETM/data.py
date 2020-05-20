@@ -54,6 +54,13 @@ def _fetch_temporal(path, name):
     times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
     sources = np.array(pickle.load(open(source_file, 'rb')))
 
+    if np.isnan(tokens).sum() != 0:
+        raise Exception('nan in tokens')
+    if np.isnan(counts).sum() != 0:
+        raise Exception('nan in counts')
+    if np.isnan(times).sum() != 0:
+        raise Exception('nan in times')
+
     idxs = np.argsort(sources)
     sources = sources[idxs]
     tokens = tokens[idxs]
