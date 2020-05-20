@@ -38,18 +38,19 @@ class DMETM(nn.Module):
 
         ## define the word embedding matrix \rho: L x V
         if args.train_word_embeddings:
-            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+            # self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+            self.rho = nn.Parameter(word_embeddings)
         else:
             num_embeddings, emsize = word_embeddings.size()
             rho = nn.Embedding(num_embeddings, emsize)
             rho.weight.data = word_embeddings
             self.rho = rho.weight.data.clone().float().to(device)
         
-        ## define the source-specific embedding \lambda S x L' (DMETM)                
+        ## define the source-specific embedding \lambda S x L' (DMETM)
         if args.train_source_embeddings:
             # self.source_lambda = nn.Parameter(torch.randn(args.num_sources, args.rho_size))
             # self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))            
-            self.source_lambda = nn.Parameter(sources_embeddings) # gives error
+            self.source_lambda = nn.Parameter(sources_embeddings)
         else:
             # source_lambda = nn.Embedding(args.num_sources, args.rho_size)
             # source_lambda.weight.data = sources_embeddings
@@ -175,12 +176,18 @@ class DMETM(nn.Module):
         kl_eta = torch.stack(kl_eta).sum()
         return etas, kl_eta
 
+
+
     def get_theta(self, eta, bows, times): ## amortized inference
         """Returns the topic proportions.
         """        
         eta_td = eta[times.type('torch.LongTensor')]
         inp = torch.cat([bows, eta_td], dim=1)
+
         q_theta = self.q_theta(inp)
+
+
+
         if self.enc_drop > 0:
             q_theta = self.t_drop(q_theta)
         mu_theta = self.mu_q_theta(q_theta)
@@ -192,32 +199,30 @@ class DMETM(nn.Module):
 
 
     # incorporate source-specific embedding lambda
-    def get_beta(self, alpha, sources):
+    def get_beta(self, alpha, uniq_tokens, uniq_sources, uniq_times):
         """Returns the topic matrix beta of shape S x K x T x V
         """
         # alpha: K x T x L
-        # source_lambda: S x L        
+        # source_lambda: S x L
 
-        # 1 x K x T x L -> S x K x T x L
-        alpha_s = alpha.unsqueeze(0).repeat(sources.shape[0], 1, 1, 1)
+        # 1 x K x T' x L -> S x K x T' x L
+        alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
+        alpha_s = alpha.unsqueeze(0).repeat(uniq_sources.shape[0], 1, 1, 1)
 
-        # S x 1 x L -> S x 1 x 1 x L -> S x K x T x L
-        # source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics,self.num_times,1)
+        # S' x 1 x L -> S' x 1 x 1 x L -> S' x K x T x L
+        source_lambda_s = self.source_lambda[uniq_sources.type('torch.LongTensor')]
 
-        # alpha_s = alpha_s * source_lambda_s
-
-        alpha_s = alpha_s * self.source_lambda[sources.type('torch.LongTensor')].unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics,self.num_times,1)
+        num_uniq_times = uniq_times.shape[0]
         
+        # S' x 1 x 1 x L -> S' x K x T' x L
+        source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, num_uniq_times,1)
 
-        if self.train_word_embeddings:
-            logit = self.rho(alpha_s.view(alpha_s.size(0) * alpha_s.size(1) * alpha_s.size(2), self.rho_size))
-        else:
-            # tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S x T x K) x L
-            # logit = torch.mm(tmp, self.rho.permute(1, 0)) # (S x T x K) x L prod L x V = (S x T x K) x V
-            logit = torch.mm(alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size), 
-                self.rho.permute(1, 0)) # (S x T x K) x L prod L x V = (S x T x K) x V
+        tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S' x T' x K) x L
+        
+        # (S' x T' x K) x L prod L x V' = (S' x T' x K) x V'
+        logit = torch.mm(tmp, self.rho[uniq_tokens.type('torch.LongTensor'),:].permute(1, 0))
 
-        logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S x T x K x V            
+        logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S' x T 'x K x V'
 
         return F.softmax(logit, dim=-1) # S x K x T x V
 
@@ -235,39 +240,44 @@ class DMETM(nn.Module):
     #     return beta 
 
 
-    def get_nll(self, theta, beta, bows):
+    def get_nll(self, theta, beta, bows, unique_tokens):
         theta = theta.unsqueeze(1)
         loglik = torch.bmm(theta, beta).squeeze(1)        
         loglik = torch.log(loglik+1e-6)
-        nll = -loglik * bows
+        nll = -loglik * bows[:,unique_tokens]
         nll = nll.sum(-1)
         return nll  
 
-    def forward(self, bows, normalized_bows, times, sources, rnn_inp, num_docs):
+    def forward(self, unique_tokens, bows, normalized_bows, times, sources, rnn_inp, num_docs):
+
         bsz = normalized_bows.size(0)
-        coeff = num_docs / bsz 
+        coeff = num_docs / bsz         
 
-        # set_trace()
-
-        alpha, kl_alpha = self.get_alpha()        
+        alpha, kl_alpha = self.get_alpha()
 
         eta, kl_eta = self.get_eta(rnn_inp)
+        
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
+
         kl_theta = kl_theta.sum() * coeff
 
         unique_sources = sources.unique()
-        unique_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources])
-        beta = self.get_beta(alpha, unique_sources) # S x K x T x V
-        # beta = beta[sources.type('torch.LongTensor'), :, times.type('torch.LongTensor'), :] # D' x K x V
-        beta = beta[unique_idx, :, times.type('torch.LongTensor'), :] # D' x K x V
-        
+        unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources])
 
-        nll = self.get_nll(theta, beta, bows)
+        unique_times = times.unique()
+        unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
+
+        beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
+        
+        # beta = beta[sources.type('torch.LongTensor'), :, times.type('torch.LongTensor'), :] # D' x K x V
+        
+        beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+
+        nll = self.get_nll(theta, beta, bows, unique_tokens)
         
         nll = nll.sum() * coeff
         nelbo = nll + kl_alpha + kl_eta + kl_theta
         
-
         return nelbo, nll, kl_alpha, kl_eta, kl_theta
 
 

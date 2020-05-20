@@ -277,18 +277,28 @@ def train(epoch):
     for idx, ind in enumerate(indices):
         optimizer.zero_grad()
         model.zero_grad()
+        
         data_batch, times_batch, sources_batch = data.get_batch(
             train_tokens, train_counts, ind, args.vocab_size, train_sources, args.emb_size, temporal=True, times=train_times)
+
+        tokens_batch = train_tokens[ind]
+
         sums = data_batch.sum(1).unsqueeze(1)
+
         if args.bow_norm:
             normalized_data_batch = data_batch / sums
         else:
             normalized_data_batch = data_batch        
 
+        unique_tokens = torch.tensor(np.unique(sum([sum(tokens_batch[i].tolist(),[]) 
+            for i in range(tokens_batch.shape[0])],[])))
+
         # print("forward passing ...")
 
-        loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
-            sources_batch, train_rnn_inp, args.num_docs_train)
+        # loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
+        #     sources_batch, train_rnn_inp, args.num_docs_train)
+
+        loss, nll, kl_alpha, kl_eta, kl_theta = model(unique_tokens, data_batch, normalized_data_batch, times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
 
         # print("forward done.")
 
@@ -335,29 +345,36 @@ def visualize():
     """
     model.eval()
     with torch.no_grad():
+
         alpha = model.mu_q_alpha # KxTxL
-        beta = model.get_beta(alpha) # SxKxTxV
-        # print('beta: ', beta.size())
+        
+        # beta = model.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # SxKxTxV
+
         print('\n')
         print('#'*100)
         print('Visualize topics...')
         
         topics = [0, int(beta.shape[1]/2), beta.shape[1]-1]
         times = [0, int(beta.shape[2]/2), beta.shape[2]-1]
-        # demo_sources = [35, 40, 195] # expected: Canada, China, United States # gphin
-        demo_sources = demo_source_indices
+        # demo_sources = [35, 40, 195] # expected: Canada, China, United States # gphin        
+
+        unique_tokens = torch.tensor(np.unique(sum([sum(train_tokens[i].tolist(),[]) 
+            for i in range(train_tokens.shape[0])],[])))
+
+
+        beta = model.get_beta(alpha, unique_tokens, torch.tensor(np.array(uniq_sources)), torch.tensor(np.array(times))) # SxKxTxV
 
         topics_words = []
 
-        for s in demo_sources:
-            for k in topics:
-                for t in times:                
+        for s in range(len(demo_source_indices)):
+            for k in range(len(topics)):
+                for t in range(len(times)):
                     gamma = beta[s, k, t, :]
                     top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])
                     topic_words = [vocab[a] for a in top_words]
                     topics_words.append(' '.join(topic_words))
                     
-                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[s], k, t, topic_words))
+                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[demo_source_indices[s]], topics[k], times[t], topic_words))
 
         print('\n')
         print('#'*100)
@@ -586,7 +603,7 @@ def get_topic_quality():
                 TC_all[ss,tt] = tc
                 cnt_all[ss,tt] = cnt
         print('TC_all: ', TC_all)
-        TC_all = torch.tensor(TC_all)        
+        TC_all = torch.tensor(TC_all)
         TC = np.mean(TC_all)
         print('TC_all: ', TC_all.size())
         print('\n')
@@ -605,7 +622,7 @@ if args.mode == 'train':
     for epoch in range(1, args.epochs):        
         train(epoch)
         if epoch % args.visualize_every == 0:
-            visualize()
+            visualize(train_sources)
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:

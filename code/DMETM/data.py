@@ -86,6 +86,7 @@ def get_data(path, temporal=False):
     return vocab, train, valid, test
 
 def get_batch(tokens, counts, ind, vocab_size, sources, emsize=300, temporal=False, times=None):
+    
     """fetch input data by batch."""
     batch_size = len(ind)
     data_batch = np.zeros((batch_size, vocab_size))
