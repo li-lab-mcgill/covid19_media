@@ -651,7 +651,7 @@ if args.mode == 'train':
     best_val_ppl = 1e9
     all_val_ppls = []
     for epoch in range(1, args.epochs):     
-        with torch.autograd.detect_anomaly:   
+        with torch.autograd.detect_anomaly():   
             train(epoch)
             if epoch % args.visualize_every == 0:
                 visualize()
