@@ -285,9 +285,9 @@ class DMETM(nn.Module):
                 for t in range(self.num_times):
                     beta_full_slow[int(i),int(k),int(t),:] = self.get_beta_skt(alpha, int(i),int(k),int(t))
 
-        print((beta_full_fast - beta_full_slow).sum())
+        print((beta_full_fast - beta_full_slow).sum()) # should return a very small number
         
-        # print((torch.randn(self.num_sources, self.num_topics, self.num_times, self.rho.size(0)) - beta_full_slow).sum())
+        # print((torch.randn(self.num_sources, self.num_topics, self.num_times, self.rho.size(0)) - beta_full_slow).sum()) # compare with background
         
 
         # verify beta calculation on select features
