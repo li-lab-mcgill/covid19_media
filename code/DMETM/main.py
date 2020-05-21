@@ -374,7 +374,7 @@ def visualize():
             for k in topics:
                 for t in times:                                                            
                     gamma = model.get_beta_skt(alpha, s, k, t)
-                    top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])
+                    top_words = sum(gamma.cpu().numpy().argsort().tolist(),[])[-args.num_words+1:][::-1]
                     topic_words = [vocab[a] for a in top_words]
                     topics_words.append(' '.join(topic_words))
                     
