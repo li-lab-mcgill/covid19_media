@@ -1,3 +1,4 @@
 .vscode/settings.json
 code/DMETM/data
 code/DMETM/__pycache__/*
+code/DMETM/run.sh
