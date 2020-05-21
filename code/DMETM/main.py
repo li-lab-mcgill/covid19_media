@@ -354,15 +354,16 @@ def visualize():
         print('#'*100)
         print('Visualize topics...')
         
-        topics = [0, int(beta.shape[1]/2), beta.shape[1]-1]
-        times = [0, int(beta.shape[2]/2), beta.shape[2]-1]
+        topics = [0, int(args.num_topics/2), args.num_topics-1]
+        times = [0, int(max(train_times)/2), max(train_times)-1]
         # demo_sources = [35, 40, 195] # expected: Canada, China, United States # gphin        
 
         unique_tokens = torch.tensor(np.unique(sum([sum(train_tokens[i].tolist(),[]) 
             for i in range(train_tokens.shape[0])],[])))
 
-
-        beta = model.get_beta(alpha, unique_tokens, torch.tensor(np.array(uniq_sources)), torch.tensor(np.array(times))) # SxKxTxV
+        unique_sources = train_sources.unique()
+        
+        beta = model.get_beta(alpha, unique_tokens, torch.tensor(np.array(unique_sources)), torch.tensor(np.array(times))) # SxKxTxV
 
         topics_words = []
 
@@ -474,8 +475,12 @@ def get_completion_ppl(source):
             acc_loss = 0
             cnt = 0
             for idx, ind in enumerate(indices):
+
+                token_batch = tokens[ind]
+                
                 data_batch, times_batch, sources_batch = data.get_batch(
                     tokens, counts, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=times)
+
                 sums = data_batch.sum(1).unsqueeze(1)
                 if args.bow_norm:
                     normalized_data_batch = data_batch / sums
@@ -490,8 +495,18 @@ def get_completion_ppl(source):
                 # loglik = theta.unsqueeze(2) * beta
                 # loglik = loglik.sum(1)
 
-                beta = model.get_beta(alpha)
-                beta = beta[sources_batch.type('torch.LongTensor'), :, times_batch.type('torch.LongTensor'), :] # D' x K x V
+                unique_sources = sources.unique()
+                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources])
+
+                unique_times = times.unique()
+                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
+
+                unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
+                    for i in range(token_batch.shape[0])],[])))
+
+
+                beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
+                beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
                 
                 loglik = torch.log(loglik+1e-6)
@@ -520,13 +535,28 @@ def get_completion_ppl(source):
             cnt = 0
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
+
+                token_batch = tokens_1[ind]
+
                 data_batch_1, times_batch_1, sources_batch_1 = data.get_batch(
                     tokens_1, counts_1, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
+                
                 sums_1 = data_batch_1.sum(1).unsqueeze(1)
+
                 if args.bow_norm:
                     normalized_data_batch_1 = data_batch_1 / sums_1
                 else:
                     normalized_data_batch_1 = data_batch_1
+
+                unique_sources = sources_batch_1.unique()
+                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch_1])
+
+                unique_times = times_batch_1.unique()
+                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch_1])
+
+                unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
+                    for i in range(token_batch.shape[0])],[])))
+
 
                 eta_td_1 = eta_1[times_batch_1.type('torch.LongTensor')]
                 theta = get_theta(eta_td_1, normalized_data_batch_1)
@@ -538,10 +568,11 @@ def get_completion_ppl(source):
                 # alpha_td = alpha[:, times_batch_2.type('torch.LongTensor'), :]
                 # beta = model.get_beta(alpha_td).permute(1, 0, 2)
                 # loglik = theta.unsqueeze(2) * beta
-                # loglik = loglik.sum(1)
+                # loglik = loglik.sum(1)                
 
-                beta = model.get_beta(alpha)
-                beta = beta[sources_batch_2.type('torch.LongTensor'), :, times_batch_2.type('torch.LongTensor'), :] # D' x K x V
+                beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
+                beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
 
                 loglik = torch.log(loglik+1e-6)
@@ -643,16 +674,24 @@ if args.mode == 'train':
     with torch.no_grad():
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
-        beta = model.get_beta(alpha).cpu().numpy()
-        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
+        
+        # beta = model.get_beta_full(alpha).cpu().numpy()
+        # scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
+        
+        print('saving alpha...')
+        alpha = model.mu_q_alpha.detach().numpy()
+        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
+
         if args.train_word_embeddings:
             print('saving word embedding matrix rho...')            
             rho = model.rho.weight.detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
+
         if args.train_source_embeddings:
             print('saving source embedding matrix rho...')            
             source_lambda = model.source_lambda.cpu().detach().numpy()
-            scipy.io.savemat(ckpt+'_lambda.mat', {'values': source_lambda}, do_compression=True) # UNCOMMENT FOR REAL RUN            
+            scipy.io.savemat(ckpt+'_lambda.mat', {'values': source_lambda}, do_compression=True) # UNCOMMENT FOR REAL RUN
+
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')
         print('computing test perplexity...')
@@ -667,11 +706,6 @@ else:
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
-        
-    print('saving alpha...')
-    with torch.no_grad():        
-        alpha = model.mu_q_alpha.detach().numpy()
-        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
     print('computing validation perplexity...')
     val_ppl = get_completion_ppl('val')
