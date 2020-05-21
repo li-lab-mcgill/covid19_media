@@ -265,8 +265,7 @@ else:
 
 def train(epoch):
     """Train DETM on data for one epoch.
-    """    
-
+    """
     model.train()
     acc_loss = 0
     acc_nll = 0
@@ -300,7 +299,8 @@ def train(epoch):
         # loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
         #     sources_batch, train_rnn_inp, args.num_docs_train)
 
-        loss, nll, kl_alpha, kl_eta, kl_theta = model(unique_tokens, data_batch, normalized_data_batch, times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
+        loss, nll, kl_alpha, kl_eta, kl_theta = model(unique_tokens, data_batch, normalized_data_batch, 
+            times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
 
         # print("forward done.")
 
@@ -358,22 +358,22 @@ def visualize():
         
         topics = [0, int(args.num_topics/2), args.num_topics-1]
         times = [0, int(max(train_times)/2), max(train_times)-1]
-        # demo_sources = [35, 40, 195] # expected: Canada, China, United States # gphin        
-
-        unique_tokens = torch.tensor(np.unique(sum([sum(train_tokens[i].tolist(),[]) 
-            for i in range(train_tokens.shape[0])],[])))
+        # demo_sources = [35, 40, 195] # expected: Canada, China, United States # gphin
+                
+        # unique_tokens = torch.tensor(np.unique(sum([sum(train_tokens[i].tolist(),[]) 
+        #     for i in range(train_tokens.shape[0])],[])))
         
         sources_batch = torch.from_numpy(train_sources).to(device)
         unique_sources = sources_batch.unique()
         
-        beta = model.get_beta(alpha, unique_tokens, torch.tensor(np.array(unique_sources)), torch.tensor(np.array(times))) # SxKxTxV
+        # beta = model.get_beta(alpha, unique_tokens, torch.tensor(np.array(unique_sources)), torch.tensor(np.array(times))) # SxKxTxV
 
         topics_words = []
 
-        for s in range(len(demo_source_indices)):
-            for k in range(len(topics)):
-                for t in range(len(times)):
-                    gamma = beta[s, k, t, :]
+        for s in demo_source_indices:
+            for k in topics:
+                for t in times:                                                            
+                    gamma = model.get_beta_skt(alpha, s, k, t)
                     top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])
                     topic_words = [vocab[a] for a in top_words]
                     topics_words.append(' '.join(topic_words))

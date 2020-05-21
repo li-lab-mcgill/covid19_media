@@ -217,6 +217,8 @@ class DMETM(nn.Module):
         # S' x 1 x 1 x L -> S' x K x T' x L
         source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, num_uniq_times,1)
 
+        alpha_s = alpha_s * source_lambda_s # S' x K x T' x L
+
         tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S' x T' x K) x L
         
         # (S' x T' x K) x L prod L x V' = (S' x T' x K) x V'
@@ -228,20 +230,21 @@ class DMETM(nn.Module):
 
 
     # get full beta (memory consuming)
-    def get_beta_full(self, alpha):
+    def get_beta_skt(self, alpha, s, k, t):
         """Returns the full topic matrix beta of shape S x K x T x V
         """
-        # 1 x K x T x L -> S x K x T x L
-        alpha_s = alpha.unsqueeze(0).repeat(self.num_sources, 1, 1, 1)
-        alpha_s = alpha_s * self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics,self.num_times,1)        
+        # alpha: K x T x L
+        # source_lambda: S x L
 
-        # (S x T x K) x L prod L x V = (S x T x K) x V
-        logit = torch.mm(alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), 
-            self.rho_size), self.rho.permute(1, 0))
+        # 1 x 1 x L -> L
+        alpha_kt = alpha[k,t,:].squeeze()
 
-        logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S x T x K x V
+        alpha_skt = alpha_kt * self.source_lambda[s,:]
 
-        return F.softmax(logit, dim=-1) # S x K x T x V        
+        # 1 x L prod L x V = L x V
+        logit = torch.mm(alpha_skt.unsqueeze(0), self.rho.permute(1, 0))
+
+        return F.softmax(logit, dim=-1) # 1 x V
 
 
     # def get_beta(self, alpha):
