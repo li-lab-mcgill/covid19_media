@@ -317,10 +317,9 @@ class DMETM(nn.Module):
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
 
         beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-        beta = beta[unique_sources_idx.type('torch.LongTensor')]    # S' to D
+        # beta = beta[unique_sources_idx.type('torch.LongTensor')]    # S' to S
         # beta = torch.zeros(sources.shape[0], self.num_topics, self.num_times, self.vocab_size)
-        beta = beta[:, :, unique_times_idx.type('torch.LongTensor'), :] # T to T
-        # beta D x K x T x V
+        # beta = beta[:, :, unique_times_idx.type('torch.LongTensor'), :] # T' to T
         # for idx, unique_time in enumerate(unique_times):
         #     beta[:, :, unique_time.type('torch.LongTensor'), :] = beta_compact[:, :, idx, :]
         # raise Exception(beta.shape)
@@ -334,7 +333,7 @@ class DMETM(nn.Module):
         
         # beta = beta[sources.type('torch.LongTensor'), :, times.type('torch.LongTensor'), :] # D' x K x V
         
-        # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+        beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
 
         nll = self.get_nll(theta, beta, bows, unique_tokens)
         
