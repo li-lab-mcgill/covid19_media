@@ -18,8 +18,6 @@ class DMETM(nn.Module):
     def __init__(self, args, word_embeddings, sources_embeddings):
         super(DMETM, self).__init__()
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
         ## define hyperparameters
         self.num_topics = args.num_topics
         self.num_times = args.num_times
@@ -231,7 +229,7 @@ class DMETM(nn.Module):
 
         # logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S' x T 'x K x V'
 
-        return F.softmax(logit, dim=-1) # S x K x T x V
+        return F.softmax(logit[:, :, :, uniq_tokens.type('torch.LongTensor')], dim=-1) # S x K x T x V
 
     # # get beta for full vocab (can be memory consuming for large vocab, time, source)
     # def get_beta_full(self, alpha):
@@ -292,8 +290,8 @@ class DMETM(nn.Module):
         theta = theta.unsqueeze(1)
         loglik = torch.bmm(theta, beta).squeeze(1)        
         loglik = torch.log(loglik+1e-6)
-        # nll = -loglik * bows[:,unique_tokens]
-        nll = -loglik * bows
+        nll = -loglik * bows[:,unique_tokens]
+        # nll = -loglik * bows
         nll = nll.sum(-1)
         return nll  
 
