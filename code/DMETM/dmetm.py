@@ -294,7 +294,7 @@ class DMETM(nn.Module):
                         for idx in range(unique_tokens.shape[0])])
 
         try:
-            assert (beta - skt_beta).sum() < 1e-6
+            assert (beta - skt_beta).sum().abs() < 1e-6
         except:
             raise Exception((beta - skt_beta).sum(1))
         
