@@ -293,20 +293,15 @@ class DMETM(nn.Module):
         set_trace()
 
         beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-                
-        beta_slow = torch.ones(self.num_sources, self.num_topics, self.num_times, self.rho.size(0))
-
-        for i in range(self.num_sources):
-            for k in range(self.num_topics):
-                for t in range(self.num_times):
-                    beta_slow[int(i),int(k),int(t),:] = self.get_beta_skt(alpha, int(i),int(k),int(t))
-
-        beta_slow_sel = beta_slow[unique_sources.type('torch.LongTensor')]
-        beta_slow_sel = beta_slow_sel[:,:,unique_times.type('torch.LongTensor'),:]
-        beta_slow_sel = beta_slow_sel[:,:,:,unique_tokens.type('torch.LongTensor')]
         
+        
+        beta_slow = torch.ones(unique_sources.size(0), args.num_topics, unique_times.size(0), self.rho.size(1))
+        for s in unique_sources:
+            for k in range(args.num_topics):
+                for t in unique_times:
+                    beta_slow[s,k,t,:] = model.get_beta_skt(alpha, s, k, t)
 
-        print(max(beta_slow - beta))
+
 
 
 
