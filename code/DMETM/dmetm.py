@@ -230,6 +230,29 @@ class DMETM(nn.Module):
 
         return F.softmax(logit, dim=-1) # S x K x T x V
 
+    # get beta for full vocab (can be memory consuming for large vocab, time, source)
+    def get_beta_full(self, alpha):
+        """Returns the topic matrix beta of shape S x K x T x V
+        """
+        # alpha: K x T x L
+        # source_lambda: S x L            
+
+        # 1 x K x T x L -> S x K x T x L
+        alpha_s = alpha_s.unsqueeze(0).repeat(self.num_sources, 1, 1, 1)
+
+        # S x 1 x L -> S x 1 x 1 x L -> S x K x T x L
+        source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1, self.num_topics, self.num_times, 1)
+
+        alpha_s = alpha_s * source_lambda_s # S x K x T x L
+
+        tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S x T x K) x L
+        
+        # (S x T x K) x L prod L x V = (S x T x K) x V
+        logit = torch.mm(tmp, self.rho[uniq_tokens.type('torch.LongTensor'),:].permute(1, 0))
+
+        logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S x T x K x V
+
+        return F.softmax(logit, dim=-1) # S x K x T x V
 
     # get full beta (memory consuming)
     def get_beta_skt(self, alpha, s, k, t):
@@ -289,7 +312,8 @@ class DMETM(nn.Module):
         unique_times = times.unique()
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
 
-        beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
+        # beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
+        beta = self.get_beta_full(alpha)
         skt_beta = torch.zeros(self.num_sources, self.num_topics, self.num_times, self.vocab_size)
         for i in range(self.num_sources):
             for k in range(self.num_topics):
