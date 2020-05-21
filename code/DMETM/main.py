@@ -650,23 +650,24 @@ if args.mode == 'train':
     best_epoch = 0
     best_val_ppl = 1e9
     all_val_ppls = []
-    for epoch in range(1, args.epochs):        
-        train(epoch)
-        if epoch % args.visualize_every == 0:
-            visualize()
-        val_ppl = get_completion_ppl('val')
-        print('val_ppl: ', val_ppl)
-        if val_ppl < best_val_ppl:
-            with open(ckpt, 'wb') as f:
-                torch.save(model, f) # UNCOMMENT FOR REAL RUN
-            best_epoch = epoch
-            best_val_ppl = val_ppl
-        else:
-            ## check whether to anneal lr
-            lr = optimizer.param_groups[0]['lr']
-            if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
-                optimizer.param_groups[0]['lr'] /= args.lr_factor
-        all_val_ppls.append(val_ppl)
+    for epoch in range(1, args.epochs):     
+        with torch.autograd.detect_anomaly:   
+            train(epoch)
+            if epoch % args.visualize_every == 0:
+                visualize()
+            val_ppl = get_completion_ppl('val')
+            print('val_ppl: ', val_ppl)
+            if val_ppl < best_val_ppl:
+                with open(ckpt, 'wb') as f:
+                    torch.save(model, f) # UNCOMMENT FOR REAL RUN
+                best_epoch = epoch
+                best_val_ppl = val_ppl
+            else:
+                ## check whether to anneal lr
+                lr = optimizer.param_groups[0]['lr']
+                if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
+                    optimizer.param_groups[0]['lr'] /= args.lr_factor
+            all_val_ppls.append(val_ppl)
     # with open(ckpt, 'rb') as f:
     #     model = torch.load(f)
     model = model.to(device)
