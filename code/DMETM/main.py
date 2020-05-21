@@ -297,7 +297,7 @@ def train(epoch):
         # print("forward passing ...")
 
         # loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
-        #     sources_batch, train_rnn_inp, args.num_docs_train)
+        #     sources_batch, train_rnn_inp, args.num_docs_train)        
 
         loss, nll, kl_alpha, kl_eta, kl_theta = model(unique_tokens, data_batch, normalized_data_batch, 
             times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
@@ -626,6 +626,7 @@ if args.mode == 'train':
     best_epoch = 0
     best_val_ppl = 1e9
     all_val_ppls = []
+    
     for epoch in range(1, args.epochs):        
         train(epoch)
         if epoch % args.visualize_every == 0:

@@ -210,8 +210,8 @@ class DMETM(nn.Module):
         # 1 x K x T' x L -> S x K x T' x L
         alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
         alpha_s = alpha_s.unsqueeze(0).repeat(uniq_sources.shape[0], 1, 1, 1)
-
-        # S' x 1 x L -> S' x 1 x 1 x L -> S' x K x T x L
+        
+        # S' x L
         source_lambda_s = self.source_lambda[uniq_sources.type('torch.LongTensor')]
 
         num_uniq_times = uniq_times.shape[0]
@@ -272,35 +272,43 @@ class DMETM(nn.Module):
 
         return F.softmax(logit, dim=-1) # 1 x V
 
-    def check_beta(self, alpha, unique_tokens, times, sources):
+    def check_beta(self, alpha, uniq_tokens, uniq_sources, uniq_times):
         
         set_trace()
         
-        beta_full_fast = self.get_beta_full(alpha) # S x K x T x V
-                
-        beta_full_slow = torch.ones(self.num_sources, self.num_topics, self.num_times, self.rho.size(0))
+        # verify full beta calculation
+        beta_full_fast = self.get_beta_full(alpha) # S x K x T x V        
+        beta_full_slow = torch.zeros(self.num_sources, self.num_topics, self.num_times, self.rho.size(0))
 
         for i in range(self.num_sources):
             for k in range(self.num_topics):
                 for t in range(self.num_times):
                     beta_full_slow[int(i),int(k),int(t),:] = self.get_beta_skt(alpha, int(i),int(k),int(t))
 
-        print((beta_full_fast - beta_full_slow).max())
-
-        unique_sources = sources.unique()
-        unique_times = times.unique()
+        print((beta_full_fast - beta_full_slow).sum())
         
-        beta_fast_sel = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-
-        beta_slow_sel = beta_full_slow[unique_sources.type('torch.LongTensor')]
-        beta_slow_sel = beta_slow_sel[:,:,unique_times.type('torch.LongTensor'),:]
-        beta_slow_sel = beta_slow_sel[:,:,:,unique_tokens.type('torch.LongTensor')]
+        # print((torch.randn(self.num_sources, self.num_topics, self.num_times, self.rho.size(0)) - beta_full_slow).sum())
         
-        print((beta_fast_sel-beta_slow_sel).max())
 
-
-
+        # verify beta calculation on select features
+        beta_sel_fast = self.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # S' x K x T' x V'
         
+        beta_sel_slow = torch.zeros(uniq_sources.shape[0], self.num_topics, uniq_times.shape[0], uniq_tokens.shape[0])
+
+        for i in range(uniq_sources.shape[0]):
+            for k in range(self.num_topics):
+                for t in range(uniq_times.shape[0]):
+                    source_idx = int(uniq_sources[i])
+                    time_idx = int(uniq_times[t])
+                    tmp = self.get_beta_skt(alpha, source_idx, k, time_idx).squeeze() # 1 x V
+                    beta_sel_slow[i, k, t,:] = tmp[uniq_tokens.type('torch.LongTensor')]
+
+
+        # beta_slow_sel = beta_full_slow[uniq_sources.type('torch.LongTensor')]
+        # beta_slow_sel = beta_slow_sel[:,:,uniq_times.type('torch.LongTensor'),:]
+        # beta_slow_sel = beta_slow_sel[:,:,:,uniq_tokens.type('torch.LongTensor')]
+        
+        print((beta_sel_fast - beta_sel_slow).sum())
 
 
 
@@ -343,6 +351,8 @@ class DMETM(nn.Module):
 
         unique_times = times.unique()
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
+
+        self.check_beta(alpha, unique_tokens, unique_sources, unique_times)
         
         beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
         
