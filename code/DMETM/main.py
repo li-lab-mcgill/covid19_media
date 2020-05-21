@@ -358,15 +358,7 @@ def visualize():
         
         topics = [0, int(args.num_topics/2), args.num_topics-1]
         times = [0, int(max(train_times)/2), max(train_times)-1]
-        # demo_sources = [35, 40, 195] # expected: Canada, China, United States # gphin
-                
-        # unique_tokens = torch.tensor(np.unique(sum([sum(train_tokens[i].tolist(),[]) 
-        #     for i in range(train_tokens.shape[0])],[])))
         
-        sources_batch = torch.from_numpy(train_sources).to(device)
-        unique_sources = sources_batch.unique()
-        
-        # beta = model.get_beta(alpha, unique_tokens, torch.tensor(np.array(unique_sources)), torch.tensor(np.array(times))) # SxKxTxV
 
         topics_words = []
 
@@ -380,36 +372,37 @@ def visualize():
                     
                     print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[demo_source_indices[s]], topics[k], times[t], topic_words))
 
-        print('\n')
-        print('#'*100)
-        print('Visualize source embeddings ...')        
-        queries = ['China', 'Canada', 'United States', 'Italy']
-        try:
-            src_emb = model.source_lambda.weight  # Source_size x L
-        except:
-            src_emb = model.source_lambda         # Source_size x L
-        # neighbors = []
-        src_list = [v for k,v in sources_map.items()]
-        for src in queries:
-            print('source: {} .. neighbors: {}'.format(
-                src, nearest_neighbors(src, src_emb, src_list, min(5, args.num_sources))))
+        if args.train_source_embeddings or epoch==0:
+            print('\n')
+            print('#'*100)
+            print('Visualize source embeddings ...')        
+            queries = ['China', 'Canada', 'United States', 'Italy']
+            try:
+                src_emb = model.source_lambda.weight  # Source_size x L
+            except:
+                src_emb = model.source_lambda         # Source_size x L
+            # neighbors = []
+            src_list = [v for k,v in sources_map.items()]
+            for src in queries:
+                print('source: {} .. neighbors: {}'.format(
+                    src, nearest_neighbors(src, src_emb, src_list, min(5, args.num_sources))))
 
-        print(model.source_lambda[0:10])
+            print(model.source_lambda[0:10])
         
-
-        print('\n')
-        print('#'*100)
-        print('Visualize word embeddings ...')
-        queries = ['border', 'vaccines', 'coronaviruses', 'masks']
-        try:
-            word_embeddings = model.rho.weight  # Vocab_size x E
-        except:
-            word_embeddings = model.rho         # Vocab_size x E
-        # neighbors = []
-        for word in queries:
-            print('word: {} .. neighbors: {}'.format(
-                word, nearest_neighbors(word, word_embeddings, vocab, args.num_words)))
-        print('#'*100)
+        if args.train_word_embedding or epoch==0:
+            print('\n')
+            print('#'*100)
+            print('Visualize word embeddings ...')
+            queries = ['border', 'vaccines', 'coronaviruses', 'masks']
+            try:
+                word_embeddings = model.rho.weight  # Vocab_size x E
+            except:
+                word_embeddings = model.rho         # Vocab_size x E
+            # neighbors = []
+            for word in queries:
+                print('word: {} .. neighbors: {}'.format(
+                    word, nearest_neighbors(word, word_embeddings, vocab, args.num_words)))
+            print('#'*100)
 
         # print('\n')
         # print('Visualize word evolution ...')
