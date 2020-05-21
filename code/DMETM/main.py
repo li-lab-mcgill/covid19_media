@@ -74,7 +74,9 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
-parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
+
+parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
+
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
@@ -279,31 +281,34 @@ def train(epoch):
     for idx, ind in enumerate(indices):
         optimizer.zero_grad()
         model.zero_grad()
+        
         data_batch, times_batch, sources_batch = data.get_batch(
             train_tokens, train_counts, ind, args.vocab_size, train_sources, args.emb_size, temporal=True, times=train_times)
+
+        tokens_batch = train_tokens[ind]
+
         sums = data_batch.sum(1).unsqueeze(1)
+
         if args.bow_norm:
             normalized_data_batch = data_batch / sums
         else:
             normalized_data_batch = data_batch        
 
+        unique_tokens = torch.tensor(np.unique(sum([sum(tokens_batch[i].tolist(),[]) 
+            for i in range(tokens_batch.shape[0])],[])))
+
         # print("forward passing ...")
 
-        loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
-            sources_batch, train_rnn_inp, args.num_docs_train)
+        # loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
+        #     sources_batch, train_rnn_inp, args.num_docs_train)
+
+        loss, nll, kl_alpha, kl_eta, kl_theta = model(unique_tokens, data_batch, normalized_data_batch, times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
 
         # print("forward done.")
 
         # print("backward passing ...")
-        try:
-            loss.backward()        
-        except:
-            reporter.report()
-            raise Exception(torch.cuda.memory_summary())
 
-        if idx % 50 == 0:
-            torch.cuda.empty_cache()
-            print(torch.cuda.memory_summary())
+        loss.backward()
 
         # print("backward done.")
 
@@ -344,29 +349,38 @@ def visualize():
     """
     model.eval()
     with torch.no_grad():
+
         alpha = model.mu_q_alpha # KxTxL
-        beta = get_all_beta(alpha, model) # SxKxTxV
-        # print('beta: ', beta.size())
+        
+        # beta = model.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # SxKxTxV
+
         print('\n')
         print('#'*100)
         print('Visualize topics...')
         
-        topics = [0, int(beta.shape[1]/2), beta.shape[1]-1]
-        times = [0, int(beta.shape[2]/2), beta.shape[2]-1]
-        # demo_sources = [35, 40, 195] # expected: Canada, China, United States # gphin
-        demo_sources = demo_source_indices
+        topics = [0, int(args.num_topics/2), args.num_topics-1]
+        times = [0, int(max(train_times)/2), max(train_times)-1]
+        # demo_sources = [35, 40, 195] # expected: Canada, China, United States # gphin        
+
+        unique_tokens = torch.tensor(np.unique(sum([sum(train_tokens[i].tolist(),[]) 
+            for i in range(train_tokens.shape[0])],[])))
+        
+        sources_batch = torch.from_numpy(train_sources).to(device)
+        unique_sources = sources_batch.unique()
+        
+        beta = model.get_beta(alpha, unique_tokens, torch.tensor(np.array(unique_sources)), torch.tensor(np.array(times))) # SxKxTxV
 
         topics_words = []
 
-        for s in demo_sources:
-            for k in topics:
-                for t in times:                
+        for s in range(len(demo_source_indices)):
+            for k in range(len(topics)):
+                for t in range(len(times)):
                     gamma = beta[s, k, t, :]
                     top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])
                     topic_words = [vocab[a] for a in top_words]
                     topics_words.append(' '.join(topic_words))
                     
-                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[s], k, t, topic_words))
+                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[demo_source_indices[s]], topics[k], times[t], topic_words))
 
         print('\n')
         print('#'*100)
@@ -466,8 +480,12 @@ def get_completion_ppl(source):
             acc_loss = 0
             cnt = 0
             for idx, ind in enumerate(indices):
+
+                token_batch = tokens[ind]
+                
                 data_batch, times_batch, sources_batch = data.get_batch(
                     tokens, counts, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=times)
+
                 sums = data_batch.sum(1).unsqueeze(1)
                 if args.bow_norm:
                     normalized_data_batch = data_batch / sums
@@ -482,12 +500,21 @@ def get_completion_ppl(source):
                 # loglik = theta.unsqueeze(2) * beta
                 # loglik = loglik.sum(1)
 
-                beta = get_all_beta(alpha, model)
-                beta = beta[sources_batch.type('torch.LongTensor'), :, times_batch.type('torch.LongTensor'), :] # D' x K x V
+                unique_sources = sources_batch.unique()
+                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch])
+
+                unique_times = times_batch.unique()
+                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch])
+
+                unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
+                    for i in range(token_batch.shape[0])],[])))
+
+                beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
+                beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
                 
                 loglik = torch.log(loglik+1e-6)
-                nll = -loglik * data_batch
+                nll = -loglik * data_batch[:,unique_tokens]
                 nll = nll.sum(-1)
                 loss = nll / sums.squeeze()
                 loss = loss.mean().item()
@@ -512,9 +539,15 @@ def get_completion_ppl(source):
             cnt = 0
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
+
+                token_batch_1 = tokens_1[ind]
+                token_batch_2 = tokens_2[ind]
+
                 data_batch_1, times_batch_1, sources_batch_1 = data.get_batch(
                     tokens_1, counts_1, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
+                
                 sums_1 = data_batch_1.sum(1).unsqueeze(1)
+
                 if args.bow_norm:
                     normalized_data_batch_1 = data_batch_1 / sums_1
                 else:
@@ -527,17 +560,23 @@ def get_completion_ppl(source):
                     tokens_2, counts_2, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
 
-                # alpha_td = alpha[:, times_batch_2.type('torch.LongTensor'), :]
-                # beta = model.get_beta(alpha_td).permute(1, 0, 2)
-                # loglik = theta.unsqueeze(2) * beta
-                # loglik = loglik.sum(1)
+                unique_sources = sources_batch_1.unique()
+                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch_1])
 
-                beta = get_all_beta(alpha, model)
-                beta = beta[sources_batch_2.type('torch.LongTensor'), :, times_batch_2.type('torch.LongTensor'), :] # D' x K x V
+                unique_times = times_batch_1.unique()
+                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch_1])
+
+                uniq_tokens_list = sum([sum(token_batch_1[i].tolist(),[]) for i in range(token_batch_1.shape[0])],[])
+                uniq_tokens_list.extend(sum([sum(token_batch_2[i].tolist(),[]) for i in range(token_batch_2.shape[0])],[]))                
+                unique_tokens = torch.tensor(np.unique(uniq_tokens_list))
+
+                beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
+                beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
 
                 loglik = torch.log(loglik+1e-6)
-                nll = -loglik * data_batch_2
+                nll = -loglik * data_batch_2[:,unique_tokens]
                 nll = nll.sum(-1)
                 loss = nll / sums_2.squeeze()
                 loss = loss.mean().item()
@@ -568,7 +607,7 @@ def get_topic_quality():
     model.eval()
     with torch.no_grad():
         alpha = model.mu_q_alpha
-        beta = get_all_beta(alpha, model) 
+        beta = model.get_beta(alpha) 
         print('beta: ', beta.size()) # SxKxTxV
 
         print('\n')
@@ -595,7 +634,7 @@ def get_topic_quality():
                 TC_all[ss,tt] = tc
                 cnt_all[ss,tt] = cnt
         print('TC_all: ', TC_all)
-        TC_all = torch.tensor(TC_all)        
+        TC_all = torch.tensor(TC_all)
         TC = np.mean(TC_all)
         print('TC_all: ', TC_all.size())
         print('\n')
@@ -611,12 +650,10 @@ if args.mode == 'train':
     best_epoch = 0
     best_val_ppl = 1e9
     all_val_ppls = []
-    reporter = MemReporter(model)
     for epoch in range(1, args.epochs):        
         train(epoch)
         if epoch % args.visualize_every == 0:
-            # visualize()
-            pass
+            visualize()
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
@@ -637,16 +674,24 @@ if args.mode == 'train':
     with torch.no_grad():
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
-        beta = get_all_beta(alpha, model).cpu().numpy()
-        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
+        
+        # beta = model.get_beta_full(alpha).cpu().numpy()
+        # scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
+        
+        print('saving alpha...')
+        alpha = model.mu_q_alpha.detach().numpy()
+        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
+
         if args.train_word_embeddings:
             print('saving word embedding matrix rho...')            
             rho = model.rho.weight.detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
+
         if args.train_source_embeddings:
             print('saving source embedding matrix rho...')            
             source_lambda = model.source_lambda.cpu().detach().numpy()
-            scipy.io.savemat(ckpt+'_lambda.mat', {'values': source_lambda}, do_compression=True) # UNCOMMENT FOR REAL RUN            
+            scipy.io.savemat(ckpt+'_lambda.mat', {'values': source_lambda}, do_compression=True) # UNCOMMENT FOR REAL RUN
+
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')
         print('computing test perplexity...')
@@ -661,11 +706,6 @@ else:
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
-        
-    print('saving alpha...')
-    with torch.no_grad():        
-        alpha = model.mu_q_alpha.detach().numpy()
-        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
     print('computing validation perplexity...')
     val_ppl = get_completion_ppl('val')
@@ -679,8 +719,8 @@ else:
     f.write(s1)
     f.close()
 
-    # print('visualizing topics and embeddings...')
-    # visualize()
+    print('visualizing topics and embeddings...')
+    visualize()
 
 
 
