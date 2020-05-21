@@ -18,6 +18,8 @@ class DMETM(nn.Module):
     def __init__(self, args, word_embeddings, sources_embeddings):
         super(DMETM, self).__init__()
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         ## define hyperparameters
         self.num_topics = args.num_topics
         self.num_times = args.num_times
@@ -218,41 +220,42 @@ class DMETM(nn.Module):
         
         # S' x 1 x 1 x L -> S' x K x T' x L
         source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, num_uniq_times,1)
-
+        # source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, self.num_times,1)
         alpha_s = alpha_s * source_lambda_s # S' x K x T' x L
-
-        tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S' x T' x K) x L
         
         # (S' x T' x K) x L prod L x V' = (S' x T' x K) x V'
-        logit = torch.mm(tmp, self.rho[uniq_tokens.type('torch.LongTensor'),:].permute(1, 0))
+        # logit = torch.mm(tmp, self.rho[uniq_tokens.type('torch.LongTensor'),:].permute(1, 0))
+        # logit = torch.mm(alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size), self.rho[uniq_tokens.type('torch.LongTensor'),:].permute(1, 0))
+        # logit = torch.mm(alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size), self.rho.permute(1, 0))
+        logit = torch.matmul(alpha_s, self.rho.permute(1, 0))
 
-        logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S' x T 'x K x V'
+        # logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S' x T 'x K x V'
 
         return F.softmax(logit, dim=-1) # S x K x T x V
 
-    # get beta for full vocab (can be memory consuming for large vocab, time, source)
-    def get_beta_full(self, alpha):
-        """Returns the topic matrix beta of shape S x K x T x V
-        """
-        # alpha: K x T x L
-        # source_lambda: S x L            
+    # # get beta for full vocab (can be memory consuming for large vocab, time, source)
+    # def get_beta_full(self, alpha):
+    #     """Returns the topic matrix beta of shape S x K x T x V
+    #     """
+    #     # alpha: K x T x L
+    #     # source_lambda: S x L            
 
-        # 1 x K x T x L -> S x K x T x L
-        alpha_s = alpha_s.unsqueeze(0).repeat(self.num_sources, 1, 1, 1)
+    #     # 1 x K x T x L -> S x K x T x L
+    #     alpha_s = alpha.unsqueeze(0).repeat(self.num_sources, 1, 1, 1)
 
-        # S x 1 x L -> S x 1 x 1 x L -> S x K x T x L
-        source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1, self.num_topics, self.num_times, 1)
+    #     # S x 1 x L -> S x 1 x 1 x L -> S x K x T x L
+    #     source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1, self.num_topics, self.num_times, 1)
 
-        alpha_s = alpha_s * source_lambda_s # S x K x T x L
+    #     alpha_s = alpha_s * source_lambda_s # S x K x T x L
 
-        tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S x T x K) x L
+    #     tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S x T x K) x L
         
-        # (S x T x K) x L prod L x V = (S x T x K) x V
-        logit = torch.mm(tmp, self.rho[uniq_tokens.type('torch.LongTensor'),:].permute(1, 0))
+    #     # (S x T x K) x L prod L x V = (S x T x K) x V
+    #     logit = torch.mm(tmp, self.rho[uniq_tokens.type('torch.LongTensor'),:].permute(1, 0))
 
-        logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S x T x K x V
+    #     logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S x T x K x V
 
-        return F.softmax(logit, dim=-1) # S x K x T x V
+    #     return F.softmax(logit, dim=-1) # S x K x T x V
 
     # get full beta (memory consuming)
     def get_beta_skt(self, alpha, s, k, t):
@@ -289,7 +292,8 @@ class DMETM(nn.Module):
         theta = theta.unsqueeze(1)
         loglik = torch.bmm(theta, beta).squeeze(1)        
         loglik = torch.log(loglik+1e-6)
-        nll = -loglik * bows[:,unique_tokens]
+        # nll = -loglik * bows[:,unique_tokens]
+        nll = -loglik * bows
         nll = nll.sum(-1)
         return nll  
 
@@ -312,22 +316,25 @@ class DMETM(nn.Module):
         unique_times = times.unique()
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
 
-        # beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-        beta = self.get_beta_full(alpha)
-        skt_beta = torch.zeros(self.num_sources, self.num_topics, self.num_times, self.vocab_size)
-        for i in range(self.num_sources):
-            for k in range(self.num_topics):
-                for t in range(self.num_times):
-                    skt_beta[int(i),int(k),int(t),:] = self.get_beta_skt(alpha, int(i),int(k),int(t))
+        beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
+        beta = beta[unique_sources_idx.type('torch.LongTensor')]    # S' to D
+        # beta = torch.zeros(sources.shape[0], self.num_topics, self.num_times, self.vocab_size)
+        beta = beta[:, :, unique_times_idx.type('torch.LongTensor'), :] # T to T
+        # beta D x K x T x V
+        # for idx, unique_time in enumerate(unique_times):
+        #     beta[:, :, unique_time.type('torch.LongTensor'), :] = beta_compact[:, :, idx, :]
+        # raise Exception(beta.shape)
 
-        try:
-            assert (beta - skt_beta).sum().abs() < 1e-6
-        except:
-            raise Exception((beta - skt_beta).sum(1))
+        # beta = self.get_beta_full(alpha)
+        # skt_beta = torch.zeros(self.num_sources, self.num_topics, self.num_times, self.vocab_size).to(self.device)
+        # for i in range(self.num_sources):
+        #     for k in range(self.num_topics):
+        #         for t in range(self.num_times):
+        #             skt_beta[int(i),int(k),int(t),:] = self.get_beta_skt(alpha, sources[i].type('torch.LongTensor'),int(k),int(t))
         
         # beta = beta[sources.type('torch.LongTensor'), :, times.type('torch.LongTensor'), :] # D' x K x V
         
-        beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+        # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
 
         nll = self.get_nll(theta, beta, bows, unique_tokens)
         
