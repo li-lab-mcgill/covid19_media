@@ -290,8 +290,11 @@ class DMETM(nn.Module):
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
 
         beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-        skt_beta = torch.cat([self.get_beta_skt(alpha, unique_tokens[idx], unique_tokens[idx], unique_times[idx]) \
-                        for idx in range(unique_tokens.shape[0])])
+        skt_beta = torch.zeros(self.num_sources, self.num_topics, self.num_times, self.vocab_size)
+        for i in range(self.num_sources):
+            for k in range(self.num_topics):
+                for t in range(self.num_times):
+                    skt_beta[int(i),int(k),int(t),:] = self.get_beta_skt(alpha, int(i),int(k),int(t))
 
         try:
             assert (beta - skt_beta).sum().abs() < 1e-6
