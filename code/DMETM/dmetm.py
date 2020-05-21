@@ -204,10 +204,12 @@ class DMETM(nn.Module):
         """
         # alpha: K x T x L
         # source_lambda: S x L
+        
+        # set_trace()
 
         # 1 x K x T' x L -> S x K x T' x L
         alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
-        alpha_s = alpha.unsqueeze(0).repeat(uniq_sources.shape[0], 1, 1, 1)
+        alpha_s = alpha_s.unsqueeze(0).repeat(uniq_sources.shape[0], 1, 1, 1)
 
         # S' x 1 x L -> S' x 1 x 1 x L -> S' x K x T x L
         source_lambda_s = self.source_lambda[uniq_sources.type('torch.LongTensor')]

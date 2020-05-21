@@ -33,11 +33,11 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
@@ -47,8 +47,8 @@ parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covi
 
 parser.add_argument('--batch_size', type=int, default=100, help='number of documents in a batch for training')
 
-# parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
-parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
+parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
+# parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
@@ -359,7 +359,7 @@ def visualize():
         topics = [0, int(args.num_topics/2), args.num_topics-1]
         times = [0, int(max(train_times)/2), max(train_times)-1]
         
-
+        
         topics_words = []
 
         for s in demo_source_indices:
@@ -370,9 +370,9 @@ def visualize():
                     topic_words = [vocab[a] for a in top_words]
                     topics_words.append(' '.join(topic_words))
                     
-                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[demo_source_indices[s]], topics[k], times[t], topic_words))
+                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[s], k, t, topic_words))
 
-        if args.train_source_embeddings or epoch==0:
+        if args.train_source_embeddings or epoch<=1:
             print('\n')
             print('#'*100)
             print('Visualize source embeddings ...')        
@@ -389,7 +389,7 @@ def visualize():
 
             print(model.source_lambda[0:10])
         
-        if args.train_word_embedding or epoch==0:
+        if args.train_word_embeddings or epoch<=1:
             print('\n')
             print('#'*100)
             print('Visualize word embeddings ...')
@@ -404,22 +404,7 @@ def visualize():
                     word, nearest_neighbors(word, word_embeddings, vocab, args.num_words)))
             print('#'*100)
 
-        # print('\n')
-        # print('Visualize word evolution ...')
-        # topic_0 = None ### k 
-        # queries_0 = ['woman', 'gender', 'man', 'mankind', 'humankind'] ### v 
 
-        # topic_1 = None
-        # queries_1 = ['africa', 'colonial', 'racist', 'democratic']
-
-        # topic_2 = None
-        # queries_2 = ['poverty', 'sustainable', 'trade']
-
-        # topic_3 = None
-        # queries_3 = ['soviet', 'convention', 'iran']
-
-        # topic_4 = None # climate
-        # queries_4 = ['environment', 'impact', 'threats', 'small', 'global', 'climate']
 
 def _eta_helper(rnn_inp):
     inp = model.q_eta_map(rnn_inp).unsqueeze(1)
