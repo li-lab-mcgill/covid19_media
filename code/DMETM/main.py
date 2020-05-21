@@ -33,11 +33,11 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
@@ -47,8 +47,8 @@ parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covi
 
 parser.add_argument('--batch_size', type=int, default=100, help='number of documents in a batch for training')
 
-# parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
-parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
+parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
+# parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
@@ -360,8 +360,9 @@ def visualize():
 
         unique_tokens = torch.tensor(np.unique(sum([sum(train_tokens[i].tolist(),[]) 
             for i in range(train_tokens.shape[0])],[])))
-
-        unique_sources = train_sources.unique()
+        
+        sources_batch = torch.from_numpy(train_sources).to(device)
+        unique_sources = sources_batch.unique()
         
         beta = model.get_beta(alpha, unique_tokens, torch.tensor(np.array(unique_sources)), torch.tensor(np.array(times))) # SxKxTxV
 
@@ -495,22 +496,21 @@ def get_completion_ppl(source):
                 # loglik = theta.unsqueeze(2) * beta
                 # loglik = loglik.sum(1)
 
-                unique_sources = sources.unique()
-                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources])
+                unique_sources = sources_batch.unique()
+                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch])
 
-                unique_times = times.unique()
-                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
+                unique_times = times_batch.unique()
+                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch])
 
                 unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
                     for i in range(token_batch.shape[0])],[])))
-
 
                 beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
                 beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
                 
                 loglik = torch.log(loglik+1e-6)
-                nll = -loglik * data_batch
+                nll = -loglik * data_batch[:,unique_tokens]
                 nll = nll.sum(-1)
                 loss = nll / sums.squeeze()
                 loss = loss.mean().item()
@@ -653,7 +653,7 @@ if args.mode == 'train':
     for epoch in range(1, args.epochs):        
         train(epoch)
         if epoch % args.visualize_every == 0:
-            visualize(train_sources)
+            visualize()
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
