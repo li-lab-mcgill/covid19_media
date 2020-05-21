@@ -1,2 +1,3 @@
 .vscode/settings.json
 code/DMETM/data
+code/DMETM/__pycache__/*
