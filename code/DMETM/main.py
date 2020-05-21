@@ -45,7 +45,7 @@ parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_a
 
 parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
 
-parser.add_argument('--batch_size', type=int, default=100, help='number of documents in a batch for training')
+parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
 
 parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
@@ -72,7 +72,9 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
-parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
+
+parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
+
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
@@ -304,7 +306,7 @@ def train(epoch):
 
         # print("backward passing ...")
 
-        loss.backward()        
+        loss.backward()
 
         # print("backward done.")
 
@@ -536,7 +538,8 @@ def get_completion_ppl(source):
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
 
-                token_batch = tokens_1[ind]
+                token_batch_1 = tokens_1[ind]
+                token_batch_2 = tokens_2[ind]
 
                 data_batch_1, times_batch_1, sources_batch_1 = data.get_batch(
                     tokens_1, counts_1, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
@@ -548,16 +551,6 @@ def get_completion_ppl(source):
                 else:
                     normalized_data_batch_1 = data_batch_1
 
-                unique_sources = sources_batch_1.unique()
-                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch_1])
-
-                unique_times = times_batch_1.unique()
-                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch_1])
-
-                unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
-                    for i in range(token_batch.shape[0])],[])))
-
-
                 eta_td_1 = eta_1[times_batch_1.type('torch.LongTensor')]
                 theta = get_theta(eta_td_1, normalized_data_batch_1)
 
@@ -565,10 +558,15 @@ def get_completion_ppl(source):
                     tokens_2, counts_2, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
 
-                # alpha_td = alpha[:, times_batch_2.type('torch.LongTensor'), :]
-                # beta = model.get_beta(alpha_td).permute(1, 0, 2)
-                # loglik = theta.unsqueeze(2) * beta
-                # loglik = loglik.sum(1)                
+                unique_sources = sources_batch_1.unique()
+                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch_1])
+
+                unique_times = times_batch_1.unique()
+                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch_1])
+
+                uniq_tokens_list = sum([sum(token_batch_1[i].tolist(),[]) for i in range(token_batch_1.shape[0])],[])
+                uniq_tokens_list.extend(sum([sum(token_batch_2[i].tolist(),[]) for i in range(token_batch_2.shape[0])],[]))                
+                unique_tokens = torch.tensor(np.unique(uniq_tokens_list))
 
                 beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
                 beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
@@ -576,7 +574,7 @@ def get_completion_ppl(source):
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
 
                 loglik = torch.log(loglik+1e-6)
-                nll = -loglik * data_batch_2
+                nll = -loglik * data_batch_2[:,unique_tokens]
                 nll = nll.sum(-1)
                 loss = nll / sums_2.squeeze()
                 loss = loss.mean().item()
