@@ -183,10 +183,7 @@ class DMETM(nn.Module):
         """        
         eta_td = eta[times.type('torch.LongTensor')]
         inp = torch.cat([bows, eta_td], dim=1)
-
         q_theta = self.q_theta(inp)
-
-
 
         if self.enc_drop > 0:
             q_theta = self.t_drop(q_theta)
@@ -221,7 +218,6 @@ class DMETM(nn.Module):
 
         alpha_s = alpha_s * source_lambda_s # S' x K x T' x L
 
-
         tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S' x K x T') x L
         
         # (S' x K x T') x L prod L x V = (S' x K x T') x V
@@ -229,7 +225,7 @@ class DMETM(nn.Module):
 
         logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S' x K x T' x V
 
-        return F.softmax(logit, dim=-1)[:,:,:,uniq_tokens.type('torch.LongTensor')] # S x K x T x V'
+        return F.softmax(logit, dim=-1)[:,:,:,uniq_tokens.type('torch.LongTensor')] # S' x K x T' x V'
 
 
     # get beta for full vocab (can be memory consuming for large vocab, time, source)
@@ -284,54 +280,49 @@ class DMETM(nn.Module):
     def check_beta(self, alpha, uniq_tokens, uniq_sources, uniq_times):
         
         set_trace()
-        
-        # verify full beta calculation
-        # beta_full_fast = self.get_beta_full(alpha) # S x K x T x V
-        # beta_full_slow = torch.zeros(self.num_sources, self.num_topics, self.num_times, self.rho.size(0))
 
-        # for i in range(self.num_sources):
-        #     for k in range(self.num_topics):
-        #         for t in range(self.num_times):
-        #             beta_full_slow[int(i),int(k),int(t),:] = self.get_beta_skt(alpha, int(i),int(k),int(t))
-
-        # print((beta_full_fast - beta_full_slow).sum()) # should return a very small number
-        
-        # # print((torch.randn(self.num_sources, self.num_topics, self.num_times, self.rho.size(0)) - beta_full_slow).sum()) # compare with background
-        
-        # # verify beta calculation on select features
-        # beta_sel_fast = self.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # S' x K x T' x V'
-        
-        # beta_sel_slow = torch.zeros(uniq_sources.shape[0], self.num_topics, uniq_times.shape[0], uniq_tokens.shape[0])
-
-        # for i in range(uniq_sources.shape[0]):
-        #     for k in range(self.num_topics):
-        #         for t in range(uniq_times.shape[0]):
-        #             source_idx = int(uniq_sources[i])
-        #             time_idx = int(uniq_times[t])
-        #             tmp = self.get_beta_skt(alpha, source_idx, k, time_idx).squeeze() # 1 x V
-        #             beta_sel_slow[i, k, t,:] = tmp[uniq_tokens.type('torch.LongTensor')]
-        
-        # print((beta_sel_fast - beta_sel_slow).sum())
-
-        # beta_full_slow_sel = beta_full_slow[uniq_sources.type('torch.LongTensor')]
-        # beta_full_slow_sel = beta_full_slow_sel[:,:,uniq_times.type('torch.LongTensor'),:]
-        # beta_full_slow_sel = beta_full_slow_sel[:,:,:,uniq_tokens.type('torch.LongTensor')]
-
-        # print((beta_full_slow_sel - beta_sel_slow).sum())
-
-
+        # verify get_beta_full and get_beta produce the same outputs
         beta_full_fast = self.get_beta_full(alpha) # S x K x T x V
-
         beta_full_fast_sel = beta_full_fast[uniq_sources.type('torch.LongTensor')] # S' x K x T x V
         beta_full_fast_sel = beta_full_fast_sel[:,:,uniq_times.type('torch.LongTensor'),:] # S' x K x T' x V
         beta_full_fast_sel = beta_full_fast_sel[:,:,:,uniq_tokens.type('torch.LongTensor')] # S' x K x T' x V'
-
-
-        # beta_sel_fast = self.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # S' x K x T' x V'
-
-
+        beta_sel_fast = self.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # S' x K x T' x V'
         print((beta_full_fast_sel - beta_sel_fast).sum())
 
+        
+        # verify full beta calculation
+        beta_full_fast = self.get_beta_full(alpha) # S x K x T x V
+        beta_full_slow = torch.zeros(self.num_sources, self.num_topics, self.num_times, self.rho.size(0))
+
+        for i in range(self.num_sources):
+            for k in range(self.num_topics):
+                for t in range(self.num_times):
+                    beta_full_slow[int(i),int(k),int(t),:] = self.get_beta_skt(alpha, int(i),int(k),int(t))
+
+        print((beta_full_fast - beta_full_slow).sum()) # should return a very small number
+        
+        # print((torch.randn(self.num_sources, self.num_topics, self.num_times, self.rho.size(0)) - beta_full_slow).sum()) # compare with background
+        
+        # verify beta calculation on select features
+        beta_sel_fast = self.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # S' x K x T' x V'
+        
+        beta_sel_slow = torch.zeros(uniq_sources.shape[0], self.num_topics, uniq_times.shape[0], uniq_tokens.shape[0])
+
+        for i in range(uniq_sources.shape[0]):
+            for k in range(self.num_topics):
+                for t in range(uniq_times.shape[0]):
+                    source_idx = int(uniq_sources[i])
+                    time_idx = int(uniq_times[t])
+                    tmp = self.get_beta_skt(alpha, source_idx, k, time_idx).squeeze() # 1 x V
+                    beta_sel_slow[i, k, t,:] = tmp[uniq_tokens.type('torch.LongTensor')]
+        
+        print((beta_sel_fast - beta_sel_slow).sum())
+
+        beta_full_slow_sel = beta_full_slow[uniq_sources.type('torch.LongTensor')]
+        beta_full_slow_sel = beta_full_slow_sel[:,:,uniq_times.type('torch.LongTensor'),:]
+        beta_full_slow_sel = beta_full_slow_sel[:,:,:,uniq_tokens.type('torch.LongTensor')]
+
+        print((beta_full_slow_sel - beta_sel_slow).sum())
 
 
 
