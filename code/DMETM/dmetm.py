@@ -289,7 +289,6 @@ class DMETM(nn.Module):
         
         # print((torch.randn(self.num_sources, self.num_topics, self.num_times, self.rho.size(0)) - beta_full_slow).sum()) # compare with background
         
-
         # verify beta calculation on select features
         beta_sel_fast = self.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # S' x K x T' x V'
         
@@ -302,13 +301,16 @@ class DMETM(nn.Module):
                     time_idx = int(uniq_times[t])
                     tmp = self.get_beta_skt(alpha, source_idx, k, time_idx).squeeze() # 1 x V
                     beta_sel_slow[i, k, t,:] = tmp[uniq_tokens.type('torch.LongTensor')]
-
-
-        # beta_slow_sel = beta_full_slow[uniq_sources.type('torch.LongTensor')]
-        # beta_slow_sel = beta_slow_sel[:,:,uniq_times.type('torch.LongTensor'),:]
-        # beta_slow_sel = beta_slow_sel[:,:,:,uniq_tokens.type('torch.LongTensor')]
         
         print((beta_sel_fast - beta_sel_slow).sum())
+
+
+        beta_full_slow_sel = beta_full_slow[uniq_sources.type('torch.LongTensor')]
+        beta_full_slow_sel = beta_full_slow_sel[:,:,uniq_times.type('torch.LongTensor'),:]
+        beta_full_slow_sel = beta_full_slow_sel[:,:,:,uniq_tokens.type('torch.LongTensor')]
+
+        print((beta_full_slow_sel - beta_sel_slow).sum())
+
 
 
 
