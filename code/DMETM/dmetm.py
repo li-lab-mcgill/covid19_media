@@ -290,7 +290,7 @@ class DMETM(nn.Module):
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
 
         beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-        skt_beta = torch.cat([self.get_beta_skt(alpha, unique_tokens[idx], unique_tokens[idx], unique_times[idk]) \
+        skt_beta = torch.cat([self.get_beta_skt(alpha, unique_tokens[idx], unique_tokens[idx], unique_times[idx]) \
                         for idx in range(unique_tokens.shape[0])])
 
         try:
