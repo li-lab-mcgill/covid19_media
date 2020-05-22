@@ -367,7 +367,7 @@ class DMETM(nn.Module):
         unique_times = times.unique()
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
 
-        self.check_beta(alpha, unique_tokens, unique_sources, unique_times)
+        # self.check_beta(alpha, unique_tokens, unique_sources, unique_times)
         
         beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
         
