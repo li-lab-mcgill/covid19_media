@@ -14,6 +14,9 @@ from IPython.core.debugger import set_trace
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+def is_nan_or_inf(tensor):
+    return torch.isnan(tensor) ^ torch.isinf(tensor)
+
 class DMETM(nn.Module):
     def __init__(self, args, word_embeddings, sources_embeddings):
         super(DMETM, self).__init__()
@@ -104,9 +107,11 @@ class DMETM(nn.Module):
         """
         if self.training:
             std = torch.exp(0.5 * logvar) 
-            if torch.isnan(std).sum() != 0:
+            if is_nan_or_inf(std).sum() != 0:
                 raise Exception('std has nan')
             eps = torch.randn_like(std)
+            if is_nan_or_inf(eps).sum() != 0:
+                raise Exception('eps has nan')
             return eps.mul_(std).add_(mu)
         else:
             return mu
@@ -149,17 +154,17 @@ class DMETM(nn.Module):
 
     def get_eta(self, rnn_inp): ## structured amortized inference
         inp = self.q_eta_map(rnn_inp).unsqueeze(1)
-        if torch.isnan(inp).sum() != 0:
+        if is_nan_or_inf(inp).sum() != 0:
             for param in self.q_eta_map.parameters():
-                if torch.isnan(param).sum() != 0:
+                if is_nan_or_inf(param).sum() != 0:
                     raise Exception(param.grad)
             raise Exception('inp has nan but no nan in q_eta_map parameters')
         hidden = self.init_hidden()
         output, _ = self.q_eta(inp, hidden)
         output = output.squeeze()
-        if torch.isnan(output).sum() != 0:
+        if is_nan_or_inf(output).sum() != 0:
             for param in self.q_eta.parameters():
-                if torch.isnan(param).sum() != 0:
+                if is_nan_or_inf(param).sum() != 0:
                     raise Exception(param.grad)
             raise Exception('output has nan but no nan in q_eta parameters')
 
@@ -168,15 +173,15 @@ class DMETM(nn.Module):
 
         inp_0 = torch.cat([output[0], torch.zeros(self.num_topics,).to(device)], dim=0)
         mu_0 = self.mu_q_eta(inp_0)
-        if torch.isnan(mu_0).sum() != 0:
+        if is_nan_or_inf(mu_0).sum() != 0:
             for param in self.mu_q_eta.parameters():
-                if torch.isnan(param).sum() != 0:
+                if is_nan_or_inf(param).sum() != 0:
                     raise Exception(param.grad)
             raise Exception('mu_0 has nan but no nan in mu_q_eta parameters')
         logsigma_0 = self.logsigma_q_eta(inp_0)
-        if torch.isnan(logsigma_0).sum() != 0:
+        if is_nan_or_inf(logsigma_0).sum() != 0:
             for param in self.logsigma_q_eta.parameters():
-                if torch.isnan(param).sum() != 0:
+                if is_nan_or_inf(param).sum() != 0:
                     raise Exception(param.grad)
             raise Exception('logsigma_0 has nan but no nan in logsigma_q_eta parameters')
         etas[0] = self.reparameterize(mu_0, logsigma_0)
@@ -188,17 +193,17 @@ class DMETM(nn.Module):
         for t in range(1, self.num_times):
             inp_t = torch.cat([output[t], etas[t-1]], dim=0)
             mu_t = self.mu_q_eta(inp_t)
-            if torch.isnan(mu_t).sum() != 0:
+            if is_nan_or_inf(mu_t).sum() != 0:
                 for param in self.mu_q_eta.parameters():
-                    if torch.isnan(param).sum() != 0:
+                    if is_nan_or_inf(param).sum() != 0:
                         raise Exception(param.grad)
                 # set_trace()
                 # raise Exception('mu_t has nan but no nan in mu_q_eta parameters')
                 raise Exception(etas[t-1])
             logsigma_t = self.logsigma_q_eta(inp_t)
-            if torch.isnan(logsigma_t).sum() != 0:
+            if is_nan_or_inf(logsigma_t).sum() != 0:
                 for param in self.logsigma_q_eta.parameters():
-                    if torch.isnan(param).sum() != 0:
+                    if is_nan_or_inf(param).sum() != 0:
                         raise Exception(param.grad)
                 raise Exception('logsigma_t has nan but no nan in logsigma_q_eta parameters')
             etas[t] = self.reparameterize(mu_t, logsigma_t)
@@ -331,30 +336,30 @@ class DMETM(nn.Module):
 
     def forward(self, unique_tokens, bows, normalized_bows, times, sources, rnn_inp, num_docs):
 
-        if torch.isnan(bows).sum() != 0 \
-            or torch.isnan(normalized_bows).sum() != 0 \
-            or torch.isnan(times).sum() != 0 \
-            or torch.isnan(sources).sum() != 0 \
-            or torch.isnan(rnn_inp).sum() != 0:
+        if is_nan_or_inf(bows).sum() != 0 \
+            or is_nan_or_inf(normalized_bows).sum() != 0 \
+            or is_nan_or_inf(times).sum() != 0 \
+            or is_nan_or_inf(sources).sum() != 0 \
+            or is_nan_or_inf(rnn_inp).sum() != 0:
             raise Exception('input has nan')
 
         for param in self.parameters():
-            if torch.isnan(param).sum() != 0:
+            if is_nan_or_inf(param).sum() != 0:
                 raise Exception(param.grad)
         
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz         
 
         alpha, kl_alpha = self.get_alpha()
-        if torch.isnan(alpha).sum() != 0 or torch.isnan(kl_alpha).sum() != 0:
+        if is_nan_or_inf(alpha).sum() != 0 or is_nan_or_inf(kl_alpha).sum() != 0:
             raise Exception('alpha has nan')
 
         eta, kl_eta = self.get_eta(rnn_inp)
-        if torch.isnan(eta).sum() != 0 or torch.isnan(kl_eta).sum() != 0:
+        if is_nan_or_inf(eta).sum() != 0 or is_nan_or_inf(kl_eta).sum() != 0:
             raise Exception('eta has nan')
         
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
-        if torch.isnan(theta).sum() != 0 or torch.isnan(kl_theta).sum() != 0:
+        if is_nan_or_inf(theta).sum() != 0 or is_nan_or_inf(kl_theta).sum() != 0:
             raise Exception('theta has nan')
 
         kl_theta = kl_theta.sum() * coeff
@@ -366,7 +371,7 @@ class DMETM(nn.Module):
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
 
         beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-        if torch.isnan(beta).sum() != 0:
+        if is_nan_or_inf(beta).sum() != 0:
             raise Exception('theta has nan')
         # beta = beta[unique_sources_idx.type('torch.LongTensor')]    # S' to S
         # beta = torch.zeros(sources.shape[0], self.num_topics, self.num_times, self.vocab_size)
