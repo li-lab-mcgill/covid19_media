@@ -166,7 +166,17 @@ class DMETM(nn.Module):
 
         inp_0 = torch.cat([output[0], torch.zeros(self.num_topics,).to(device)], dim=0)
         mu_0 = self.mu_q_eta(inp_0)
+        if torch.isnan(mu_0).sum() != 0:
+            for param in self.mu_q_eta.parameters():
+                if torch.isnan(param).sum() != 0:
+                    raise Exception(param.grad)
+            raise Exception('mu_0 has nan but no nan in mu_q_eta parameters')
         logsigma_0 = self.logsigma_q_eta(inp_0)
+        if torch.isnan(logsigma_0).sum() != 0:
+            for param in self.logsigma_q_eta.parameters():
+                if torch.isnan(param).sum() != 0:
+                    raise Exception(param.grad)
+            raise Exception('logsigma_0 has nan but no nan in logsigma_q_eta parameters')
         etas[0] = self.reparameterize(mu_0, logsigma_0)
 
         p_mu_0 = torch.zeros(self.num_topics,).to(device)
@@ -176,7 +186,17 @@ class DMETM(nn.Module):
         for t in range(1, self.num_times):
             inp_t = torch.cat([output[t], etas[t-1]], dim=0)
             mu_t = self.mu_q_eta(inp_t)
+            if torch.isnan(mu_t).sum() != 0:
+                for param in self.mu_q_eta.parameters():
+                    if torch.isnan(param).sum() != 0:
+                        raise Exception(param.grad)
+                raise Exception('mu_t has nan but no nan in mu_q_eta parameters')
             logsigma_t = self.logsigma_q_eta(inp_t)
+            if torch.isnan(logsigma_t).sum() != 0:
+                for param in self.logsigma_q_eta.parameters():
+                    if torch.isnan(param).sum() != 0:
+                        raise Exception(param.grad)
+                raise Exception('logsigma_t has nan but no nan in logsigma_q_eta parameters')
             etas[t] = self.reparameterize(mu_t, logsigma_t)
 
             p_mu_t = etas[t-1]
