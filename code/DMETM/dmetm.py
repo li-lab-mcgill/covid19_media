@@ -191,7 +191,7 @@ class DMETM(nn.Module):
                     if torch.isnan(param).sum() != 0:
                         raise Exception(param.grad)
                 set_trace()
-                raise Exception('mu_t has nan but no nan in mu_q_eta parameters')
+                # raise Exception('mu_t has nan but no nan in mu_q_eta parameters')
             logsigma_t = self.logsigma_q_eta(inp_t)
             if torch.isnan(logsigma_t).sum() != 0:
                 for param in self.logsigma_q_eta.parameters():
