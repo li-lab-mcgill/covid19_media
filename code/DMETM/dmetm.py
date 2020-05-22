@@ -147,9 +147,19 @@ class DMETM(nn.Module):
 
     def get_eta(self, rnn_inp): ## structured amortized inference
         inp = self.q_eta_map(rnn_inp).unsqueeze(1)
+        if torch.isnan(inp).sum() != 0:
+            for param in self.q_eta_map.parameters():
+                if torch.isnan(param).sum() != 0:
+                    raise Exception(param.grad)
+            raise Exception('inp has nan but no nan in q_eta_map parameters')
         hidden = self.init_hidden()
         output, _ = self.q_eta(inp, hidden)
         output = output.squeeze()
+        if torch.isnan(output).sum() != 0:
+            for param in self.q_eta.parameters():
+                if torch.isnan(param).sum() != 0:
+                    raise Exception(param.grad)
+            raise Exception('output has nan but no nan in q_eta parameters')
 
         etas = torch.zeros(self.num_times, self.num_topics).to(device)
         kl_eta = []
@@ -297,14 +307,31 @@ class DMETM(nn.Module):
 
     def forward(self, unique_tokens, bows, normalized_bows, times, sources, rnn_inp, num_docs):
 
+        if torch.isnan(bows).sum() != 0 \
+            or torch.isnan(normalized_bows).sum() != 0 \
+            or torch.isnan(times).sum() != 0 \
+            or torch.isnan(sources).sum() != 0 \
+            or torch.isnan(rnn_inp).sum() != 0:
+            raise Exception('input has nan')
+
+        for param in self.parameters():
+            if torch.isnan(param).sum() != 0:
+                raise Exception(param.grad)
+        
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz         
 
         alpha, kl_alpha = self.get_alpha()
+        if torch.isnan(alpha).sum() != 0 or torch.isnan(kl_alpha).sum() != 0:
+            raise Exception('alpha has nan')
 
         eta, kl_eta = self.get_eta(rnn_inp)
+        if torch.isnan(eta).sum() != 0 or torch.isnan(kl_eta).sum() != 0:
+            raise Exception('eta has nan')
         
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
+        if torch.isnan(theta).sum() != 0 or torch.isnan(kl_theta).sum() != 0:
+            raise Exception('theta has nan')
 
         kl_theta = kl_theta.sum() * coeff
 
@@ -315,6 +342,8 @@ class DMETM(nn.Module):
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
 
         beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
+        if torch.isnan(beta).sum() != 0:
+            raise Exception('theta has nan')
         # beta = beta[unique_sources_idx.type('torch.LongTensor')]    # S' to S
         # beta = torch.zeros(sources.shape[0], self.num_topics, self.num_times, self.vocab_size)
         # beta = beta[:, :, unique_times_idx.type('torch.LongTensor'), :] # T' to T

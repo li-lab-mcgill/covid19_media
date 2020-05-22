@@ -654,7 +654,8 @@ if args.mode == 'train':
         # with torch.autograd.detect_anomaly():   
         train(epoch)
         if epoch % args.visualize_every == 0:
-            visualize()
+            # visualize()
+            pass
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
