@@ -166,6 +166,13 @@ class DMETM(nn.Module):
         for t in range(1, self.num_times):
             inp_t = torch.cat([output[t], etas[t-1]], dim=0)
             mu_t = self.mu_q_eta(inp_t)
+
+            if torch.isnan(mu_t).sum() != 0:
+                set_trace()
+                for param in self.mu_q_eta.parameters():
+                    if torch.isnan(param).sum() != 0:
+                        raise Exception(param.grad)                
+
             logsigma_t = self.logsigma_q_eta(inp_t)
             etas[t] = self.reparameterize(mu_t, logsigma_t)
 

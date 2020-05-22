@@ -12,10 +12,10 @@ CUDA_VISIBLE_DEVICES=1 python main.py \
     --data_path /home/liyue/projects/ctb-liyue/liyue/Projects/covid19_media/data/Aylien \
     --emb_path /home/liyue/projects/ctb-liyue/data/covid19_news/trained_word_emb_aylien.txt \
     --save_path /home/liyue/projects/ctb-liyue/liyue/Projects/covid19_media/results/dmetm \
-    --lr 1e-3 \
+    --lr 8e-3 \
     --clip 2.0 \
     --epochs 20 \
-    --num_topics 50 \
+    --num_topics 40 \
     --batch_size 64 \
     --min_df 100 \
     --train_source_embeddings 0 \
