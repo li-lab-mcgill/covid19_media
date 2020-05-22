@@ -33,11 +33,11 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
@@ -45,10 +45,10 @@ parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_a
 
 parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
 
-parser.add_argument('--batch_size', type=int, default=100, help='number of documents in a batch for training')
+parser.add_argument('--batch_size', type=int, default=10, help='number of documents in a batch for training')
 
-parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
-# parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
+# parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
+parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
@@ -70,7 +70,7 @@ parser.add_argument('--eta_hidden_size', type=int, default=64, help='number of h
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 ### optimization-related arguments
-parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
+parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
 parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
@@ -264,7 +264,8 @@ else:
 
 
 def train(epoch):
-    """Train DETM on data for one epoch.
+    """
+        Train DETM on data for one epoch.
     """
     model.train()
     acc_loss = 0
@@ -273,11 +274,17 @@ def train(epoch):
     acc_kl_eta_loss = 0
     acc_kl_alpha_loss = 0
     cnt = 0
+
     indices = torch.randperm(args.num_docs_train)
-    indices = torch.split(indices, args.batch_size) 
+    indices = torch.split(indices, args.batch_size)     
+    
+
     for idx, ind in enumerate(indices):
         optimizer.zero_grad()
-        model.zero_grad()
+        model.zero_grad()        
+
+        # print("batch ID: ", idx)
+        # print("sample ID: ", ind)
         
         data_batch, times_batch, sources_batch = data.get_batch(
             train_tokens, train_counts, ind, args.vocab_size, train_sources, args.emb_size, temporal=True, times=train_times)
@@ -291,8 +298,11 @@ def train(epoch):
         else:
             normalized_data_batch = data_batch        
 
-        unique_tokens = torch.tensor(np.unique(sum([sum(tokens_batch[i].tolist(),[]) 
-            for i in range(tokens_batch.shape[0])],[])))
+        if tokens_batch.shape[0] == 1:
+            unique_tokens = np.unique(tokens_batch[0].tolist())
+        else:
+            unique_tokens = torch.tensor(np.unique(sum([sum(tokens_batch[i].tolist(),[]) 
+                for i in range(tokens_batch.shape[0])],[])))
 
         # print("forward passing ...")
 
@@ -321,7 +331,8 @@ def train(epoch):
         acc_kl_alpha_loss += torch.sum(kl_alpha).item()
         cnt += 1
 
-        if idx % args.log_interval == 0 and idx > 0:
+        # if idx % args.log_interval == 0 and idx > 0:
+        if idx > 0:            
             cur_loss = round(acc_loss / cnt, 2) 
             cur_nll = round(acc_nll / cnt, 2) 
             cur_kl_theta = round(acc_kl_theta_loss / cnt, 2) 
@@ -330,6 +341,9 @@ def train(epoch):
             lr = optimizer.param_groups[0]['lr']
             print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. NELBO: {}'.format(
                 epoch, idx, len(indices), lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_loss))
+
+            if np.isnan([cur_loss, cur_nll, cur_kl_theta, cur_kl_eta, cur_kl_alpha]):
+                set_trace()
     
     cur_loss = round(acc_loss / cnt, 2) 
     cur_nll = round(acc_nll / cnt, 2) 
