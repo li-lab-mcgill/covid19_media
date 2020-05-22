@@ -8,8 +8,8 @@ import math
 
 from torch import nn
 
-# from IPython.core.debugger import set_trace
-from pdb import set_trace
+from IPython.core.debugger import set_trace
+# from pdb import set_trace
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -146,8 +146,6 @@ class DMETM(nn.Module):
         return alphas, kl_alpha.sum()
 
     def get_eta(self, rnn_inp): ## structured amortized inference
-        set_trace()
-
         inp = self.q_eta_map(rnn_inp).unsqueeze(1)
         if torch.isnan(inp).sum() != 0:
             for param in self.q_eta_map.parameters():
@@ -192,6 +190,7 @@ class DMETM(nn.Module):
                 for param in self.mu_q_eta.parameters():
                     if torch.isnan(param).sum() != 0:
                         raise Exception(param.grad)
+                set_trace()
                 raise Exception('mu_t has nan but no nan in mu_q_eta parameters')
             logsigma_t = self.logsigma_q_eta(inp_t)
             if torch.isnan(logsigma_t).sum() != 0:
