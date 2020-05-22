@@ -342,7 +342,7 @@ def train(epoch):
             print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. NELBO: {}'.format(
                 epoch, idx, len(indices), lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_loss))
 
-            if np.isnan([cur_loss, cur_nll, cur_kl_theta, cur_kl_eta, cur_kl_alpha]):
+            if any(np.isnan([cur_loss, cur_nll, cur_kl_theta, cur_kl_eta, cur_kl_alpha])):
                 set_trace()
     
     cur_loss = round(acc_loss / cnt, 2) 
