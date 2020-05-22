@@ -104,6 +104,8 @@ class DMETM(nn.Module):
         """
         if self.training:
             std = torch.exp(0.5 * logvar) 
+            if torch.isnan(std).sum() != 0:
+                raise Exception('std has nan')
             eps = torch.randn_like(std)
             return eps.mul_(std).add_(mu)
         else:
@@ -192,7 +194,7 @@ class DMETM(nn.Module):
                         raise Exception(param.grad)
                 # set_trace()
                 # raise Exception('mu_t has nan but no nan in mu_q_eta parameters')
-                raise Exception(logsigma_t)
+                raise Exception(etas[t-1])
             logsigma_t = self.logsigma_q_eta(inp_t)
             if torch.isnan(logsigma_t).sum() != 0:
                 for param in self.logsigma_q_eta.parameters():
