@@ -228,6 +228,7 @@ class DMETM(nn.Module):
         return F.softmax(logit, dim=-1)[:,:,:,uniq_tokens.type('torch.LongTensor')] # S' x K x T' x V'
 
 
+
     # get beta for full vocab (can be memory consuming for large vocab, time, source)
     def get_beta_full(self, alpha):
         """Returns the topic matrix beta of shape S x K x T x V
@@ -243,9 +244,6 @@ class DMETM(nn.Module):
 
         alpha_s_full = alpha_s_full * source_lambda_s_full # S x K x T x L
         
-        # alpha_s_full_sel = alpha_s_full[uniq_sources.type('torch.LongTensor')]
-        # alpha_s_full_sel = alpha_s_full_sel[:, :, uniq_times.type('torch.LongTensor'), :]
-
         tmp = alpha_s_full.view(alpha_s_full.size(0)*alpha_s_full.size(1)*alpha_s_full.size(2), self.rho_size) # (S x K x T) x L
         
         # (S x K x T) x L prod L x V = (S x K x T) x V
@@ -253,10 +251,6 @@ class DMETM(nn.Module):
 
         logit_full = logit_full.view(alpha_s_full.size(0), alpha_s_full.size(1), alpha_s_full.size(2), -1) # S x K x T x V
         
-        # logit_full_sel = logit_full[uniq_sources.type('torch.LongTensor')]
-        # logit_full_sel = logit_full_sel[:, :, uniq_times.type('torch.LongTensor'), :]
-        # logit_full_sel = logit_full_sel[:, :, :, uniq_tokens.type('torch.LongTensor')]
-
         return F.softmax(logit_full, dim=-1) # S x K x T x V
 
 
