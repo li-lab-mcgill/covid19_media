@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=125G
 
-CUDA_VISIBLE_DEVICES=0 python main.py \
+CUDA_VISIBLE_DEVICES=1 python main.py \
     --mode train \
     --dataset Aylien \
     --data_path /home/liyue/projects/ctb-liyue/liyue/Projects/covid19_media/data/Aylien \
