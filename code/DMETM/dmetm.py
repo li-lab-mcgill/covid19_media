@@ -146,6 +146,8 @@ class DMETM(nn.Module):
         return alphas, kl_alpha.sum()
 
     def get_eta(self, rnn_inp): ## structured amortized inference
+        set_trace()
+
         inp = self.q_eta_map(rnn_inp).unsqueeze(1)
         if torch.isnan(inp).sum() != 0:
             for param in self.q_eta_map.parameters():
