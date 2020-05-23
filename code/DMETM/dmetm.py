@@ -18,10 +18,11 @@ def is_nan_or_inf(tensor):
     return torch.isnan(tensor) ^ torch.isinf(tensor)
 
 class DMETM(nn.Module):
-    def __init__(self, args, word_embeddings, sources_embeddings):
+    def __init__(self, args, word_embeddings, sources_embeddings, eta_factor=1e2):
         super(DMETM, self).__init__()
 
         ## define hyperparameters
+        self.eta_factor = eta_factor    # regularize kl_eta
         self.num_topics = args.num_topics
         self.num_times = args.num_times
         self.vocab_size = args.vocab_size
@@ -394,7 +395,7 @@ class DMETM(nn.Module):
         nll = self.get_nll(theta, beta, bows, unique_tokens)
         
         nll = nll.sum() * coeff
-        nelbo = nll + kl_alpha + kl_eta + kl_theta
+        nelbo = nll + kl_alpha + self.eta_factor * kl_eta + kl_theta
         
         return nelbo, nll, kl_alpha, kl_eta, kl_theta
 
