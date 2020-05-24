@@ -10,13 +10,13 @@ import os
 import math 
 import random 
 import sys
-import matplotlib.pyplot as plt 
-import seaborn as sns
+# import matplotlib.pyplot as plt 
+# import seaborn as sns
 import scipy.io
 
 import data 
 
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
@@ -69,7 +69,7 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 args = parser.parse_args()
 
-pca = PCA(n_components=2)
+# pca = PCA(n_components=2)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## set seed
