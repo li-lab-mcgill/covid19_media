@@ -1,0 +1,1 @@
+../emb/acl/skipgram_emb_300d.txt
