@@ -45,7 +45,7 @@ parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_a
 
 parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
 
-parser.add_argument('--batch_size', type=int, default=10, help='number of documents in a batch for training')
+parser.add_argument('--batch_size', type=int, default=64, help='number of documents in a batch for training')
 
 # parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
@@ -56,7 +56,8 @@ parser.add_argument('--num_topics', type=int, default=50, help='number of topics
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 
-parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
+# parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
+parser.add_argument('--t_hidden_size', type=int, default=64, help='dimension of hidden space of q(theta)')
 
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
@@ -70,7 +71,7 @@ parser.add_argument('--eta_hidden_size', type=int, default=64, help='number of h
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 ### optimization-related arguments
-parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
+parser.add_argument('--lr', type=float, default=0.0005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
 parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
@@ -78,8 +79,12 @@ parser.add_argument('--epochs', type=int, default=3, help='number of epochs to t
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
-parser.add_argument('--enc_drop', type=float, default=0.0, help='dropout rate on encoder')
-parser.add_argument('--eta_dropout', type=float, default=0.0, help='dropout rate on rnn for eta')
+
+
+parser.add_argument('--enc_drop', type=float, default=0.1, help='dropout rate on encoder')
+parser.add_argument('--eta_dropout', type=float, default=0.1, help='dropout rate on rnn for eta')
+
+
 parser.add_argument('--clip', type=float, default=0.0, help='gradient clipping')
 parser.add_argument('--nonmono', type=int, default=10, help='number of bad hits allowed')
 parser.add_argument('--wdecay', type=float, default=1.2e-6, help='some l2 regularization')

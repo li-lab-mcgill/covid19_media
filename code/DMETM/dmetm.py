@@ -194,6 +194,7 @@ class DMETM(nn.Module):
 
         if self.enc_drop > 0:
             q_theta = self.t_drop(q_theta)
+            
         mu_theta = self.mu_q_theta(q_theta)
         logsigma_theta = self.logsigma_q_theta(q_theta)
         z = self.reparameterize(mu_theta, logsigma_theta)
@@ -324,8 +325,6 @@ class DMETM(nn.Module):
         beta_full_slow_sel = beta_full_slow_sel[:,:,:,uniq_tokens.type('torch.LongTensor')]
 
         print((beta_full_slow_sel - beta_sel_slow).sum())
-
-
 
 
     # def get_beta(self, alpha):
