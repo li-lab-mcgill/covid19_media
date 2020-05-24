@@ -1,7 +1,7 @@
 from sklearn.manifold import TSNE
 import torch 
 import numpy as np
-import bokeh.plotting as bp
+# import bokeh.plotting as bp
 
 # from bokeh.plotting import save
 # from bokeh.models import HoverTool
