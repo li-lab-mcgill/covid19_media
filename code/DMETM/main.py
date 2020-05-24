@@ -588,7 +588,7 @@ def _diversity_helper(beta, num_tops):
     list_w = np.zeros((args.num_topics, num_tops))
     for k in range(args.num_topics):
         gamma = beta[k, :]
-        top_words = gamma.detach().numpy().argsort()[-num_tops:][::-1]
+        top_words = gamma.detach().cpu().numpy().argsort()[-num_tops:][::-1]
         list_w[k, :] = top_words
     list_w = np.reshape(list_w, (-1))
     list_w = list(list_w)
@@ -625,7 +625,7 @@ def get_topic_quality():
         cnt_all = np.zeros((args.num_sources, args.num_times))
         for ss in range(args.num_sources):
             for tt in range(args.num_times):
-                tc, cnt = get_topic_coherence(beta[ss, :, tt, :].detach().numpy(), train_tokens, vocab)
+                tc, cnt = get_topic_coherence(beta[ss, :, tt, :].cpu().detach().numpy(), train_tokens, vocab)
                 TC_all[ss,tt] = tc
                 cnt_all[ss,tt] = cnt
         print('TC_all: ', TC_all)
