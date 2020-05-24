@@ -3,10 +3,10 @@ import torch
 import numpy as np
 import bokeh.plotting as bp
 
-from bokeh.plotting import save
-from bokeh.models import HoverTool
-import matplotlib.pyplot as plt 
-import matplotlib 
+# from bokeh.plotting import save
+# from bokeh.models import HoverTool
+# import matplotlib.pyplot as plt 
+# import matplotlib 
 
 tiny = 1e-6
 
@@ -136,20 +136,20 @@ def visualize(docs, _lda_keys, topics, theta):
     # project to 2D
     tsne_lda = tsne_model.fit_transform(theta)
     colormap = []
-    for name, hex in matplotlib.colors.cnames.items():
-        colormap.append(hex)
+    # for name, hex in matplotlib.colors.cnames.items():
+    #     colormap.append(hex)
 
-    colormap = colormap[:len(theta[0, :])]
-    colormap = np.array(colormap)
+    # colormap = colormap[:len(theta[0, :])]
+    # colormap = np.array(colormap)
 
-    title = '20 newsgroups TE embedding V viz'
-    num_example = len(docs)
+    # title = '20 newsgroups TE embedding V viz'
+    # num_example = len(docs)
 
-    plot_lda = bp.figure(plot_width=1400, plot_height=1100,
-                     title=title,
-                     tools="pan,wheel_zoom,box_zoom,reset,hover,previewsave",
-                     x_axis_type=None, y_axis_type=None, min_border=1)
+    # plot_lda = bp.figure(plot_width=1400, plot_height=1100,
+    #                  title=title,
+    #                  tools="pan,wheel_zoom,box_zoom,reset,hover,previewsave",
+    #                  x_axis_type=None, y_axis_type=None, min_border=1)
 
-    plt.scatter(x=tsne_lda[:, 0], y=tsne_lda[:, 1],
-                 color=colormap[_lda_keys][:num_example])
-    plt.show()
+    # plt.scatter(x=tsne_lda[:, 0], y=tsne_lda[:, 1],
+    #              color=colormap[_lda_keys][:num_example])
+    # plt.show()
