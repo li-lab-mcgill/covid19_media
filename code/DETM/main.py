@@ -469,7 +469,7 @@ def get_topic_quality():
         TC_all = []
         cnt_all = []
         for tt in range(args.num_times):
-            tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().numpy(), train_tokens, vocab)
+            tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().detach().numpy(), train_tokens, vocab)
             TC_all.append(tc)
             cnt_all.append(cnt)
         print('TC_all: ', TC_all)
@@ -510,12 +510,12 @@ if args.mode == 'train':
     with torch.no_grad():
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
-        beta = model.get_beta(alpha).cpu().numpy()
+        beta = model.get_beta(alpha).cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True)
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
             # rho = model.rho.weight.cpu().numpy()
-            rho = model.rho.weight.detach().numpy()
+            rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')
@@ -535,7 +535,7 @@ else:
     print('saving alpha...')
     with torch.no_grad():
         # alpha = model.mu_q_alpha.cpu().numpy()
-        alpha = model.mu_q_alpha.detach().numpy()
+        alpha = model.mu_q_alpha.cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
 
     print('computing validation perplexity...')
