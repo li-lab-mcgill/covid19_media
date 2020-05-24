@@ -1,11 +1,11 @@
 import torch 
 import numpy as np
 
-def get_topic_diversity(beta, topk):
-    num_topics = beta.shape[0]
+def get_topic_diversity(beta, topk, source_id):
+    num_topics = beta.shape[1]
     list_w = np.zeros((num_topics, topk))
     for k in range(num_topics):
-        idx = beta[k,:].argsort()[-topk:][::-1]
+        idx = beta[:,k,:].argsort(axis=1)[:,-topk:][::-1][source_id]
         list_w[k,:] = idx
     n_unique = len(np.unique(list_w))
     TD = n_unique / (topk * num_topics)
@@ -37,14 +37,16 @@ def get_document_frequency(data, wi, wj=None):
                 D_wi_wj += 1
     return D_wj, D_wi_wj 
 
-def get_topic_coherence(beta, data, vocab):
+def get_topic_coherence(beta, data, vocab, source_id):
     D = len(data) ## number of docs...data is list of documents
     print('D: ', D)
     TC = []
-    num_topics = len(beta)
+    num_topics = len(beta[0])
+
     for k in range(num_topics):
         print('k: {}/{}'.format(k, num_topics))
-        top_10 = list(beta[k].argsort()[-11:][::-1])
+        top_10s = list(beta[:,k,:].argsort(axis=1)[:,-11:][::-1])
+        top_10 = top_10s[source_id]
         top_words = [vocab[a] for a in top_10]
         TC_k = 0
         counter = 0
