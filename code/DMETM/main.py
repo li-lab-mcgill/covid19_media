@@ -681,17 +681,17 @@ if args.mode == 'train':
         # scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
         
         print('saving alpha...')
-        alpha = model.mu_q_alpha.detach().numpy()
+        alpha = model.mu_q_alpha.detach().cpu().numpy()
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         if args.train_word_embeddings:
             print('saving word embedding matrix rho...')            
-            rho = model.rho.weight.detach().numpy()
+            rho = model.rho.weight.detach().cpu().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         if args.train_source_embeddings:
             print('saving source embedding matrix rho...')            
-            source_lambda = model.source_lambda.cpu().detach().numpy()
+            source_lambda = model.source_lambda.cpu().detach().cpu().numpy()
             scipy.io.savemat(ckpt+'_lambda.mat', {'values': source_lambda}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         print('computing validation perplexity...')
