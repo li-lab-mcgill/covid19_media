@@ -11,10 +11,11 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DETM(nn.Module):
-    def __init__(self, args, embeddings):
+    def __init__(self, args, embeddings, eta_factor=1e1):
         super(DETM, self).__init__()
 
         ## define hyperparameters
+        self.eta_factor = eta_factor    # regularize kl_eta
         self.num_topics = args.num_topics
         self.num_times = args.num_times
         self.vocab_size = args.vocab_size
@@ -203,7 +204,7 @@ class DETM(nn.Module):
         beta = beta[times.type('torch.LongTensor')]
         nll = self.get_nll(theta, beta, bows)
         nll = nll.sum() * coeff
-        nelbo = nll + kl_alpha + kl_eta + kl_theta
+        nelbo = nll + kl_alpha + self.eta_factor * kl_eta + kl_theta
         return nelbo, nll, kl_alpha, kl_eta, kl_theta
 
     def init_hidden(self):
