@@ -10,7 +10,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=yueli.cs@gmail.com
 
-CUDA_VISIBLE_DEVICES=0 python main.py \
+python main.py \
     --mode train \
     --dataset Aylien \
     --data_path /home/liyue/projects/ctb-liyue/liyue/Projects/covid19_media/data/Aylien \
@@ -19,7 +19,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py \
     --lr 5e-4 \
     --clip 2.0 \
     --epochs 100 \
-    --num_topics 40 \
+    --num_topics 50 \
     --batch_size 64 \
     --min_df 100 \
     --train_source_embeddings 0 \
