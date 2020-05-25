@@ -129,7 +129,7 @@ def get_features(init_docs, stops, vocab_file,  min_df=min_df, max_df=max_df):
 
     # Create count vectorizer
     print('counting document frequency of words...')
-    if vocab_file not None:
+    if vocab_file is not None:
         print("vocabulary size = " + str(len(vocab_file.keys())))
         cvectorizer = CountVectorizer(min_df=min_df, max_df=max_df, vocabulary=vocab_file, stop_words=None)
         cvz = cvectorizer.fit_transform(init_docs).sign()
