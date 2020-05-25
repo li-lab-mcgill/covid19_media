@@ -6,9 +6,9 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=64G
 #SBATCH --output slurm_output/slurn-%j.out
-#SBATCH -c 2
+#SBATCH -c 10
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=yueli@cs.mcgill.ca
+#SBATCH --mail-user=yueli.cs@gmail.com
 
 CUDA_VISIBLE_DEVICES=0 python main.py \
     --mode train \
