@@ -33,11 +33,11 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
@@ -47,8 +47,8 @@ parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covi
 
 parser.add_argument('--batch_size', type=int, default=64, help='number of documents in a batch for training')
 
-# parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
-parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
+parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
+# parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=50, help='number of topics')

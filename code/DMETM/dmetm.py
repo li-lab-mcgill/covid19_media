@@ -194,7 +194,7 @@ class DMETM(nn.Module):
 
         if self.enc_drop > 0:
             q_theta = self.t_drop(q_theta)
-            
+
         mu_theta = self.mu_q_theta(q_theta)
         logsigma_theta = self.logsigma_q_theta(q_theta)
         z = self.reparameterize(mu_theta, logsigma_theta)
@@ -208,9 +208,7 @@ class DMETM(nn.Module):
         """Returns the topic matrix beta of shape S x K x T x V
         """
         # alpha: K x T x L
-        # source_lambda: S x L
-        
-        # set_trace()
+        # source_lambda: S x L        
 
         # K x T x L -> K x T' x L
         alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
@@ -224,14 +222,9 @@ class DMETM(nn.Module):
         # S' x L -> S' x 1 x 1 x L -> S' x K x T' x L
         source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1, self.num_topics, uniq_times.shape[0], 1)
 
-        alpha_s = alpha_s * source_lambda_s # S' x K x T' x L
-
-        tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S' x K x T') x L
+        alpha_s = alpha_s * source_lambda_s # S' x K x T' x L        
         
-        # (S' x K x T') x L prod L x V = (S' x K x T') x V
-        logit = torch.mm(tmp, self.rho.permute(1, 0))
-
-        logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S' x K x T' x V
+        logit = torch.matmul(alpha_s, self.rho.permute(1, 0)) # S' x K x T' x L prod L x V = (S' x K x T') x V
 
         return F.softmax(logit, dim=-1)[:,:,:,uniq_tokens.type('torch.LongTensor')] # S' x K x T' x V'
 
