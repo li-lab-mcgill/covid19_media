@@ -269,7 +269,7 @@ class DMETM(nn.Module):
 
         # logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1) # S' x T 'x K x V'
 
-        return F.softmax(logit[:, :, :, uniq_tokens.type('torch.LongTensor')], dim=-1) # S x K x T x V
+        return F.softmax(logit, dim=-1)[:, :, :, uniq_tokens.type('torch.LongTensor')] # S x K x T x V
 
     # # get beta for full vocab (can be memory consuming for large vocab, time, source)
     # def get_beta_full(self, alpha):
