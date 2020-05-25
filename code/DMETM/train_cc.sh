@@ -20,7 +20,7 @@ python main.py \
     --clip 2.0 \
     --epochs 100 \
     --num_topics 50 \
-    --batch_size 64 \
+    --batch_size 48 \
     --min_df 100 \
     --train_source_embeddings 0 \
     --eta_nlayers 3 \
