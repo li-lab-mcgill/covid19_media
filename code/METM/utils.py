@@ -1,6 +1,18 @@
 import torch 
 import numpy as np
 
+def _diversity_helper(beta, num_topics, num_tops):
+    list_w = np.zeros((num_topics, num_tops))
+    for k in range(num_topics):
+        gamma = beta[k, :]
+        top_words = gamma.detach().cpu().numpy().argsort()[-num_tops:][::-1]
+        list_w[k, :] = top_words
+    list_w = np.reshape(list_w, (-1))
+    list_w = list(list_w)
+    n_unique = len(np.unique(list_w))
+    diversity = n_unique / (num_topics * num_tops)
+    return diversity
+
 def get_topic_diversity(beta, topk, source_id):
     num_topics = beta.shape[1]
     list_w = np.zeros((num_topics, topk))
@@ -37,16 +49,15 @@ def get_document_frequency(data, wi, wj=None):
                 D_wi_wj += 1
     return D_wj, D_wi_wj 
 
-def get_topic_coherence(beta, data, vocab, source_id):
+def get_topic_coherence(beta, data, vocab):
     D = len(data) ## number of docs...data is list of documents
     print('D: ', D)
     TC = []
-    num_topics = len(beta[0])
+    num_topics = len(beta)
 
     for k in range(num_topics):
         print('k: {}/{}'.format(k, num_topics))
-        top_10s = list(beta[:,k,:].argsort(axis=1)[:,-11:][::-1])
-        top_10 = top_10s[source_id]
+        top_10 = list(beta[k,:].argsort()[-11:][::-1])
         top_words = [vocab[a] for a in top_10]
         TC_k = 0
         counter = 0
@@ -74,8 +85,9 @@ def get_topic_coherence(beta, data, vocab, source_id):
     print('num topics: ', len(TC))
     TC = np.mean(TC) / counter
     print('Topic coherence is: {}'.format(TC))
+    return TC, counter
 
-def nearest_neighbors(word, embeddings, vocab):
+def nearest_neighbors(word, embeddings, vocab, num_words):
     vectors = embeddings.data.cpu().numpy() 
     index = vocab.index(word)
     print('vectors: ', vectors.shape)
@@ -88,6 +100,6 @@ def nearest_neighbors(word, embeddings, vocab):
     ranks = ranks / denom
     mostSimilar = []
     [mostSimilar.append(idx) for idx in ranks.argsort()[::-1]]
-    nearest_neighbors = mostSimilar[:20]
+    nearest_neighbors = mostSimilar[:num_words]
     nearest_neighbors = [vocab[comp] for comp in nearest_neighbors]
     return nearest_neighbors

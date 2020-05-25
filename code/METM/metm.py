@@ -101,6 +101,29 @@ class METM(nn.Module):
         kl_theta = -0.5 * torch.sum(1 + logsigma_theta - mu_theta.pow(2) - logsigma_theta.exp(), dim=-1).mean()
         return mu_theta, logsigma_theta, kl_theta
 
+        # get beta at specific source s, topic k, time t
+    def get_beta_sk(self, alpha, s, k):
+        """Returns the full topic matrix beta of shape S x K x V
+        """
+        # alpha: L x K
+        # source_lambda: S x L
+
+        # 1 x L -> L
+        alpha_k = alpha[k,:]
+        # print("alpha_k size="+str(alpha_k.shape))
+        # print("lambda size="+str(self.source_lambda.shape))
+        # print("lambda_s size="+str(self.source_lambda[s:,].shape))
+
+        alpha_sk = alpha_k * self.source_lambda[s]
+
+        # 1 x L prod L x V = L x V
+        #print("alpha_sk shape="+str(alpha_sk.shape))
+        #print("rho shape ="+str(self.rho.shape))
+        logit = torch.matmul(alpha_sk, self.rho.permute(1, 0))
+        #print("logit shape="+str(logit.shape))
+
+        return F.softmax(logit, dim=-1) # 1 x V
+
     def get_beta_unique(self, uniq_tokens, uniq_sources):
         """Returns the topic matrix beta of shape S x K x T x V
         """
