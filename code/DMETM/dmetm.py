@@ -177,10 +177,10 @@ class DMETM(nn.Module):
 
             logsigma_t = self.logsigma_q_eta(inp_t)
 
-            if logsigma_t > self.max_logsigma_t:
-                logsigma_t = self.max_logsigma_t
-            elif logsigma_t < self.min_logsigma_t:
-                logsigma_t = self.min_logsigma_t
+            if any(logsigma_t > self.max_logsigma_t):
+                logsigma_t[logsigma_t > self.max_logsigma_t] = self.max_logsigma_t
+            elif any(logsigma_t < self.min_logsigma_t):
+                logsigma_t[logsigma_t < self.min_logsigma_t] = self.min_logsigma_t
 
 
             etas[t] = self.reparameterize(mu_t, logsigma_t)
