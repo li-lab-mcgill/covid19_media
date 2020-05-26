@@ -175,7 +175,7 @@ class DMETM(nn.Module):
                     if torch.isnan(param).sum() != 0:
                         raise Exception(param.grad)                
 
-            logsigma_t = self.logsigma_q_eta(inp_t)
+            logsigma_t = self.logsigma_q_eta(inp_t)        
 
             if any(logsigma_t > self.max_logsigma_t):
                 logsigma_t[logsigma_t > self.max_logsigma_t] = self.max_logsigma_t
