@@ -76,6 +76,8 @@ class DMETM(nn.Module):
         self.q_eta = nn.LSTM(args.eta_hidden_size, args.eta_hidden_size, args.eta_nlayers, dropout=args.eta_dropout)
         self.mu_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
         self.logsigma_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
+        self.max_logsigma_t = 10
+        self.min_logsigma_t = -10
 
     def get_activation(self, act):
         if act == 'tanh':
@@ -174,6 +176,13 @@ class DMETM(nn.Module):
                         raise Exception(param.grad)                
 
             logsigma_t = self.logsigma_q_eta(inp_t)
+
+            if logsigma_t > self.max_logsigma_t:
+                logsigma_t = self.max_logsigma_t
+            elif logsigma_t < self.min_logsigma_t:
+                logsigma_t = self.min_logsigma_t
+
+
             etas[t] = self.reparameterize(mu_t, logsigma_t)
 
             p_mu_t = etas[t-1]
