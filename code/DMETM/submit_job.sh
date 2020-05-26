@@ -1,6 +1,6 @@
 export PYTHONUNBUFFERED=1
 sbatch --export=ALL \
-    -J metm \
+    -J dmetm \
     --time=30:00:00 \
     --account=ctb-liyue \
     --gres=gpu:1 \
