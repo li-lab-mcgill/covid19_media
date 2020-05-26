@@ -493,9 +493,9 @@ if args.mode == 'train':
             pass
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
+        with open(ckpt + '_epoch_' + str(epoch), 'wb') as f:
+            torch.save(model, f) # UNCOMMENT FOR REAL RUN
         if val_ppl < best_val_ppl:
-            with open(ckpt, 'wb') as f:
-                torch.save(model, f)
             best_epoch = epoch
             best_val_ppl = val_ppl
         else:
