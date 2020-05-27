@@ -38,8 +38,8 @@ class DMETM(nn.Module):
 
         ## define the word embedding matrix \rho: L x V
         if args.train_word_embeddings:
-            # self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
-            self.rho = nn.Parameter(word_embeddings)
+            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+            # self.rho = nn.Parameter(word_embeddings)
         else:
             num_embeddings, emsize = word_embeddings.size()
             rho = nn.Embedding(num_embeddings, emsize)
