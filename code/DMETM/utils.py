@@ -155,6 +155,9 @@ def visualize(docs, _lda_keys, topics, theta):
     #              color=colormap[_lda_keys][:num_example])
     # plt.show()
 
-def get_all_beta(alpha, model, batch_size=100):
+def get_all_beta(alpha, model, vocab_size, num_sources, num_times, batch_size=100):
     source_batches = np.array_split(np.arange(model.source_lambda.shape[0]), np.ceil(model.source_lambda.shape[0] / batch_size))
-    return torch.cat([model.get_beta(alpha, torch.tensor(source_batch)) for source_batch in source_batches])
+    try:
+        return torch.cat([model.get_beta(alpha, torch.arange(vocab_size), torch.tensor(source_batch), torch.arange(num_times)) for source_batch in source_batches])
+    except:
+        raise Exception(model.get_beta(alpha, torch.arange(vocab_size), torch.tensor(source_batches[0]), torch.arange(num_times)).shape)

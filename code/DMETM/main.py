@@ -681,7 +681,9 @@ if args.mode == 'train':
         alpha = model.mu_q_alpha
         
         # beta = model.get_beta_full(alpha).cpu().numpy()
-        # scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
+        # beta = model.get_beta(alpha, torch.arange(vocab_size), torch.arange(args.num_sources), torch.arange(args.num_times))
+        beta = get_all_beta(alpha, model, vocab_size, args.num_sources, args.num_times).cpu().detach().numpy()
+        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
         
         print('saving alpha...')
         alpha = model.mu_q_alpha.detach().cpu().numpy()
