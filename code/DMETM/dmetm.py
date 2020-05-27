@@ -455,8 +455,10 @@ class DMETM(nn.Module):
         # nll = self.get_nll(theta, beta, bows, unique_tokens)
 
         # test for difference between DMETM and DETM
-        beta = self.get_beta_full(alpha)
-        beta = beta[unique_sources.type('torch.LongTensor'), :, unique_times.type('torch.LongTensor'), :] # D' x K x V'
+        beta = self.get_beta_full(alpha)        
+
+        beta = beta[sources.type('torch.LongTensor'), :, times.type('torch.LongTensor'), :] # D' x K x V'
+        
         nll = self.get_nll_full(theta, beta, bows)
         
         nll = nll.sum() * coeff
