@@ -67,10 +67,10 @@ parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of 
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 ### optimization-related arguments
-parser.add_argument('--lr', type=float, default=0.0005, help='learning rate')
+parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
-parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
 
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
@@ -95,11 +95,15 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 
 ### multi-sources-related parameters (DMETM)
-parser.add_argument('--use_source_embeddings', type=int, default=0, help='not using source embedding at all (identical to DETM)')
+parser.add_argument('--use_source_embeddings', type=int, default=1, help='not using source embedding at all (identical to DETM)')
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
-parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix lambda or train it')
+parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix lambda or train it')
 
 args = parser.parse_args()
+
+if not args.use_source_embeddings:
+    print("When use_source_embeddings is 0, model will not train the source embeddings")
+    args.train_source_embeddings = 0
 
 # pca seems unused
 # pca = PCA(n_components=2)
@@ -330,8 +334,8 @@ def train(epoch):
         acc_kl_alpha_loss += torch.sum(kl_alpha).item()
         cnt += 1
 
-        # if idx % args.log_interval == 0 and idx > 0:
-        if idx > 0:            
+        if idx % args.log_interval == 0 and idx > 0:
+        # if idx > 0:
             cur_loss = round(acc_loss / cnt, 2) 
             cur_nll = round(acc_nll / cnt, 2) 
             cur_kl_theta = round(acc_kl_theta_loss / cnt, 2) 
@@ -495,8 +499,7 @@ def get_completion_ppl(source):
                 unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
                     for i in range(token_batch.shape[0])],[])))
 
-                set_trace()
-
+                # set_trace()
                 # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)                
                 # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
 
@@ -566,13 +569,18 @@ def get_completion_ppl(source):
                 uniq_tokens_list.extend(sum([sum(token_batch_2[i].tolist(),[]) for i in range(token_batch_2.shape[0])],[]))                
                 unique_tokens = torch.tensor(np.unique(uniq_tokens_list))
 
-                beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
-                beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+                # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
+                # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
 
-                loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
+                beta = model.get_beta_full(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
+                beta = beta[times_batch_2.type('torch.LongTensor'),:,:,sources_batch_2.type('torch.LongTensor')]
+
+                loglik = theta.unsqueeze(2) * beta
+                loglik = loglik.sum(1)                
 
                 loglik = torch.log(loglik)
-                nll = -loglik * data_batch_2[:,unique_tokens]
+                # nll = -loglik * data_batch_2[:,unique_tokens]
+                nll = -loglik * data_batch_2
                 nll = nll.sum(-1)
                 loss = nll / sums_2.squeeze()
                 loss = loss.mean().item()
