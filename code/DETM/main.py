@@ -50,7 +50,7 @@ parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learnin
 parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
-parser.add_argument('--seed', type=int, default=2019, help='random seed (default: 1)')
+parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
 parser.add_argument('--enc_drop', type=float, default=0.0, help='dropout rate on encoder')
 parser.add_argument('--eta_dropout', type=float, default=0.0, help='dropout rate on rnn for eta')
 parser.add_argument('--clip', type=float, default=0.0, help='gradient clipping')
