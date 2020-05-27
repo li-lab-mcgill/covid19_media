@@ -60,7 +60,7 @@ class DMETM(nn.Module):
                 # self.source_lambda = source_lambda.weight.data.clone().float().to(device)
                 self.source_lambda = sources_embeddings.clone().float().to(device)
         else: # not using source embedding at all (i.e., identical to DETM)
-            self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))
+            self.source_lambda = torch.ones(args.num_sources, args.rho_size).clone().float().to(device)
 
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
@@ -176,8 +176,7 @@ class DMETM(nn.Module):
             inp_t = torch.cat([output[t], etas[t-1]], dim=0)
             mu_t = self.mu_q_eta(inp_t)
 
-            if torch.isnan(mu_t).sum() != 0:
-                set_trace()
+            if torch.isnan(mu_t).sum() != 0:                
                 for param in self.mu_q_eta.parameters():
                     if torch.isnan(param).sum() != 0:
                         raise Exception(param.grad)                
@@ -257,7 +256,9 @@ class DMETM(nn.Module):
         """Returns the topic matrix beta of shape S x K x T x V
         """
         # alpha: K x T x L
-        # source_lambda: S x L            
+        # source_lambda: S x L
+
+        set_trace()
 
         # S x L -> S x L x L
         source_lambda_s = self.source_lambda.unsqueeze(2).expand(*self.source_lambda.size(), self.source_lambda.size(1))

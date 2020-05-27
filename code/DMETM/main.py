@@ -495,7 +495,7 @@ def get_completion_ppl(source):
                 unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
                     for i in range(token_batch.shape[0])],[])))
 
-                set_trace()
+                # set_trace()
 
                 # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
                 # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
