@@ -186,7 +186,7 @@ class DETM(nn.Module):
         theta = theta.unsqueeze(1)
         loglik = torch.bmm(theta, beta).squeeze(1)
         loglik = loglik
-        loglik = torch.log(loglik+1e-6)
+        loglik = torch.log(loglik)
         nll = -loglik * bows
         nll = nll.sum(-1)
         return nll  

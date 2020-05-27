@@ -416,7 +416,7 @@ class DMETM(nn.Module):
     def get_nll(self, theta, beta, bows, unique_tokens):
         theta = theta.unsqueeze(1)
         loglik = torch.bmm(theta, beta).squeeze(1)        
-        loglik = torch.log(loglik+1e-6)
+        loglik = torch.log(loglik)
         nll = -loglik * bows[:,unique_tokens]
         nll = nll.sum(-1)
         return nll  
@@ -424,7 +424,7 @@ class DMETM(nn.Module):
     def get_nll_full(self, theta, beta, bows):
         theta = theta.unsqueeze(1)
         loglik = torch.bmm(theta, beta).squeeze(1)
-        loglik = torch.log(loglik+1e-6)
+        loglik = torch.log(loglik)
         nll = -loglik * bows
         nll = nll.sum(-1)
         return nll          
