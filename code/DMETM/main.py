@@ -59,7 +59,7 @@ parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of
 
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
-parser.add_argument('--train_word_embeddings', type=int, default=1, help='whether to fix rho or train it')
+parser.add_argument('--train_word_embeddings', type=int, default=0, help='whether to fix rho or train it')
 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 
@@ -77,10 +77,8 @@ parser.add_argument('--mode', type=str, default='train', help='train or eval mod
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
 
-
-parser.add_argument('--enc_drop', type=float, default=0.1, help='dropout rate on encoder')
-parser.add_argument('--eta_dropout', type=float, default=0.1, help='dropout rate on rnn for eta')
-
+parser.add_argument('--enc_drop', type=float, default=0.0, help='dropout rate on encoder')
+parser.add_argument('--eta_dropout', type=float, default=0.0, help='dropout rate on rnn for eta')
 
 parser.add_argument('--clip', type=float, default=0.0, help='gradient clipping')
 parser.add_argument('--nonmono', type=int, default=10, help='number of bad hits allowed')
