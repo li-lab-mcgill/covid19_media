@@ -97,7 +97,6 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 ### multi-sources-related parameters (DMETM)
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
-
 parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix lambda or train it')
 
 args = parser.parse_args()
@@ -503,7 +502,7 @@ def get_completion_ppl(source):
                 beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
                 
-                loglik = torch.log(loglik+1e-6)
+                loglik = torch.log(loglik)
                 nll = -loglik * data_batch[:,unique_tokens]
                 nll = nll.sum(-1)
                 loss = nll / sums.squeeze()
@@ -565,7 +564,7 @@ def get_completion_ppl(source):
 
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
 
-                loglik = torch.log(loglik+1e-6)
+                loglik = torch.log(loglik)
                 nll = -loglik * data_batch_2[:,unique_tokens]
                 nll = nll.sum(-1)
                 loss = nll / sums_2.squeeze()
