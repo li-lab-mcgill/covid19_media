@@ -645,8 +645,8 @@ if args.mode == 'train':
     
     for epoch in range(1, args.epochs):        
         train(epoch)
-        if epoch % args.visualize_every == 0:
-            visualize()
+        # if epoch % args.visualize_every == 0:
+        #     visualize()
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
