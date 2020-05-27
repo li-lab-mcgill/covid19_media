@@ -663,6 +663,8 @@ if args.mode == 'train':
         if val_ppl < best_val_ppl:
             best_epoch = epoch
             best_val_ppl = val_ppl
+            with open(ckpt, 'wb') as f:
+                torch.save(model, f) # UNCOMMENT FOR REAL RUN
         else:
             ## check whether to anneal lr
             lr = optimizer.param_groups[0]['lr']

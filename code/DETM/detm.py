@@ -11,7 +11,7 @@ from torch import nn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DETM(nn.Module):
-    def __init__(self, args, embeddings, eta_factor=1e2):
+    def __init__(self, args, embeddings, eta_factor=1):
         super(DETM, self).__init__()
 
         ## define hyperparameters
