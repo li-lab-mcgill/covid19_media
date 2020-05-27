@@ -495,18 +495,22 @@ def get_completion_ppl(source):
                 unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
                     for i in range(token_batch.shape[0])],[])))
 
-                # set_trace()
+                set_trace()
 
-                # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
+                # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)                
                 # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
 
-                beta = model.get_beta_full(alpha)
+                beta = model.get_beta_full(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
+                beta = beta[times_batch.type('torch.LongTensor'),:,:,sources_batch.type('torch.LongTensor')]
 
                 loglik = theta.unsqueeze(2) * beta
                 loglik = loglik.sum(1)
                 
                 loglik = torch.log(loglik)
-                nll = -loglik * data_batch[:,unique_tokens]
+
+                # nll = -loglik * data_batch[:,unique_tokens]
+                nll = -loglik * data_batch
+
                 nll = nll.sum(-1)
                 loss = nll / sums.squeeze()
                 loss = loss.mean().item()

@@ -258,7 +258,7 @@ class DMETM(nn.Module):
         # alpha: K x T x L
         # source_lambda: S x L
 
-        set_trace()
+        # set_trace()
 
         # S x L -> S x L x L
         source_lambda_s = self.source_lambda.unsqueeze(2).expand(*self.source_lambda.size(), self.source_lambda.size(1))
