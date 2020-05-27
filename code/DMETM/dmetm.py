@@ -449,11 +449,14 @@ class DMETM(nn.Module):
 
         # self.check_beta(alpha, unique_tokens, unique_sources, unique_times)
         
-        beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-        
-        beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+        # beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
+        # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+        # nll = self.get_nll(theta, beta, bows, unique_tokens)
 
-        nll = self.get_nll(theta, beta, bows, unique_tokens)
+        # test for difference between DMETM and DETM
+        beta = get_beta_full(alpha)
+        beta = beta[unique_sources, :, unique_times, :] # D' x K x V'
+        nll = self.get_nll_full(theta, beta, bows)
         
         nll = nll.sum() * coeff
         nelbo = nll + kl_alpha + kl_eta + kl_theta
