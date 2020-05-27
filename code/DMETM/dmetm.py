@@ -18,7 +18,7 @@ def is_nan_or_inf(tensor):
     return torch.isnan(tensor) ^ torch.isinf(tensor)
 
 class DMETM(nn.Module):
-    def __init__(self, args, word_embeddings, sources_embeddings, eta_factor=1e3):
+    def __init__(self, args, word_embeddings, sources_embeddings, eta_factor=1):
         super(DMETM, self).__init__()
 
         ## define hyperparameters
