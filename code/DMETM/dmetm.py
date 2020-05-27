@@ -59,7 +59,8 @@ class DMETM(nn.Module):
             # source_lambda = nn.Embedding(args.num_sources, args.rho_size)
             # source_lambda.weight.data = sources_embeddings
             # self.source_lambda = source_lambda.weight.data.clone().float().to(device)
-            self.source_lambda = sources_embeddings.clone().float().to(device)
+            # self.source_lambda = sources_embeddings.clone().float().to(device)
+            self.source_lambda = torch.ones(self.num_sources, self.rho_size).to(device)
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
         self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
@@ -253,12 +254,14 @@ class DMETM(nn.Module):
 
         # S' x 1 x L -> S' x 1 x 1 x L -> S' x K x T x L
         source_lambda_s = self.source_lambda[uniq_sources.type('torch.LongTensor')]
+        # source_lambda_s = self.source_lambda
 
         num_uniq_times = uniq_times.shape[0]
         
         # S' x 1 x 1 x L -> S' x K x T' x L
         source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, num_uniq_times,1)
         # source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, self.num_times,1)
+        # raise Exception(source_lambda_s.shape)
         alpha_s = alpha_s * source_lambda_s # S' x K x T' x L
         
         # (S' x T' x K) x L prod L x V' = (S' x T' x K) x V'
