@@ -23,6 +23,8 @@ from torch.nn import functional as F
 from detm import DETM
 from utils import nearest_neighbors, get_topic_coherence
 
+from IPython.core.debugger import set_trace
+
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
@@ -44,7 +46,7 @@ parser.add_argument('--emb_size', type=int, default=300, help='dimension of embe
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
-parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
+parser.add_argument('--train_embeddings', type=int, default=0, help='whether to fix rho or train it')
 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
@@ -57,8 +59,8 @@ parser.add_argument('--epochs', type=int, default=5, help='number of epochs to t
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
-parser.add_argument('--enc_drop', type=float, default=0.0, help='dropout rate on encoder')
-parser.add_argument('--eta_dropout', type=float, default=0.0, help='dropout rate on rnn for eta')
+parser.add_argument('--enc_drop', type=float, default=0.1, help='dropout rate on encoder')
+parser.add_argument('--eta_dropout', type=float, default=0.1, help='dropout rate on rnn for eta')
 parser.add_argument('--clip', type=float, default=0.0, help='gradient clipping')
 parser.add_argument('--nonmono', type=int, default=10, help='number of bad hits allowed')
 parser.add_argument('--wdecay', type=float, default=1.2e-6, help='some l2 regularization')
@@ -176,7 +178,7 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'detm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
+        'detm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainWordEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
             args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_embeddings))
 
@@ -375,6 +377,9 @@ def get_completion_ppl(source):
                 eta_td = eta[times_batch.type('torch.LongTensor')]
                 theta = get_theta(eta_td, normalized_data_batch)
                 alpha_td = alpha[:, times_batch.type('torch.LongTensor'), :]
+
+                # set_trace()
+
                 beta = model.get_beta(alpha_td).permute(1, 0, 2)
                 loglik = theta.unsqueeze(2) * beta
                 loglik = loglik.sum(1)
@@ -494,8 +499,8 @@ if args.mode == 'train':
     all_val_ppls = []
     for epoch in range(1, args.epochs):
         train(epoch)
-        if epoch % args.visualize_every == 0:
-            visualize()
+        # if epoch % args.visualize_every == 0:
+        #     visualize()
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
@@ -532,7 +537,7 @@ if args.mode == 'train':
         s1='\n'.join([str(i) for i in all_val_ppls])
         s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
         f.write(s1)
-        f.close()        
+        f.close()
 else: 
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
