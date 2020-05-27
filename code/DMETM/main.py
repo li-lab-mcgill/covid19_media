@@ -678,7 +678,7 @@ if args.mode == 'train':
 
         if args.train_word_embeddings:
             print('saving word embedding matrix rho...')            
-            rho = model.rho.weight.cpu().detach().numpy()
+            rho = model.rho.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         if args.train_source_embeddings:

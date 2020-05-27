@@ -217,13 +217,13 @@ class DMETM(nn.Module):
 
 
     # incorporate source-specific embedding lambda
-    # by taking the inner product of alpha with S sets of L x L diagonal matrix
+    # by taking the **inner product** of alpha with S sets of L x L diagonal matrix
     def get_beta(self, alpha, uniq_tokens, uniq_sources, uniq_times):
         """Returns the topic matrix beta of shape S x K x T x V
         """
         # alpha: K x T x L
         # source_lambda: S x L
-        set_trace()
+        # set_trace()
 
         # K x T' x L
         alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
