@@ -38,7 +38,8 @@ class DMETM(nn.Module):
 
         ## define the word embedding matrix \rho: L x V
         if args.train_word_embeddings:
-            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+            # self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+            self.rho = nn.Parameter(torch.randn(args.vocab_size, args.rho_size)) 
             # self.rho = nn.Parameter(word_embeddings)
         else:
             num_embeddings, emsize = word_embeddings.size()
@@ -50,7 +51,7 @@ class DMETM(nn.Module):
         ## define the source-specific embedding \lambda S x L' (DMETM)
         if args.train_source_embeddings:
             # self.source_lambda = nn.Parameter(torch.randn(args.num_sources, args.rho_size))
-            self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))            
+            self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))
             # self.source_lambda = nn.Parameter(sources_embeddings)
         else:
             # source_lambda = nn.Embedding(args.num_sources, args.rho_size)
@@ -216,13 +217,13 @@ class DMETM(nn.Module):
 
 
     # incorporate source-specific embedding lambda
+    # by taking the inner product of alpha with S sets of L x L diagonal matrix
     def get_beta(self, alpha, uniq_tokens, uniq_sources, uniq_times):
         """Returns the topic matrix beta of shape S x K x T x V
         """
         # alpha: K x T x L
         # source_lambda: S x L
-
-        # set_trace()
+        set_trace()
 
         # K x T' x L
         alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
@@ -247,6 +248,33 @@ class DMETM(nn.Module):
 
         return F.softmax(logit, dim=-1)[:,:,:,uniq_tokens.type('torch.LongTensor')] # S' x K x T' x V'
 
+
+    # incorporate source-specific embedding lambda
+    # by taking the **element-wise** product of alpha with S sets of L x L diagonal matrix
+    def get_beta_elementwise(self, alpha, uniq_tokens, uniq_sources, uniq_times):
+        """Returns the topic matrix beta of shape S x K x T x V
+        """
+        # alpha: K x T x L
+        # source_lambda: S x L            
+
+        # 1 x K x T' x L -> S x K x T' x L
+        alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
+        alpha_s = alpha_s.unsqueeze(0).repeat(uniq_sources.shape[0], 1, 1, 1)
+
+        # S' x 1 x L -> S' x 1 x 1 x L -> S' x K x T x L
+        source_lambda_s = self.source_lambda[uniq_sources.type('torch.LongTensor')]
+
+        num_uniq_times = uniq_times.shape[0]
+        
+        # S' x 1 x 1 x L -> S' x K x T' x L
+        source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, num_uniq_times,1)
+        
+        alpha_s = alpha_s * source_lambda_s # S' x K x T' x L
+        
+        # (S' x T' x K) x L prod L x V' = (S' x T' x K) x V'
+        logit = torch.matmul(alpha_s, self.rho.permute(1, 0))
+
+        return F.softmax(logit, dim=-1)[:, :, :, uniq_tokens.type('torch.LongTensor')] # S x K x T x V
 
 
     # get beta for full vocab (can be memory consuming for large vocab, time, source)

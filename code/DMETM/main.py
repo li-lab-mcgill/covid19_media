@@ -60,7 +60,7 @@ parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of
 
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
-parser.add_argument('--train_word_embeddings', type=int, default=0, help='whether to fix rho or train it')
+parser.add_argument('--train_word_embeddings', type=int, default=1, help='whether to fix rho or train it')
 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 
@@ -101,7 +101,7 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 ### multi-sources-related parameters (DMETM)
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
 
-parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix lambda or train it')
+parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix lambda or train it')
 
 args = parser.parse_args()
 
