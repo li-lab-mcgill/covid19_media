@@ -257,7 +257,7 @@ class DMETM(nn.Module):
         # source_lambda: S x L            
 
         # S x L -> S x L x L
-        source_lambda_s = source_lambda.unsqueeze(2).expand(*source_lambda.size(), source_lambda.size(1))
+        source_lambda_s = self.source_lambda.unsqueeze(2).expand(*self.source_lambda.size(), self.source_lambda.size(1))
 
         # S x L x L * L x L -> S x L x L (i.e. S sets of L x L diagonal matrices)
         source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1)).to(device)        
