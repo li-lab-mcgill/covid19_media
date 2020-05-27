@@ -32,26 +32,33 @@ def _fetch(path, name):
     return {'tokens': tokens, 'counts': counts}
 
 def _fetch_temporal(path, name):
+    
     if name == 'train':
-        token_file = os.path.join(path, 'bow_tr_tokens.mat')
-        count_file = os.path.join(path, 'bow_tr_counts.mat')
-        time_file = os.path.join(path, 'bow_tr_timestamps.mat')
+        token_file = os.path.join(path, 'bow_tr_tokens')
+        count_file = os.path.join(path, 'bow_tr_counts')
+        time_file = os.path.join(path, 'bow_tr_timestamps')
+
     elif name == 'valid':
-        token_file = os.path.join(path, 'bow_va_tokens.mat')
-        count_file = os.path.join(path, 'bow_va_counts.mat')
-        time_file = os.path.join(path, 'bow_va_timestamps.mat')
+        token_file = os.path.join(path, 'bow_va_tokens')
+        count_file = os.path.join(path, 'bow_va_counts')
+        time_file = os.path.join(path, 'bow_va_timestamps')
+
     else:
-        token_file = os.path.join(path, 'bow_ts_tokens.mat')
-        count_file = os.path.join(path, 'bow_ts_counts.mat')
-        time_file = os.path.join(path, 'bow_ts_timestamps.mat')
+        token_file = os.path.join(path, 'bow_ts_tokens')
+        count_file = os.path.join(path, 'bow_ts_counts')
+        time_file = os.path.join(path, 'bow_ts_timestamps')
+
+    
     tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
     counts = scipy.io.loadmat(count_file)['counts'].squeeze()
     times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
+
+
     if name == 'test':
-        token_1_file = os.path.join(path, 'bow_ts_h1_tokens.mat')
-        count_1_file = os.path.join(path, 'bow_ts_h1_counts.mat')
-        token_2_file = os.path.join(path, 'bow_ts_h2_tokens.mat')
-        count_2_file = os.path.join(path, 'bow_ts_h2_counts.mat')
+        token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
+        count_1_file = os.path.join(path, 'bow_ts_h1_counts')
+        token_2_file = os.path.join(path, 'bow_ts_h2_tokens')
+        count_2_file = os.path.join(path, 'bow_ts_h2_counts')
         tokens_1 = scipy.io.loadmat(token_1_file)['tokens'].squeeze()
         counts_1 = scipy.io.loadmat(count_1_file)['counts'].squeeze()
         tokens_2 = scipy.io.loadmat(token_2_file)['tokens'].squeeze()
@@ -59,6 +66,7 @@ def _fetch_temporal(path, name):
         return {'tokens': tokens, 'counts': counts, 'times': times, 
                     'tokens_1': tokens_1, 'counts_1': counts_1, 
                         'tokens_2': tokens_2, 'counts_2': counts_2} 
+
     return {'tokens': tokens, 'counts': counts, 'times': times}
 
 def get_data(path, temporal=False):
@@ -89,7 +97,7 @@ def get_batch(tokens, counts, ind, vocab_size, emsize=300, temporal=False, times
         if temporal:
             timestamp = times[doc_id]
             times_batch[i] = timestamp
-        L = count.shape[1]
+        # L = count.shape[1]
         if len(doc) == 1: 
             doc = [doc.squeeze()]
             count = [count.squeeze()]
@@ -119,5 +127,7 @@ def get_rnn_input(tokens, counts, times, num_times, vocab_size, num_docs):
             cnt[t] += len(tmp)
         if idx % 20 == 0:
             print('idx: {}/{}'.format(idx, len(indices)))
+    # rnn_input = rnn_input / cnt.unsqueeze(1)
     rnn_input = (rnn_input + 1e-16) / (cnt.unsqueeze(1) + 1e-16)
     return rnn_input
+

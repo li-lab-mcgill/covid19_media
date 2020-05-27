@@ -1,23 +1,44 @@
-# Multi-modal Dynamic Embedded Topic Model
+# DETM
 
-![scGan](images/model_sketch.jpg)
+This is code that accompanies the paper titled "The Dynamic Embedded Topic Model" by Adji B. Dieng, Francisco J. R. Ruiz, and David M. Blei. (Arxiv link: https://arxiv.org/abs/1907.05545).
 
-The code for preprocessing GPHIN dataset is in `scripts/data_gphin.py`. The default settings are configured for GPHIN dataset and in order to preprocess this datast, simply run the following command
+The DETM is an extension of the Embedded Topic Model (https://arxiv.org/abs/1907.04907) to corpora with temporal dependencies. The DETM models each word with a categorical distribution whose parameter is given by the inner product between the word embedding and an embedding representation of its assigned topic at a particular time step. The word embeddings allow the DETM to generalize to rare words. The DETM learns smooth topic trajectories by defining a random walk prior over the embeddings of the topics. The DETM is fit using structured amortized variational inference with LSTMs.
 
-``` python data_gphin.py```
+## Dependencies
 
-This script assumes that the data is in a CSV format with a "country" column and a "SUMMARY" column.
++ python 3.6.7
++ pytorch 1.1.0
 
-The above script generates the bag-of-words representation of the data and stores it in `data/GPHIN/` directory.
+## Datasets
 
-After preprocessing, the ETM code can be run using the following command,
+The pre-processed UN and ACL datasets can be found below:
 
-```python main.py --mode train --dataset "GPHIN" --data_path data/GPHIN --num_topics 10 --train_embeddings 1 --epochs 10```
++ https://bitbucket.org/franrruiz/data_acl_largev/src/master/
++ https://bitbucket.org/franrruiz/data_undebates_largev/src/master/
 
-or simply run ```./run.sh```. If running on Compute Canada, run ```./submit_job.sh```.
+The pre-fitted embeddings can be found below:
 
-The above command is used to learn interpretable embeddings and topics together using ETM. The trained model is saved in `./results` directory.
++ https://bitbucket.org/diengadji/embeddings/src
 
-To evaluate perplexity on document completion, topic coherence, topic diversity, and visualize the topics/embeddings run the following command,
+All the scripts to pre-process a dataset can be found in the folder 'scripts'. 
 
-```python main.py --mode eval --dataset "GPHIN" --data_path data/GPHIN --num_topics 10 --train_embeddings 1 --tc 1 --td 1 --load_from results/CKPT_PATH```
+## Example
+
+To run the DETM on the ACL dataset you can run the command below. You can specify different values for other arguments, peek at the arguments list in main.py.
+
+```
+python main.py --dataset acl --data_path PATH_TO_DATA --emb_path PATH_TO_EMBEDDINGS --min_df 10 --num_topics 50 --lr 0.0001 --epochs 1000 --mode train
+```
+
+
+## Citation
+```
+@article{dieng2019dynamic,
+  title={The Dynamic Embedded Topic Model},
+  author={Dieng, Adji B and Ruiz, Francisco JR and Blei, David M},
+  journal={arXiv preprint arXiv:1907.05545},
+  year={2019}
+}
+```
+
+

@@ -39,9 +39,8 @@ parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directo
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
-
-# parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
-parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
+# parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
+parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
 parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
 
@@ -715,7 +714,6 @@ else:
 
     print('visualizing topics and embeddings...')
     visualize()
-
 
 
 

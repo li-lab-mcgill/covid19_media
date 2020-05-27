@@ -116,7 +116,6 @@ def onehot(data, min_length):
     return list(np.bincount(data, minlength=min_length))
 
 def nearest_neighbors(word, embeddings, vocab, num_words):
-    # vectors = embeddings.cpu().numpy()
     vectors = embeddings.cpu().detach().numpy()
     index = vocab.index(word)
     # query = embeddings[index].cpu().numpy() 
@@ -154,33 +153,3 @@ def visualize(docs, _lda_keys, topics, theta):
     plt.scatter(x=tsne_lda[:, 0], y=tsne_lda[:, 1],
                  color=colormap[_lda_keys][:num_example])
     plt.show()
-
-
-def pickle2csv(pkl_file):
-    mydict = pickle.load(open(pkl_file, 'rb'))
-    csvout = pkl_file[0:len(pkl_file)-3] + 'csv'
-    with open(csvout, 'w', newline="") as csv_file:
-        writer = csv.writer(csv_file)
-        for key, value in mydict.items():
-            writer.writerow([key, value])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
