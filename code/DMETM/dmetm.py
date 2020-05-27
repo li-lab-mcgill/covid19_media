@@ -49,15 +49,18 @@ class DMETM(nn.Module):
 
         
         ## define the source-specific embedding \lambda S x L' (DMETM)
-        if args.train_source_embeddings:
-            # self.source_lambda = nn.Parameter(torch.randn(args.num_sources, args.rho_size))
+        if args.use_source_embeddings:
+            if args.train_source_embeddings:
+                # self.source_lambda = nn.Parameter(torch.randn(args.num_sources, args.rho_size))
+                self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))
+                # self.source_lambda = nn.Parameter(sources_embeddings)
+            else:
+                # source_lambda = nn.Embedding(args.num_sources, args.rho_size)
+                # source_lambda.weight.data = sources_embeddings
+                # self.source_lambda = source_lambda.weight.data.clone().float().to(device)
+                self.source_lambda = sources_embeddings.clone().float().to(device)
+        else: # not using source embedding at all (i.e., identical to DETM)
             self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))
-            # self.source_lambda = nn.Parameter(sources_embeddings)
-        else:
-            # source_lambda = nn.Embedding(args.num_sources, args.rho_size)
-            # source_lambda.weight.data = sources_embeddings
-            # self.source_lambda = source_lambda.weight.data.clone().float().to(device)
-            self.source_lambda = sources_embeddings.clone().float().to(device)
 
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
@@ -260,7 +263,7 @@ class DMETM(nn.Module):
         source_lambda_s = self.source_lambda.unsqueeze(2).expand(*self.source_lambda.size(), self.source_lambda.size(1))
 
         # S x L x L * L x L -> S x L x L (i.e. S sets of L x L diagonal matrices)
-        source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1)).to(device)        
+        source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1)).to(device)
 
         # K x T x L -> L x K x T -> L x (K x T)
         tmp = alpha.permute(2,0,1).view(alpha.shape[2], alpha.shape[0]*alpha.shape[1])
@@ -271,7 +274,7 @@ class DMETM(nn.Module):
         
         logit = torch.matmul(alpha_s, self.rho.permute(1, 0)) # S x K x T x L * L x V -> S x K x T x V
         
-        return F.softmax(logit_full, dim=-1) # S x K x T x V
+        return F.softmax(logit, dim=-1) # S x K x T x V
 
 
     # incorporate source-specific embedding lambda
