@@ -101,7 +101,7 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 ### multi-sources-related parameters (DMETM)
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
 
-parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix lambda or train it')
+parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix lambda or train it')
 
 args = parser.parse_args()
 

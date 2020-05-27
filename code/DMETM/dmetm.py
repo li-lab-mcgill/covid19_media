@@ -234,7 +234,7 @@ class DMETM(nn.Module):
         source_lambda_s = source_lambda_s.unsqueeze(2).expand(*source_lambda_s.size(), source_lambda_s.size(1))
 
         # S' x L x L * L x L -> S' x L x L (i.e. S' sets of L x L diagonal matrices)
-        source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1))
+        source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1)).to(device)
 
         # K x T' x L -> L x K x T' -> L x (K x T')
         tmp = alpha_s.permute(2,0,1).view(alpha_s.shape[2], alpha_s.shape[0]*alpha_s.shape[1])
