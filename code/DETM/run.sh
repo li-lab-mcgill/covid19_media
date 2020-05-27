@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CUDA_VISIBLE_DEVICES=9 python main.py \
+CUDA_VISIBLE_DEVICES=7 python main.py \
     --mode train \
     --dataset "GPHIN" \
     --data_path data/GPHIN/ \
@@ -10,7 +10,7 @@ CUDA_VISIBLE_DEVICES=9 python main.py \
     --clip 2 \
     --enc_drop 0.1 \
     --eta_dropout 0.1 \
-    --epochs 100 \
+    --epochs 10 \
     --num_topics 50 \
     --batch_size 64 \
     --min_df 10 \
