@@ -488,7 +488,7 @@ def get_topic_quality():
         print('TC_all: ', TC_all.size())
         print('\n')
         print('Get topic quality...')
-        quality = tc * diversity
+        quality = tc * TD
         print('Topic Quality is: {}'.format(quality))
         print('#'*100)
 
