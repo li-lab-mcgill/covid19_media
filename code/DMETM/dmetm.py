@@ -262,7 +262,7 @@ class DMETM(nn.Module):
         source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, num_uniq_times,1)
         # source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, self.num_times,1)
         # raise Exception(source_lambda_s.shape)
-        # alpha_s = alpha_s * source_lambda_s # S' x K x T' x L
+        alpha_s = alpha_s * source_lambda_s # S' x K x T' x L
         
         # (S' x T' x K) x L prod L x V' = (S' x T' x K) x V'
         # logit = torch.mm(tmp, self.rho[uniq_tokens.type('torch.LongTensor'),:].permute(1, 0))
@@ -287,7 +287,7 @@ class DMETM(nn.Module):
         # S x 1 x L -> S x 1 x 1 x L -> S x K x T x L
         source_lambda_s = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1, self.num_topics, self.num_times, 1)
 
-        alpha_s = alpha_s * source_lambda_s # S x K x T x L
+        # alpha_s = alpha_s * source_lambda_s # S x K x T x L
 
         # tmp = alpha_s.view(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size) # (S x T x K) x L
         
@@ -333,9 +333,9 @@ class DMETM(nn.Module):
     def get_nll(self, theta, beta, bows, unique_tokens):
         theta = theta.unsqueeze(1)
         loglik = torch.bmm(theta, beta).squeeze(1)        
-        loglik = torch.log(loglik+1e-6)
-        # nll = -loglik * bows[:,unique_tokens]
-        nll = -loglik * bows
+        loglik = torch.log(loglik)
+        nll = -loglik * bows[:,unique_tokens]
+        # nll = -loglik * bows
         nll = nll.sum(-1)
         return nll  
 
@@ -375,8 +375,8 @@ class DMETM(nn.Module):
         unique_times = times.unique()
         unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
 
-        # beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-        beta = self.get_beta_full(alpha)
+        beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
+        # beta = self.get_beta_full(alpha)
         # if is_nan_or_inf(beta).sum() != 0:
             # raise Exception('theta has nan')
         # beta = beta[unique_sources_idx.type('torch.LongTensor')]    # S' to S
@@ -395,7 +395,7 @@ class DMETM(nn.Module):
         
         # beta = beta[sources.type('torch.LongTensor'), :, times.type('torch.LongTensor'), :] # D' x K x V
         
-        # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+        beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
 
         nll = self.get_nll(theta, beta, bows, unique_tokens)
         

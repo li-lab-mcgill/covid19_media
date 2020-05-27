@@ -513,8 +513,9 @@ def get_completion_ppl(source):
                 beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
                 
-                loglik = torch.log(loglik+1e-6)
+                loglik = torch.log(loglik)
                 nll = -loglik * data_batch[:,unique_tokens]
+                # nll = -loglik * data_batch
                 nll = nll.sum(-1)
                 loss = nll / sums.squeeze()
                 loss = loss.mean().item()
@@ -575,8 +576,9 @@ def get_completion_ppl(source):
 
                 loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
 
-                loglik = torch.log(loglik+1e-6)
+                loglik = torch.log(loglik)
                 nll = -loglik * data_batch_2[:,unique_tokens]
+                # nll = -loglik * data_batch_2
                 nll = nll.sum(-1)
                 loss = nll / sums_2.squeeze()
                 loss = loss.mean().item()
