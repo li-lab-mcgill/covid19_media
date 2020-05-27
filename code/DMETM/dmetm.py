@@ -454,7 +454,7 @@ class DMETM(nn.Module):
         # nll = self.get_nll(theta, beta, bows, unique_tokens)
 
         # test for difference between DMETM and DETM
-        beta = get_beta_full(alpha)
+        beta = self.get_beta_full(alpha)
         beta = beta[unique_sources, :, unique_times, :] # D' x K x V'
         nll = self.get_nll_full(theta, beta, bows)
         
