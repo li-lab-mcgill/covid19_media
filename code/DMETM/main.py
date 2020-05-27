@@ -484,11 +484,7 @@ def get_completion_ppl(source):
                 eta_td = eta[times_batch.type('torch.LongTensor')]
                 theta = get_theta(eta_td, normalized_data_batch)
                 
-                # alpha_td = alpha[:, times_batch.type('torch.LongTensor'), :]                
-                # beta = model.get_beta(alpha_td).permute(1, 0, 2)
-                # loglik = theta.unsqueeze(2) * beta
-                # loglik = loglik.sum(1)
-
+                # work only with the unique sources and tokens in the batch to save memory
                 unique_sources = sources_batch.unique()
                 unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch])
 
