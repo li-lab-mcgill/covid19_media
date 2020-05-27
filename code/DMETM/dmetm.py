@@ -420,6 +420,14 @@ class DMETM(nn.Module):
         nll = nll.sum(-1)
         return nll  
 
+    def get_nll_full(self, theta, beta, bows):
+        theta = theta.unsqueeze(1)
+        loglik = torch.bmm(theta, beta).squeeze(1)
+        loglik = torch.log(loglik+1e-6)
+        nll = -loglik * bows
+        nll = nll.sum(-1)
+        return nll          
+
     def forward(self, unique_tokens, bows, normalized_bows, times, sources, rnn_inp, num_docs):
 
         bsz = normalized_bows.size(0)
