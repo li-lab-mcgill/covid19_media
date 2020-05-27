@@ -45,17 +45,19 @@ class DMETM(nn.Module):
             rho = nn.Embedding(num_embeddings, emsize)
             rho.weight.data = word_embeddings
             self.rho = rho.weight.data.clone().float().to(device)
+
         
         ## define the source-specific embedding \lambda S x L' (DMETM)
         if args.train_source_embeddings:
             # self.source_lambda = nn.Parameter(torch.randn(args.num_sources, args.rho_size))
-            # self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))            
-            self.source_lambda = nn.Parameter(sources_embeddings)
+            self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))            
+            # self.source_lambda = nn.Parameter(sources_embeddings)
         else:
             # source_lambda = nn.Embedding(args.num_sources, args.rho_size)
             # source_lambda.weight.data = sources_embeddings
             # self.source_lambda = source_lambda.weight.data.clone().float().to(device)
             self.source_lambda = sources_embeddings.clone().float().to(device)
+
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
         self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
@@ -76,6 +78,7 @@ class DMETM(nn.Module):
         self.q_eta = nn.LSTM(args.eta_hidden_size, args.eta_hidden_size, args.eta_nlayers, dropout=args.eta_dropout)
         self.mu_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
         self.logsigma_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
+        
         self.max_logsigma_t = 10
         self.min_logsigma_t = -10
 
@@ -217,23 +220,30 @@ class DMETM(nn.Module):
         """Returns the topic matrix beta of shape S x K x T x V
         """
         # alpha: K x T x L
-        # source_lambda: S x L        
+        # source_lambda: S x L
 
-        # K x T x L -> K x T' x L
+        # set_trace()
+
+        # K x T' x L
         alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
-
-        # K x T' x L -> 1 x K x T' x L -> S' x K x T' x L
-        alpha_s = alpha_s.unsqueeze(0).repeat(uniq_sources.shape[0], 1, 1, 1)
         
         # S x L -> S' x L
         source_lambda_s = self.source_lambda[uniq_sources.type('torch.LongTensor')]
-                
-        # S' x L -> S' x 1 x 1 x L -> S' x K x T' x L
-        source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1, self.num_topics, uniq_times.shape[0], 1)
 
-        alpha_s = alpha_s * source_lambda_s # S' x K x T' x L        
+        # S' x L -> S' x L x L
+        source_lambda_s = source_lambda_s.unsqueeze(2).expand(*source_lambda_s.size(), source_lambda_s.size(1))
+
+        # S' x L x L * L x L -> S' x L x L (i.e. S' sets of L x L diagonal matrices)
+        source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1))
+
+        # K x T' x L -> L x K x T' -> L x (K x T')
+        tmp = alpha_s.permute(2,0,1).view(alpha_s.shape[2], alpha_s.shape[0]*alpha_s.shape[1])
+
+        # S' x L x L * L x (K x T') -> S' x L x (K x T') -> S' x L x K x T' -> S' x K x T' x L
+        alpha_s = torch.matmul(source_lambda_s, tmp).view(source_lambda_s.shape[0], 
+            source_lambda_s.shape[1], alpha_s.shape[0], alpha_s.shape[1]).permute(0,2,3,1)
         
-        logit = torch.matmul(alpha_s, self.rho.permute(1, 0)) # S' x K x T' x L prod L x V = (S' x K x T') x V
+        logit = torch.matmul(alpha_s, self.rho.permute(1, 0)) # S' x K x T' x L * L x V -> S' x K x T' x V
 
         return F.softmax(logit, dim=-1)[:,:,:,uniq_tokens.type('torch.LongTensor')] # S' x K x T' x V'
 
