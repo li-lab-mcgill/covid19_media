@@ -249,6 +249,31 @@ class DMETM(nn.Module):
         return F.softmax(logit, dim=-1)[:,:,:,uniq_tokens.type('torch.LongTensor')] # S' x K x T' x V'
 
 
+    # get beta for full vocab (can be memory consuming for large vocab, time, source)
+    def get_beta_full(self, alpha):
+        """Returns the topic matrix beta of shape S x K x T x V
+        """
+        # alpha: K x T x L
+        # source_lambda: S x L            
+
+        # S x L -> S x L x L
+        source_lambda_s = source_lambda.unsqueeze(2).expand(*source_lambda.size(), source_lambda.size(1))
+
+        # S x L x L * L x L -> S x L x L (i.e. S sets of L x L diagonal matrices)
+        source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1)).to(device)        
+
+        # K x T x L -> L x K x T -> L x (K x T)
+        tmp = alpha.permute(2,0,1).view(alpha.shape[2], alpha.shape[0]*alpha.shape[1])
+
+        # S x L x L * L x (K x T) -> S x L x (K x T) -> S x L x K x T -> S x K x T x L
+        alpha_s = torch.matmul(source_lambda_s, tmp).view(source_lambda_s.shape[0], 
+            source_lambda_s.shape[1], alpha.shape[0], alpha.shape[1]).permute(0,2,3,1)
+        
+        logit = torch.matmul(alpha_s, self.rho.permute(1, 0)) # S x K x T x L * L x V -> S x K x T x V
+        
+        return F.softmax(logit_full, dim=-1) # S x K x T x V
+
+
     # incorporate source-specific embedding lambda
     # by taking the **element-wise** product of alpha with S sets of L x L diagonal matrix
     def get_beta_elementwise(self, alpha, uniq_tokens, uniq_sources, uniq_times):
@@ -276,9 +301,11 @@ class DMETM(nn.Module):
 
         return F.softmax(logit, dim=-1)[:, :, :, uniq_tokens.type('torch.LongTensor')] # S x K x T x V
 
+     
+
 
     # get beta for full vocab (can be memory consuming for large vocab, time, source)
-    def get_beta_full(self, alpha):
+    def get_beta_full_elementwise(self, alpha):
         """Returns the topic matrix beta of shape S x K x T x V
         """
         # alpha: K x T x L
@@ -300,6 +327,7 @@ class DMETM(nn.Module):
         logit_full = logit_full.view(alpha_s_full.size(0), alpha_s_full.size(1), alpha_s_full.size(2), -1) # S x K x T x V
         
         return F.softmax(logit_full, dim=-1) # S x K x T x V
+
 
 
     # get beta at specific source s, topic k, time t

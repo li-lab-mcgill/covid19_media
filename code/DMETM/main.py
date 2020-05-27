@@ -376,7 +376,7 @@ def visualize():
 
         for s in demo_source_indices:
             for k in topics:
-                for t in times:                                                            
+                for t in times:
                     gamma = model.get_beta_skt(alpha, s, k, t)
                     top_words = sum(gamma.cpu().numpy().argsort().tolist(),[])[-args.num_words+1:][::-1]
                     topic_words = [vocab[a] for a in top_words]
@@ -475,6 +475,7 @@ def get_completion_ppl(source):
                     tokens, counts, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=times)
 
                 sums = data_batch.sum(1).unsqueeze(1)
+
                 if args.bow_norm:
                     normalized_data_batch = data_batch / sums
                 else:
@@ -495,9 +496,13 @@ def get_completion_ppl(source):
 
                 set_trace()
 
-                beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
-                beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
-                loglik = torch.bmm(theta.unsqueeze(1),  beta).unsqueeze(1)
+                # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
+                # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+
+                beta = model.get_beta_full(alpha)
+
+                loglik = theta.unsqueeze(2) * beta
+                loglik = loglik.sum(1)
                 
                 loglik = torch.log(loglik)
                 nll = -loglik * data_batch[:,unique_tokens]
