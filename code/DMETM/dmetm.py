@@ -267,7 +267,8 @@ class DMETM(nn.Module):
         source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1)).to(device)
 
         # K x T x L -> L x K x T -> L x (K x T)
-        tmp = alpha.permute(2,0,1).view(alpha.shape[2], alpha.shape[0]*alpha.shape[1])
+        tmp = alpha.permute(2,0,1)
+        tmp = tmp.reshape(tmp.shape[0], tmp.shape[1]*tmp.shape[2])
 
         # S x L x L * L x (K x T) -> S x L x (K x T) -> S x L x K x T -> S x K x T x L
         alpha_s = torch.matmul(source_lambda_s, tmp).view(source_lambda_s.shape[0], 
@@ -455,7 +456,7 @@ class DMETM(nn.Module):
 
         # test for difference between DMETM and DETM
         beta = self.get_beta_full(alpha)
-        beta = beta[unique_sources, :, unique_times, :] # D' x K x V'
+        beta = beta[unique_sources.type('torch.LongTensor'), :, unique_times.type('torch.LongTensor'), :] # D' x K x V'
         nll = self.get_nll_full(theta, beta, bows)
         
         nll = nll.sum() * coeff
