@@ -237,9 +237,10 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'dmetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
+        'dmetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainWordEmbeddings_{}_useSourceEmbeddings_{}_trainSourceEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
-            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_word_embeddings))
+            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_word_embeddings, 
+            args.use_source_embeddings, args.train_source_embeddings))
 
 ## define model and optimizer
 if args.load_from != '':
@@ -677,12 +678,12 @@ if args.mode == 'train':
     model = model.to(device)
     model.eval()
     with torch.no_grad():
-        print('saving topic matrix beta...')
-        alpha = model.mu_q_alpha
-        
+                
+        # print('saving topic matrix beta...')
         # beta = model.get_beta_full(alpha).cpu().numpy()
         # scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
-        
+
+        alpha = model.mu_q_alpha
         print('saving alpha...')
         alpha = model.mu_q_alpha.cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
