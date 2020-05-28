@@ -663,7 +663,7 @@ if args.mode == 'train':
             pass
         val_ppl = get_completion_ppl('val')
         print('val_ppl: ', val_ppl)
-        if epoch % 10 == 0 and epoch > 0:   # save every 10 epochs
+        if epoch % 100 == 0 and epoch > 0:   # save every 10 epochs
             with open(ckpt + '_epoch_' + str(epoch), 'wb') as f:
                 torch.save(model, f) # UNCOMMENT FOR REAL RUN
         if val_ppl < best_val_ppl:
