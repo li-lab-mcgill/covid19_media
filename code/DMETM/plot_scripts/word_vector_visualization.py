@@ -2,6 +2,12 @@ from sklearn.manifold import TSNE
 
 ######Create a plot 2D for visualizing word vectors######
 
+corpus = [] #Add here the nearest neighbors 
+word = []
+embeddings = []
+labels = []
+queries = []
+
 #Selective Model for DMETM results
 model = word2vec.Word2Vec(corpus, size=100, window=20, min_count=500, workers=4)
 tsne_plot(model)
