@@ -63,7 +63,7 @@ def _fetch_temporal(path, name):
 
 def get_data(path, temporal=False):
     ### load vocabulary
-    with open(os.path.join(path, 'vocab.pkl'), 'rb') as f:
+    with open(os.path.join(path, 'vocab.pkl').replace('\\', '/'), 'rb') as f:
         vocab = pickle.load(f)
 
     if not temporal:
@@ -84,21 +84,24 @@ def get_batch(tokens, counts, ind, vocab_size, emsize=300, temporal=False, times
     if temporal:
         times_batch = np.zeros((batch_size, ))
     for i, doc_id in enumerate(ind):
-        doc = tokens[doc_id]
-        count = counts[doc_id]
-        if temporal:
-            timestamp = times[doc_id]
-            times_batch[i] = timestamp
-        L = count.shape[1]
-        if len(doc) == 1: 
-            doc = [doc.squeeze()]
-            count = [count.squeeze()]
-        else:
-            doc = doc.squeeze()
-            count = count.squeeze()
-        if doc_id != -1:
-            for j, word in enumerate(doc):
-                data_batch[i, word] = count[j]
+        try:
+            doc = tokens[doc_id]
+            count = counts[doc_id]
+            if temporal:
+                timestamp = times[doc_id]
+                times_batch[i] = timestamp
+            L = count.shape[1]
+            if len(doc) == 1: 
+                doc = [doc.squeeze()]
+                count = [count.squeeze()]
+            else:
+                doc = doc.squeeze()
+                count = count.squeeze()
+            if doc_id != -1:
+                for j, word in enumerate(doc):
+                    data_batch[i, word] = count[j]
+        except:
+            pass
     data_batch = torch.from_numpy(data_batch).float().to(device)
     if temporal:
         times_batch = torch.from_numpy(times_batch).to(device)

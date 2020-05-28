@@ -1,5 +1,19 @@
 # DETM
 
+## To run DETM with GPHIN and WHO datasets :
+
+1. Navigate to the folder `DETM/scripts` and run `python data_gphin.py` with your dataset named `gphin.csv` placed in `DETM/GPHIN`
+
+2. To run the DETM code, go back one directory to `DETM` and run 
+
+`python main.py --dataset GPHIN --data_path GPHIN --emb_path skipgram/skipgram_emb_300d.txt --min_df 10 --num_topics 10 --lr 0.0001 --epochs 100 --mode train --save_path data/results`
+
+3. The results will be saved under `data/results`
+
+## Plot results (in progress)
+
+1. To plot results from the DETM results, simply run `python plot.py` and an image will be added under `data/reuslts`
+
 This is code that accompanies the paper titled "The Dynamic Embedded Topic Model" by Adji B. Dieng, Francisco J. R. Ruiz, and David M. Blei. (Arxiv link: https://arxiv.org/abs/1907.05545).
 
 The DETM is an extension of the Embedded Topic Model (https://arxiv.org/abs/1907.04907) to corpora with temporal dependencies. The DETM models each word with a categorical distribution whose parameter is given by the inner product between the word embedding and an embedding representation of its assigned topic at a particular time step. The word embeddings allow the DETM to generalize to rare words. The DETM learns smooth topic trajectories by defining a random walk prior over the embeddings of the topics. The DETM is fit using structured amortized variational inference with LSTMs.
