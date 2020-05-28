@@ -46,7 +46,7 @@ class DMETM(nn.Module):
             self.rho = nn.Parameter(torch.tensor(word_embeddings, dtype=torch.float32), requires_grad=bool(args.train_embeddings))
         else:
             try:
-                assert args.train_embeddings
+                assert args.train_word_embeddings
             except:
                 raise Exception('not training embedding but no embedding provided')
             # self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
