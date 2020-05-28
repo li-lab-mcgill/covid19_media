@@ -282,6 +282,7 @@ def train(epoch):
     
 
     for idx, ind in enumerate(indices):
+
         optimizer.zero_grad()
         model.zero_grad()        
 
@@ -314,6 +315,8 @@ def train(epoch):
         loss, nll, kl_alpha, kl_eta, kl_theta = model(unique_tokens, data_batch, normalized_data_batch, 
             times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
 
+        # set_trace()
+
         # print("forward done.")
 
         # print("backward passing ...")
@@ -333,8 +336,8 @@ def train(epoch):
         acc_kl_alpha_loss += torch.sum(kl_alpha).item()
         cnt += 1
 
-        if idx % args.log_interval == 0 and idx > 0:
-        # if idx > 0:
+        # if idx % args.log_interval == 0 and idx > 0:
+        if True:
             cur_loss = round(acc_loss / cnt, 2) 
             cur_nll = round(acc_nll / cnt, 2) 
             cur_kl_theta = round(acc_kl_theta_loss / cnt, 2) 
