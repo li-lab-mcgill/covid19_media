@@ -318,16 +318,19 @@ def train(epoch):
         # set_trace()
 
         # print("forward done.")
-
         # print("backward passing ...")
 
-        loss.backward()
+        # set_trace()
+
+        loss.backward()        
 
         # print("backward done.")
 
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         optimizer.step()
+
+        # set_trace()
 
         acc_loss += torch.sum(loss).item()
         acc_nll += torch.sum(nll).item()
@@ -336,8 +339,7 @@ def train(epoch):
         acc_kl_alpha_loss += torch.sum(kl_alpha).item()
         cnt += 1
 
-        # if idx % args.log_interval == 0 and idx > 0:
-        if True:
+        if idx % args.log_interval == 0 and idx > 0:
             cur_loss = round(acc_loss / cnt, 2) 
             cur_nll = round(acc_nll / cnt, 2) 
             cur_kl_theta = round(acc_kl_theta_loss / cnt, 2) 
@@ -657,7 +659,7 @@ if args.mode == 'train':
     best_val_ppl = 1e9
     all_val_ppls = []
     
-    for epoch in range(1, args.epochs):        
+    for epoch in range(1, args.epochs):
         train(epoch)
         # if epoch % args.visualize_every == 0:
         #     visualize()
@@ -690,8 +692,8 @@ if args.mode == 'train':
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         if args.train_word_embeddings:
-            print('saving word embedding matrix rho...')            
-            rho = model.rho.cpu().detach().numpy()
+            print('saving word embedding matrix rho...')
+            rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         if args.train_source_embeddings:
