@@ -353,7 +353,7 @@ class DMETM(nn.Module):
 
     def check_beta(self, alpha, uniq_tokens, uniq_sources, uniq_times):
         
-        set_trace()
+        # set_trace()
 
         # verify get_beta_full and get_beta produce the same outputs
         beta_full_fast = self.get_beta_full(alpha) # S x K x T x V
@@ -429,6 +429,8 @@ class DMETM(nn.Module):
         return nll          
 
     def forward(self, unique_tokens, bows, normalized_bows, times, sources, rnn_inp, num_docs):
+
+        # set_trace()
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz         
