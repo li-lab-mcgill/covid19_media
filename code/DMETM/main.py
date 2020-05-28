@@ -43,7 +43,7 @@ parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covi
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/skipgram_emb_300d.txt', help='directory containing embeddings')
-parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
+parser.add_argument('--emb_path', type=str, help='directory containing embeddings')
 
 parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
 
@@ -191,25 +191,28 @@ test_2_rnn_inp = data.get_rnn_input(
 ## get word embeddings 
 print('Getting word embeddings ...')
 emb_path = args.emb_path
-vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')   
-vectors = {}
-with open(emb_path, 'rb') as f:
-    for l in f:
-        line = l.decode().split()
-        word = line[0]
-        if word in vocab:
-            vect = np.array(line[1:]).astype(np.float)
-            vectors[word] = vect
-word_embeddings = np.zeros((vocab_size, args.emb_size))
-words_found = 0
-for i, word in enumerate(vocab):
-    try: 
-        word_embeddings[i] = vectors[word]
-        words_found += 1
-    except KeyError:
-        word_embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
-word_embeddings = torch.from_numpy(word_embeddings).to(device)
-args.embeddings_dim = word_embeddings.size()
+if emb_path:
+    vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')   
+    vectors = {}
+    with open(emb_path, 'rb') as f:
+        for l in f:
+            line = l.decode().split()
+            word = line[0]
+            if word in vocab:
+                vect = np.array(line[1:]).astype(np.float)
+                vectors[word] = vect
+    word_embeddings = np.zeros((vocab_size, args.emb_size))
+    words_found = 0
+    for i, word in enumerate(vocab):
+        try: 
+            word_embeddings[i] = vectors[word]
+            words_found += 1
+        except KeyError:
+            word_embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
+    word_embeddings = torch.from_numpy(word_embeddings).to(device)
+# args.embeddings_dim = word_embeddings.size()
+else:
+    word_embeddings = None
 
 
 ## get source embeddings
@@ -236,9 +239,9 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'dmetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
+        'dmetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_pretrainedEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
-            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_word_embeddings))
+            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_word_embeddings, int(word_embeddings is not None)))
 
 ## define model and optimizer
 if args.load_from != '':
@@ -693,7 +696,8 @@ if args.mode == 'train':
 
         if args.train_word_embeddings:
             print('saving word embedding matrix rho...')            
-            rho = model.rho.weight.detach().cpu().numpy()
+            # rho = model.rho.weight.detach().cpu().numpy()
+            rho = model.rho.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         if args.train_source_embeddings:

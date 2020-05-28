@@ -35,20 +35,30 @@ class DMETM(nn.Module):
         self.t_drop = nn.Dropout(args.enc_drop)
         self.delta = args.delta
         self.train_word_embeddings = args.train_word_embeddings
+        self.pretrained_embeddings = word_embeddings is not None
 
         self.num_sources = args.num_sources
 
         self.theta_act = self.get_activation(args.theta_act)
 
         ## define the word embedding matrix \rho: L x V
-        if args.train_word_embeddings:
-            # self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
-            self.rho = nn.Parameter(word_embeddings)
+        if self.pretrained_embeddings:
+            self.rho = nn.Parameter(torch.tensor(word_embeddings, dtype=torch.float32), requires_grad=bool(args.train_embeddings))
         else:
-            num_embeddings, emsize = word_embeddings.size()
-            rho = nn.Embedding(num_embeddings, emsize)
-            rho.weight.data = word_embeddings
-            self.rho = rho.weight.data.clone().float().to(device)
+            try:
+                assert args.train_embeddings
+            except:
+                raise Exception('not training embedding but no embedding provided')
+            # self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+            self.rho = nn.Parameter(torch.randn(args.vocab_size, args.rho_size, dtype=torch.float32))
+        # if args.train_word_embeddings:
+        #     # self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+        #     self.rho = nn.Parameter(word_embeddings)
+        # else:
+        #     num_embeddings, emsize = word_embeddings.size()
+        #     rho = nn.Embedding(num_embeddings, emsize)
+        #     rho.weight.data = word_embeddings
+        #     self.rho = rho.weight.data.clone().float().to(device)
         
         ## define the source-specific embedding \lambda S x L' (DMETM)
         if args.train_source_embeddings:

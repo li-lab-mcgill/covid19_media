@@ -523,7 +523,7 @@ if args.mode == 'train':
             print('saving word embedding matrix rho...')
             # rho = model.rho.weight.cpu().numpy()
             # rho = model.rho.weight.cpu().detach().numpy()
-            rho = model.rho.cpu().detach().numpy()
+            rho = model.rho.cpu().detach().numpy() if model.pretrained_embeddings else model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')
