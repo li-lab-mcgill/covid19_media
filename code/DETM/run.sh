@@ -17,5 +17,5 @@ CUDA_VISIBLE_DEVICES=7 python main.py \
     --eta_hidden_size 512 \
     --t_hidden_size 512 \
     --eval_batch_size 100 \
-    --train_embeddings 0 \
-    --emb_path data/skipgram_emb_300d.txt \
+    --train_embeddings 1 \
+    # --emb_path data/skipgram_emb_300d.txt \
