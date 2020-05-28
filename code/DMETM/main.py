@@ -326,7 +326,7 @@ def train(epoch):
         acc_kl_alpha_loss += torch.sum(kl_alpha).item()
         cnt += 1
 
-        if idx % args.log_interval == 0 and idx > 0:
+        if idx % args.log_interval == 0:
             cur_loss = round(acc_loss / cnt, 2) 
             cur_nll = round(acc_nll / cnt, 2) 
             cur_kl_theta = round(acc_kl_theta_loss / cnt, 2) 

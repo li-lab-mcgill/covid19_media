@@ -43,7 +43,7 @@ class DMETM(nn.Module):
 
         ## define the word embedding matrix \rho: L x V
         if self.pretrained_embeddings:
-            self.rho = nn.Parameter(torch.tensor(word_embeddings, dtype=torch.float32), requires_grad=bool(args.train_embeddings))
+            self.rho = nn.Parameter(torch.tensor(word_embeddings, dtype=torch.float32), requires_grad=bool(args.train_word_embeddings))
         else:
             try:
                 assert args.train_word_embeddings
@@ -358,9 +358,9 @@ class DMETM(nn.Module):
             or is_nan_or_inf(rnn_inp).sum() != 0:
             raise Exception('input has nan')
 
-        for param in self.parameters():
+        for name, param in self.named_parameters():
             if is_nan_or_inf(param).sum() != 0:
-                raise Exception(param.grad)
+                raise Exception(name)
         
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz         
