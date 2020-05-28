@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 ### data and file related arguments
 parser.add_argument('--dataset', type=str, default='acl', help='name of corpus')
 parser.add_argument('--data_path', type=str, default='acl/', help='directory containing data')
-parser.add_argument('--emb_path', type=str, default='skipgram/embeddings.txt', help='directory containing embeddings')
+parser.add_argument('--emb_path', type=str, help='directory containing embeddings')
 parser.add_argument('--save_path', type=str, default='./results', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
 parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
@@ -137,25 +137,28 @@ test_2_rnn_inp = data.get_rnn_input(
 ## get embeddings 
 print('Getting embeddings ...')
 emb_path = args.emb_path
-vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')   
-vectors = {}
-with open(emb_path, 'rb') as f:
-    for l in f:
-        line = l.decode().split()
-        word = line[0]
-        if word in vocab:
-            vect = np.array(line[1:]).astype(np.float)
-            vectors[word] = vect
-embeddings = np.zeros((vocab_size, args.emb_size))
-words_found = 0
-for i, word in enumerate(vocab):
-    try: 
-        embeddings[i] = vectors[word]
-        words_found += 1
-    except KeyError:
-        embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
-embeddings = torch.from_numpy(embeddings).to(device)
-args.embeddings_dim = embeddings.size()
+if emb_path:
+    vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')   
+    vectors = {}
+    with open(emb_path, 'rb') as f:
+        for l in f:
+            line = l.decode().split()
+            word = line[0]
+            if word in vocab:
+                vect = np.array(line[1:]).astype(np.float)
+                vectors[word] = vect
+    embeddings = np.zeros((vocab_size, args.emb_size))
+    words_found = 0
+    for i, word in enumerate(vocab):
+        try: 
+            embeddings[i] = vectors[word]
+            words_found += 1
+        except KeyError:
+            embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
+    embeddings = torch.from_numpy(embeddings).to(device)
+    # args.embeddings_dim = embeddings.size()
+else:
+    embeddings = None
 
 print('\n')
 print('=*'*100)
@@ -170,9 +173,9 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'detm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
+        'detm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_pretrainedEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
-            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_embeddings))
+            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_embeddings, int(embeddings is not None)))
 
 ## define model and optimizer
 if args.load_from != '':
@@ -519,7 +522,8 @@ if args.mode == 'train':
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
             # rho = model.rho.weight.cpu().numpy()
-            rho = model.rho.weight.cpu().detach().numpy()
+            # rho = model.rho.weight.cpu().detach().numpy()
+            rho = model.rho.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')

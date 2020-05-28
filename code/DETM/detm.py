@@ -28,17 +28,26 @@ class DETM(nn.Module):
         self.t_drop = nn.Dropout(args.enc_drop)
         self.delta = args.delta
         self.train_embeddings = args.train_embeddings
+        self.pretrained_embeddings = embeddings is not None
 
         self.theta_act = self.get_activation(args.theta_act)
 
         ## define the word embedding matrix \rho
-        if args.train_embeddings:
-            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+        if self.pretrained_embeddings:
+            self.rho = nn.Parameter(torch.tensor(embeddings, dtype=torch.float32), requires_grad=bool(args.train_embeddings))
         else:
-            num_embeddings, emsize = embeddings.size()
-            rho = nn.Embedding(num_embeddings, emsize)
-            rho.weight.data = embeddings
-            self.rho = rho.weight.data.clone().float().to(device)
+            try:
+                assert args.train_embeddings
+            except:
+                raise Exception('not training embedding but no embedding provided')
+            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+        # if args.train_embeddings:
+            # self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
+        # else:
+            # num_embeddings, emsize = embeddings.size()
+            # rho = nn.Embedding(num_embeddings, emsize)
+            # rho.weight.data = embeddings
+            # self.rho = rho.weight.data.clone().float().to(device)
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
         self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
@@ -174,7 +183,7 @@ class DETM(nn.Module):
     def get_beta(self, alpha):
         """Returns the topic matrix \beta of shape K x V
         """
-        if self.train_embeddings:
+        if not self.pretrained_embeddings:
             logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
         else:
             tmp = alpha.view(alpha.size(0)*alpha.size(1), self.rho_size)
