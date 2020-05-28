@@ -67,7 +67,7 @@ parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of 
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 ### optimization-related arguments
-parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
+parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
 parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
@@ -76,13 +76,13 @@ parser.add_argument('--mode', type=str, default='train', help='train or eval mod
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
 
-parser.add_argument('--enc_drop', type=float, default=0.0, help='dropout rate on encoder')
-parser.add_argument('--eta_dropout', type=float, default=0.0, help='dropout rate on rnn for eta')
+parser.add_argument('--enc_drop', type=float, default=0.1, help='dropout rate on encoder')
+parser.add_argument('--eta_dropout', type=float, default=0.1, help='dropout rate on rnn for eta')
 
-parser.add_argument('--clip', type=float, default=0.0, help='gradient clipping')
+parser.add_argument('--clip', type=float, default=2.0, help='gradient clipping')
 parser.add_argument('--nonmono', type=int, default=10, help='number of bad hits allowed')
 parser.add_argument('--wdecay', type=float, default=1.2e-6, help='some l2 regularization')
-parser.add_argument('--anneal_lr', type=int, default=0, help='whether to anneal the learning rate or not')
+parser.add_argument('--anneal_lr', type=int, default=1, help='whether to anneal the learning rate or not')
 parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows or not')
 
 ### evaluation, visualization, and logging-related arguments
