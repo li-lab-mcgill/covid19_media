@@ -49,21 +49,17 @@ parser.add_argument('--min_df', type=int, default=10, help='to get the right dat
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=20, help='number of topics')
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
-
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
-
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
-parser.add_argument('--train_word_embeddings', type=int, default=0, help='whether to fix rho or train it')
+parser.add_argument('--train_word_embeddings', type=int, default=1, help='whether to fix rho or train it')
 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
-
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
-
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 ### optimization-related arguments
@@ -87,7 +83,9 @@ parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows 
 
 ### evaluation, visualization, and logging-related arguments
 parser.add_argument('--num_words', type=int, default=20, help='number of words for topic viz')
-parser.add_argument('--log_interval', type=int, default=10, help='when to log training')
+
+parser.add_argument('--log_interval', type=int, default=1, help='when to log training')
+
 parser.add_argument('--visualize_every', type=int, default=1, help='when to visualize results')
 parser.add_argument('--eval_batch_size', type=int, default=1000, help='input batch size for evaluation')
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
@@ -97,7 +95,7 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 ### multi-sources-related parameters (DMETM)
 parser.add_argument('--use_source_embeddings', type=int, default=0, help='not using source embedding at all (identical to DETM)')
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
-parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix lambda or train it')
+parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix lambda or train it')
 
 args = parser.parse_args()
 
