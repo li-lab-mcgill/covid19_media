@@ -176,10 +176,10 @@ class DMETM(nn.Module):
             inp_t = torch.cat([output[t], etas[t-1]], dim=0)
             mu_t = self.mu_q_eta(inp_t)
 
-            if torch.isnan(mu_t).sum() != 0:                
-                for param in self.mu_q_eta.parameters():
-                    if torch.isnan(param).sum() != 0:
-                        raise Exception(param.grad)                
+            # if torch.isnan(mu_t).sum() != 0:
+            #     for param in self.mu_q_eta.parameters():
+            #         if torch.isnan(param).sum() != 0:
+            #             raise Exception(param.grad)
 
             logsigma_t = self.logsigma_q_eta(inp_t)        
 
@@ -187,7 +187,6 @@ class DMETM(nn.Module):
                 logsigma_t[logsigma_t > self.max_logsigma_t] = self.max_logsigma_t
             elif any(logsigma_t < self.min_logsigma_t):
                 logsigma_t[logsigma_t < self.min_logsigma_t] = self.min_logsigma_t
-
 
             etas[t] = self.reparameterize(mu_t, logsigma_t)
 
