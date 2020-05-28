@@ -9,7 +9,7 @@ CUDA_VISIBLE_DEVICES=7 python main.py \
     --clip 2 \
     --enc_drop 0.1 \
     --eta_dropout 0.1 \
-    --epochs 500 \
+    --epochs 5000 \
     --num_topics 50 \
     --batch_size 64 \
     --min_df 10 \
