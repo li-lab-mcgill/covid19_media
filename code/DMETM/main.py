@@ -315,7 +315,7 @@ def train(epoch):
         loss, nll, kl_alpha, kl_eta, kl_theta = model(unique_tokens, data_batch, normalized_data_batch, 
             times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
 
-        set_trace()
+        # set_trace()
 
         # print("forward done.")
 
