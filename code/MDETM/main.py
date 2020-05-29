@@ -49,7 +49,7 @@ parser.add_argument('--min_df', type=int, default=10, help='to get the right dat
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=20, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=1, help='number of topics')
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
@@ -306,14 +306,14 @@ def train(epoch):
 
         # set_trace()
 
-        # print("forward done.")
-        # print("backward passing ...")
+        print("forward done.")
+        print("backward passing ...")
 
         # set_trace()
 
         loss.backward()        
 
-        # print("backward done.")
+        print("backward done.")
 
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
@@ -493,10 +493,8 @@ def get_completion_ppl(source):
                     for i in range(token_batch.shape[0])],[])))
 
                 # set_trace()
-                # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)                
-                # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
 
-                beta = model.get_beta_full(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
+                beta = model.get_beta(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
                 beta = beta[times_batch.type('torch.LongTensor'),:,:,sources_batch.type('torch.LongTensor')]
 
                 loglik = theta.unsqueeze(2) * beta
@@ -565,7 +563,7 @@ def get_completion_ppl(source):
                 # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
                 # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
 
-                beta = model.get_beta_full(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
+                beta = model.get_beta(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
                 beta = beta[times_batch_2.type('torch.LongTensor'),:,:,sources_batch_2.type('torch.LongTensor')]
 
                 loglik = theta.unsqueeze(2) * beta
@@ -670,10 +668,6 @@ if args.mode == 'train':
     model = model.to(device)
     model.eval()
     with torch.no_grad():
-                
-        # print('saving topic matrix beta...')
-        # beta = model.get_beta_full(alpha).cpu().numpy()
-        # scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         alpha = model.mu_q_alpha
         print('saving alpha...')

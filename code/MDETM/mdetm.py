@@ -30,14 +30,14 @@ class MDETM(nn.Module):
         self.eta_nlayers = args.eta_nlayers
         self.t_drop = nn.Dropout(args.enc_drop)
         self.delta = args.delta
-        self.train_word_embeddings = args.train_word_embeddings
+        self.train_embeddings = args.train_embeddings
 
         self.num_sources = args.num_sources
 
         self.theta_act = self.get_activation(args.theta_act)
 
         ## define the word embedding matrix \rho: L x V
-        if args.train_word_embeddings:
+        if args.train_embeddings:
             self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False) # L x V
             # self.rho = nn.Parameter(torch.randn(args.vocab_size, args.rho_size)) 
             # self.rho = nn.Parameter(word_embeddings)
@@ -230,21 +230,21 @@ class MDETM(nn.Module):
 
 
     def get_beta(self, alpha):
-        """Returns the topic matrix beta of shape T x K x V
+        """Returns the topic matrix beta of shape S x K x T x V
         """
         # alpha: S x K x T x L
 
-        set_trace()
+        # set_trace()
 
-        if self.train_word_embeddings: # rho: L x V
-            logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size))
+        if self.train_embeddings: # rho: L x V
+            logit = self.rho(alpha.reshape(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size))
         else: # rho: V x L
             tmp = alpha.view(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size)
             logit = torch.mm(tmp, self.rho.permute(1, 0))
 
         logit = logit.view(alpha.size(0), alpha.size(1), alpha.size(2), -1) # S x K x T x V
         beta = F.softmax(logit, dim=-1)
-        return beta             
+        return beta
 
 
     def get_nll(self, theta, beta, bows):
