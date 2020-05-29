@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.datasets import fetch_20newsgroups
+#from sklearn.datasets import fetch_20newsgroups
 import numpy as np
 import pickle
 import random
@@ -35,7 +35,7 @@ def get_stopwords(stopwords_file=None):
 
     if len(stopwords_file) > 0:
         # Read in stopwords. Comment following two lines and uncomment the next 2 lines if you wish to use ntlk stopwords
-        with open('stops.txt', 'r') as f:
+        with open(stopwords_file, 'r') as f:
             stops = f.read().split('\n')
     else:
         from nltk.corpus import stopwords
@@ -44,6 +44,8 @@ def get_stopwords(stopwords_file=None):
 
     return stops
 
+def remove_not_printable(in_str):
+    return "".join([c for c in in_str if c in string.printable])
 
 def read_data(data_file):
     # Read data
@@ -60,38 +62,106 @@ def read_data(data_file):
     gphin_data.country = gphin_data['country'].apply(lambda x: x.strip(" "))
     gphin_data.country = gphin_data['country'].apply(lambda x: x.strip("\n"))
 
-    # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country']
-    # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
-    g_data = {'data':[], 'country':[], 'index':[]}
-    countries = gphin_data.country.unique()
-    countries_to_idx = {country: str(idx) for idx, country in enumerate(gphin_data.country.unique())}
+    docs = gphin_data.SUMMARY.values
+    countries = gphin_data.country.values
+    ids = gphin_data.index.values
+    #timestamps = gphin_data['DATE ADDED'].values
 
-    for country in tqdm(countries):
-        summary = gphin_data[gphin_data.country == country].SUMMARY.values
-        ind = gphin_data[gphin_data.country == country].index.values
-        g_data['data'].extend(summary)
-        g_data['country'].extend([country]*len(summary))
-        g_data['index'].extend(ind)
+    countries_mod = []
+    for country in countries:
+        if not pd.isna(country):
+            country = country.strip()
+        if country in ['Unitsd States', 'Untisd States', 'Untied States', 'United States']:
+            countries_mod.append("United States")
+        elif country in ['Untied Kingdom','United Kingdom','UK']:
+            countries_mod.append("United Kingdom")
+        elif country in ['South Koreda','South Korea']:
+            countries_mod.append("South Korea")
+        elif country in ['Inida','India']:
+            countries_mod.append("India")
+        elif country in ['Caada','Canada']:
+            countries_mod.append("Canada")
+        elif country in ['Indenesia',' Indonesia']:
+            countries_mod.append("Indonesia")
+        elif country in ['Jodan','Jordan']:
+            countries_mod.append("Jordan")
+        elif country in ['Demark', "Denmark"]:
+            countries_mod.append("Denmark")
+        elif country in ['WHO','wHO']:
+            countries_mod.append("WHO")
+        elif country in ['Gulf Cooperation Council', 'Gulf Cooperation Council (GCC)']:
+            countries_mod.append("Gulf Cooperation Council")
+        elif country in ['BAHRAIN','Bahrain']:
+            countries_mod.append("Bahrain")
+        elif country in ['Kyrgystan', 'Kyrgyzstan']:
+            countries_mod.append("Kyrgyzstan")
+        elif country in ['International Olympic Committee', 'International Olympic Committee (IOC)']:
+            countries_mod.append("International Olympic Committee")
+        else:
+            countries_mod.append(country)
 
-    # randomly split data into train and test
-        # 20% for testing
-        test_num = int(np.ceil(0.2*len(g_data['data'])))
-    test_ids = np.random.choice(range(len(g_data['data'])),test_num,replace=False)
-    train_ids = np.array([i for i in range(len(g_data['data'])) if i not in test_ids])
+    all_docs = []
+    all_ids = []
+    all_countries = []
 
-    train_data_x = np.array(g_data['data'])[train_ids]
-    train_country = np.array(g_data['country'])[train_ids]
-    train_ids = np.array(g_data['index'])[train_ids]
+    for (id, doc, country) in zip(ids, docs, countries_mod):
+        if pd.isna(doc) or pd.isna(country):
+            continue
+        doc = doc.encode('ascii',errors='ignore').decode()
+        doc = doc.lower().replace('\n', ' ').replace("’", " ").replace("'", " ").translate(str.maketrans(string.punctuation + "0123456789", ' '*len(string.punctuation + "0123456789"))).split()
+        doc = [remove_not_printable(w) for w in doc if len(w)>1]
+        if len(doc) > 1:
+            doc = " ".join(doc)
+            all_docs.append(doc)
+            # try:
+            #     d = datetime.strptime(timestamp, '%m/%d/%Y')
+            # except:
+            #     try:
+            #         d = datetime.strptime(timestamp, '%d/%m/%Y')
+            #     except:
+            #         t = timestamp[0:3]+"0"+timestamp[3:]
+            #         d = datetime.strptime(t, '%Y-%m-%d')
 
-    test_data_x = np.array(g_data['data'])[test_ids]
-    test_country = np.array(g_data['country'])[test_ids]
-    test_ids = np.array(g_data['index'])[test_ids]
+            #all_times.append(d)
+            c = country.strip()
+            #print(c)
+            all_countries.append(c)
+            all_ids.append(id)
 
-    # convert the train and test data into Bunch format because rest of the code is designed for that
-    train_data = Bunch(data=train_data_x, country=train_country, index=train_ids) 
-    test_data = Bunch(data=test_data_x, country=test_country, index=test_ids)
+    return all_docs, all_countries, all_ids
 
-    return train_data, test_data, countries_to_idx
+    # # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country']
+    # # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
+    # g_data = {'data':[], 'country':[], 'index':[]}
+    # countries = gphin_data.country.unique()
+    # countries_to_idx = {country: str(idx) for idx, country in enumerate(gphin_data.country.unique())}
+
+    # for country in tqdm(countries):
+    #     summary = gphin_data[gphin_data.country == country].SUMMARY.values
+    #     ind = gphin_data[gphin_data.country == country].index.values
+    #     g_data['data'].extend(summary)
+    #     g_data['country'].extend([country]*len(summary))
+    #     g_data['index'].extend(ind)
+
+    # # randomly split data into train and test
+    #     # 20% for testing
+    #     test_num = int(np.ceil(0.2*len(g_data['data'])))
+    # test_ids = np.random.choice(range(len(g_data['data'])),test_num,replace=False)
+    # train_ids = np.array([i for i in range(len(g_data['data'])) if i not in test_ids])
+
+    # train_data_x = np.array(g_data['data'])[train_ids]
+    # train_country = np.array(g_data['country'])[train_ids]
+    # train_ids = np.array(g_data['index'])[train_ids]
+
+    # test_data_x = np.array(g_data['data'])[test_ids]
+    # test_country = np.array(g_data['country'])[test_ids]
+    # test_ids = np.array(g_data['index'])[test_ids]
+
+    # # convert the train and test data into Bunch format because rest of the code is designed for that
+    # train_data = Bunch(data=train_data_x, country=train_country, index=train_ids) 
+    # test_data = Bunch(data=test_data_x, country=test_country, index=test_ids)
+
+    # return train_data, test_data, countries_to_idx
 
 # function checks for presence of any punctuation 
 def contains_punctuation(w):
@@ -125,20 +195,20 @@ def preprocess(train_data, test_data):
     return init_docs, init_docs_tr, init_docs_ts, init_countries, data_id
 
 
-def get_features(init_docs, stops, vocab_file,  min_df=min_df, max_df=max_df):
+def get_features(docs, sources, stops, vocab_file,  min_df=min_df, max_df=max_df):
 
     # Create count vectorizer
     print('counting document frequency of words...')
-    if len(vocab_file) > 0:
+    if vocab_file is not None:
         print("vocabulary size = " + str(len(vocab_file.keys())))
         cvectorizer = CountVectorizer(min_df=min_df, max_df=max_df, vocabulary=vocab_file, stop_words=None)
-        cvz = cvectorizer.fit_transform(init_docs).sign()
+        cvz = cvectorizer.fit_transform(docs).sign()
         vocab = list(vocab_file.keys())
         word2id = vocab_file
         id2word = dict([(j, w) for w, j in vocab_file.items()])
     else:
         cvectorizer = CountVectorizer(min_df=min_df, max_df=max_df, stop_words=None)
-        cvz = cvectorizer.fit_transform(init_docs).sign()
+        cvz = cvectorizer.fit_transform(docs).sign()
 
 
         # Get vocabulary
@@ -164,6 +234,12 @@ def get_features(init_docs, stops, vocab_file,  min_df=min_df, max_df=max_df):
         #vocab_aux = [w for w in vocab_aux if w not in stops_fr]
         print('  vocabulary size after removing stopwords from list: {}'.format(len(vocab_aux)))
 
+        # Create mapping of sources
+        source_map = {}
+        i = 0
+        for c in np.unique(sources):
+            source_map[c] = i
+            i += 1
 
         # Create dictionary and inverse dictionary
         vocab = vocab_aux
@@ -171,10 +247,30 @@ def get_features(init_docs, stops, vocab_file,  min_df=min_df, max_df=max_df):
         word2id = dict([(w, j) for j, w in enumerate(vocab)])
         id2word = dict([(j, w) for j, w in enumerate(vocab)])
 
-    return vocab, word2id, id2word
+    return vocab, word2id, id2word, cvz, source_map
 
-def remove_empty(in_docs):
-    return [doc for doc in in_docs if doc!=[]]
+def remove_empty(in_docs, in_sources, in_ids):
+    # return [doc for doc in in_docs if doc!=[]]
+    out_docs = []
+    out_ids = []
+    out_sources = []
+    for ii, doc in enumerate(in_docs):
+        if(doc!=[]):
+            out_docs.append(doc)
+            out_ids.append(in_ids[ii])
+            out_sources.append(in_sources[ii])
+    return out_docs, out_sources, out_ids
+
+def remove_by_threshold(in_docs, in_sources, in_ids, thr):
+    out_docs = []
+    out_ids = []
+    out_sources = []
+    for ii, doc in enumerate(in_docs):
+        if(len(doc)>thr):
+            out_docs.append(doc)
+            out_ids.append(in_ids[ii])
+            out_sources.append(in_sources[ii])
+    return out_docs, out_sources, out_ids
 
 def create_doc_indices(in_docs):
     aux = [[j for i in range(len(doc))] for j, doc in enumerate(in_docs)]
@@ -191,36 +287,56 @@ def split_bow(bow_in, n_docs):
     counts = [[c for c in bow_in[doc,:].data] for doc in range(n_docs)]
     return indices, counts
 
-def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, data_ids):
+def split_data(cvz, docs, sources, ids, word2id, source_map):
 
     # Split in train/test/valid
     print('tokenizing documents and splitting into train/test/valid...')
-    num_docs_tr = len(init_docs_tr)
-    trSize = num_docs_tr-100
-    tsSize = len(init_docs_ts)
-    vaSize = 100
-    idx_permute = np.random.permutation(num_docs_tr).astype(int)
+    num_docs = cvz.shape[0]
+    #num_docs_tr = len(init_docs_tr)
+    # trSize = num_docs_tr-100
+    # tsSize = len(init_docs_ts)
+    # vaSize = 100
+    # idx_permute = np.random.permutation(num_docs_tr).astype(int)
 
+    trSize = int(np.floor(0.85*num_docs))
+    tsSize = int(np.floor(0.10*num_docs))
+    vaSize = int(num_docs - trSize - tsSize)
+    del cvz
+    idx_permute = np.random.permutation(num_docs).astype(int)
+    print(num_docs)
+    #print(len(timestamps))
+    print(len(sources))
 
     # Remove words not in train_data
-    #vocab = list(set([w for idx_d in range(trSize) for w in init_docs[idx_permute[idx_d]].split() if w in word2id]))
-    #word2id = dict([(w, j) for j, w in enumerate(vocab)])
-    #id2word = dict([(j, w) for j, w in enumerate(vocab)])
+    vocab = list(set([w for idx_d in range(trSize) for w in docs[idx_permute[idx_d]].split() if w in word2id]))
+    word2id = dict([(w, j) for j, w in enumerate(vocab)])
+    id2word = dict([(j, w) for j, w in enumerate(vocab)])
     print('  vocabulary after removing words not in train: {}'.format(len(vocab)))
 
 
     # Split in train/test/valid
-    docs_tr = [[word2id[w] for w in init_docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
-    countries_tr = [init_countries[idx_permute[idx_d]] for idx_d in range(trSize)]
-    ids_tr = [data_ids[idx_permute[idx_d]] for idx_d in range(trSize)]
+    docs_tr = [[word2id[w] for w in docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
+    sources_tr = [source_map[sources[idx_permute[idx_d]]] for idx_d in range(trSize)]
+    ids_tr = [ids[idx_permute[idx_d]] for idx_d in range(trSize)]
 
-    docs_va = [[word2id[w] for w in init_docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(vaSize)]
-    countries_va = [init_countries[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
-    ids_va = [data_ids[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+    docs_ts = [[word2id[w] for w in docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(tsSize)]
+    sources_ts = [source_map[sources[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
+    ids_ts = [ids[idx_permute[idx_d+trSize]] for idx_d in range(tsSize)]
 
-    docs_ts = [[word2id[w] for w in init_docs[idx_d+num_docs_tr].split() if w in word2id] for idx_d in range(tsSize)]
-    countries_ts = [init_countries[idx_d+num_docs_tr] for idx_d in range(tsSize)]
-    ids_ts = [data_ids[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    docs_va = [[word2id[w] for w in docs[idx_permute[idx_d+trSize+tsSize]].split() if w in word2id] for idx_d in range(vaSize)]
+    sources_va = [source_map[sources[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
+    ids_va = [ids[idx_permute[idx_d+trSize+tsSize]] for idx_d in range(vaSize)]
+    # docs_tr = [[word2id[w] for w in docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
+    # countries_tr = [init_countries[idx_permute[idx_d]] for idx_d in range(trSize)]
+    # ids_tr = [data_ids[idx_permute[idx_d]] for idx_d in range(trSize)]
+
+    # docs_va = [[word2id[w] for w in init_docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(vaSize)]
+    # countries_va = [init_countries[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+    # ids_va = [data_ids[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+
+    # docs_ts = [[word2id[w] for w in init_docs[idx_d+num_docs_tr].split() if w in word2id] for idx_d in range(tsSize)]
+    # countries_ts = [init_countries[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    # ids_ts = [data_ids[idx_d+num_docs_tr] for idx_d in range(tsSize)]
 
 
     print('  number of documents (train): {} [this should be equal to {}]'.format(len(docs_tr), trSize))
@@ -233,22 +349,35 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, d
 
 
 
-    docs_tr = remove_empty(docs_tr)
-    docs_ts = remove_empty(docs_ts)
-    docs_va = remove_empty(docs_va)
+    docs_tr, sources_tr, ids_tr = remove_empty(docs_tr, sources_tr, ids_tr)
+    docs_ts, sources_ts, ids_ts = remove_empty(docs_ts, sources_ts, ids_ts)
+    docs_va, sources_va, ids_va = remove_empty(docs_va, sources_va, ids_va)
 
     # Remove test documents with length=1
-    docs_ts = [doc for doc in docs_ts if len(doc)>1]
-
+    #docs_ts = [doc for doc in docs_ts if len(doc)>1]
+    # Remove test documents with length=1
+    docs_ts, sources_ts, ids_ts = remove_by_threshold(docs_ts, sources_ts, ids_ts, 1)
 
     # Split test set in 2 halves
     print('splitting test documents in 2 halves...')
     docs_ts_h1 = [[w for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc in docs_ts]
     docs_ts_h2 = [[w for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc in docs_ts]
-    countries_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
-    countries_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
-    ids_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc,c in zip(docs_ts, ids_ts)]
-    ids_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc,c in zip(docs_ts, ids_ts)]
+
+    sources_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for (doc,c) in zip(docs_ts,sources_ts)]
+    sources_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for (doc,c) in zip(docs_ts,sources_ts)]
+
+    ids_ts_h1 = [[id for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for (doc,id) in zip(docs_ts,ids_ts)]
+    ids_ts_h2 = [[id for i,w in enumerate(doc) if i>len(doc)/2.0-1] for (doc,id) in zip(docs_ts,ids_ts)]
+
+
+    # Split test set in 2 halves
+    # print('splitting test documents in 2 halves...')
+    # docs_ts_h1 = [[w for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc in docs_ts]
+    # docs_ts_h2 = [[w for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc in docs_ts]
+    # countries_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
+    # countries_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
+    # ids_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc,c in zip(docs_ts, ids_ts)]
+    # ids_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc,c in zip(docs_ts, ids_ts)]
 
     # Getting lists of words and doc_indices
     print('creating lists of words...')
@@ -318,10 +447,10 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, d
     del doc_indices_ts_h2
     del doc_indices_va
 
-    return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, ids_tr, ids_ts, ids_va, ids_ts_h1, ids_ts_h2
+    return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, sources_tr, sources_ts, sources_ts_h1, sources_ts_h2, sources_va, ids_tr, ids_ts, ids_va, ids_ts_h1, ids_ts_h2
 
 
-def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_ts, ids_ts_h1, ids_ts_h2, ids_va):
+def save_data(save_dir, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_ts_h1, n_docs_ts_h2, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, source_map, ids_tr, ids_ts, ids_ts_h1, ids_ts_h2, ids_va):
 
     # Write the vocabulary to a file
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
@@ -332,9 +461,11 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
         pickle.dump(vocab, f)
     del vocab
     
+    rev_source_map = {}
+    for k, v in source_map.items():
+        rev_source_map[v] = k
     # all countries
-    pkl.dump(countries_to_idx, open(path_save + 'all_countries.pkl',"wb"))
-    del countries_to_idx
+    pkl.dump(rev_source_map, open(path_save + 'sources_map.pkl',"wb"))
 
     # Split bow intro token/value pairs
     print('splitting bow intro token/value pairs and saving to disk...')
@@ -343,7 +474,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
     savemat(path_save + 'bow_tr_tokens.mat', {'tokens': bow_tr_tokens}, do_compression=True)
     savemat(path_save + 'bow_tr_counts.mat', {'counts': bow_tr_counts}, do_compression=True)
-    pkl.dump(countries_tr, open(path_save + 'bow_tr_countries.pkl',"wb"))
+    pkl.dump(countries_tr, open(path_save + 'bow_tr_sources.pkl',"wb"))
     pkl.dump(ids_tr, open(path_save + 'bow_tr_ids.pkl','wb'))
 
     del bow_tr
@@ -354,7 +485,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     savemat(path_save + 'bow_ts_tokens.mat', {'tokens': bow_ts_tokens}, do_compression=True)
     savemat(path_save + 'bow_ts_counts.mat', {'counts': bow_ts_counts}, do_compression=True)
     #savemat(path_save + 'bow_ts_countries.mat', {'countries': countries_ts}, do_compression=True)
-    pkl.dump(countries_ts, open(path_save + 'bow_ts_countries.pkl',"wb"))
+    pkl.dump(countries_ts, open(path_save + 'bow_ts_sources.pkl',"wb"))
     pkl.dump(ids_ts, open(path_save + 'bow_ts_ids.pkl','wb'))
 
     del bow_ts
@@ -366,7 +497,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     savemat(path_save + 'bow_ts_h1_tokens.mat', {'tokens': bow_ts_h1_tokens}, do_compression=True)
     savemat(path_save + 'bow_ts_h1_counts.mat', {'counts': bow_ts_h1_counts}, do_compression=True)
     #savemat(path_save + 'bow_ts_h1_countries.mat', {'countries': countries_ts_h1}, do_compression=True)
-    pkl.dump(countries_ts_h1, open(path_save + 'bow_ts_h1_countries.pkl',"wb"))
+    pkl.dump(countries_ts_h1, open(path_save + 'bow_ts_h1_sources.pkl',"wb"))
     pkl.dump(ids_ts_h1, open(path_save + 'bow_ts_h1_ids.pkl','wb'))
 
     del bow_ts_h1
@@ -377,7 +508,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     savemat(path_save + 'bow_ts_h2_tokens.mat', {'tokens': bow_ts_h2_tokens}, do_compression=True)
     savemat(path_save + 'bow_ts_h2_counts.mat', {'counts': bow_ts_h2_counts}, do_compression=True)
     #savemat(path_save + 'bow_ts_h2_countries.mat', {'countries': countries_ts_h2}, do_compression=True)
-    pkl.dump(countries_ts_h2, open(path_save + 'bow_ts_h2_countries.pkl',"wb"))
+    pkl.dump(countries_ts_h2, open(path_save + 'bow_ts_h2_sources.pkl',"wb"))
     pkl.dump(ids_ts_h2, open(path_save + 'bow_ts_h2_ids.pkl','wb'))
 
     del bow_ts_h2
@@ -389,7 +520,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     savemat(path_save + 'bow_va_tokens.mat', {'tokens': bow_va_tokens}, do_compression=True)
     savemat(path_save + 'bow_va_counts.mat', {'counts': bow_va_counts}, do_compression=True)
     #savemat(path_save + 'bow_va_countries.mat', {'countries': countries_va}, do_compression=True)
-    pkl.dump(countries_va, open(path_save + 'bow_va_countries.pkl',"wb"))
+    pkl.dump(countries_va, open(path_save + 'bow_va_sources.pkl',"wb"))
     pkl.dump(ids_va, open(path_save + 'bow_va_ids.pkl','wb'))
 
     del bow_va
@@ -405,16 +536,17 @@ if __name__ == '__main__':
     args = get_args()
 
     # read in the data file
-    train, test, countries_to_idx = read_data(args.data_file_path)
+    #train, test, countries_to_idx = read_data(args.data_file_path)
 
     # preprocess the news articles
-    all_docs, train_docs, test_docs, init_countries, data_ids = preprocess(train, test)
-
+    #all_docs, train_docs, test_docs, init_countries, data_ids = preprocess(train, test)
+    all_docs, all_sources, all_ids = read_data(args.data_file_path)
     # get a list of stopwords
     stopwords = get_stopwords(args.stopwords_path)
 
     # get vocabulary
-    if len(args.vocab_file) > 0:
+    if args.vocab_file:
+        print("yes")
         vv = pickle.load(open(args.vocab_file,"rb"))
         vocab = {}
         for i, word in enumerate(vv):
@@ -423,9 +555,11 @@ if __name__ == '__main__':
         vocab = None
 
     # get the vocabulary of words, word2id map and id2word map
-    vocab, word2id, id2word = get_features(all_docs, stopwords, vocab)
+    vocab, word2id, id2word, cvz, source_map = get_features(all_docs, all_sources, stopwords, vocab)
 
     # split data into train, test and validation and corresponding countries in BOW format
-    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, id_tr, id_ts, id_va, id_ts_h1, id_ts_h2 = split_data(all_docs, train_docs, test_docs, word2id, init_countries, data_ids)
+    #bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, id_tr, id_ts, id_va, id_ts_h1, id_ts_h2 = split_data(all_docs, train_docs, test_docs, word2id, init_countries, data_ids)
+    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, id_tr, id_ts, id_ts_h1, id_ts_h2, id_va = split_data(cvz, all_docs, all_sources, all_ids, word2id, source_map)
 
-    save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, id_tr, id_ts, id_ts_h1, id_ts_h2, id_va)
+    #save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, id_tr, id_ts, id_ts_h1, id_ts_h2, id_va)
+    save_data(args.save_dir, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_ts_h1, n_docs_ts_h2, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, id_tr, id_ts, id_ts_h1, id_ts_h2, id_va)

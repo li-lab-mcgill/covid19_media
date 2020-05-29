@@ -17,7 +17,7 @@ from torch import nn, optim
 from torch.nn import functional as F
 
 from metm import METM
-from utils import nearest_neighbors, get_topic_coherence, get_topic_diversity
+from utils import nearest_neighbors, get_topic_coherence, get_topic_diversity, _diversity_helper
 
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
@@ -115,6 +115,8 @@ args.num_docs_test_2 = len(test_2_tokens)
 sources_map = pickle.load(open(args.sources_map_file, 'rb'))
 args.num_sources = len(sources_map)
 
+demo_source_indices = [k for k,v in sources_map.items() if v in ["China", "Canada", "United States"]]
+
 # get word embeddings
 print("Getting word embeddings ...\n")
 word_embeddings = None
@@ -123,7 +125,7 @@ if not args.train_word_embeddings:
     #vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')   
     vectors = {}
     with open(emb_path, 'r') as f:
-        for l in f.readlines()[:1000]:
+        for l in f.readlines():
             line = l.split()
             word = line[0]
             if word in vocab:
@@ -179,6 +181,49 @@ elif args.optimizer == 'asgd':
 else:
     print('Defaulting to vanilla SGD')
     optimizer = optim.SGD(model.parameters(), lr=args.lr)
+
+def get_topic_quality():
+    """Returns topic coherence and topic diversity.
+    """
+    model.eval()
+    with torch.no_grad():
+        alpha = model.alpha.weight
+        beta = model.get_beta() 
+        print('beta: ', beta.size()) # SxKxV
+
+        print('\n')
+        print('#'*100)
+        print('Get topic diversity...')
+        num_tops = 25
+        TD_all = np.zeros(args.num_sources)
+
+        for ss in range(args.num_sources):
+            TD_all[ss] = _diversity_helper(beta[ss, :, :], args.num_topics, num_tops)
+
+        TD = np.mean(TD_all)
+        print('Topic Diversity is: {}'.format(TD))
+
+        print('\n')
+        print('Get topic coherence...')
+        #print('train_tokens: ', train_tokens[0])
+        TC_all = np.zeros(args.num_sources)
+        cnt_all = np.zeros(args.num_sources)
+        
+        for ss in range(args.num_sources):
+            tc, cnt = get_topic_coherence(beta[ss, :, :].cpu().detach().numpy(), train_tokens, vocab)
+            TC_all[ss] = tc
+            cnt_all[ss] = cnt
+        print('TC_all: ', TC_all)
+        TC_all = torch.tensor(TC_all)
+        TC = np.mean(TC_all)
+        print('TC_all: ', TC_all.size())
+        print('\n')
+        print('Get topic quality...')
+        TQ = TC * TD
+        print('Topic Quality is: {}'.format(TQ))
+        print('#'*100)
+        return {"TD":TD, "TC":TC, "TQ":TQ}
+
 
 def train(epoch):
     model.train()
@@ -244,58 +289,117 @@ def visualize(m, source_map, all_countries="", show_emb=True):
 
     m.eval()
 
-    queries = ['government', 'hospital', 'health', 'people']
-    source = 'United States'
-    source_to_id_map = {}
-    for id, src in source_map.items():
-        source_to_id_map[src] = id
-
-    if source in source_to_id_map.keys():
-        source_id = source_to_id_map[source]
-    else:
-        print(source_to_id_map.keys())
-
-    unique_tokens = torch.tensor(np.unique(sum([sum(train_tokens[i].tolist(),[]) 
-            for i in range(train_tokens.shape[0])],[])))
-        
-    sources_batch = torch.from_numpy(train_sources).to(device)
-    unique_sources = sources_batch.unique()
-
-    ## visualize topics using monte carlo
     with torch.no_grad():
+
+        alpha = model.alpha.weight # KxL
+        
+        # beta = model.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # SxKxTxV
+
+        print('\n')
         print('#'*100)
         print('Visualize topics...')
+        
+        topics = [0, int(args.num_topics/2), args.num_topics-1]        
+        
         topics_words = []
-        gammas = m.get_beta_unique(unique_tokens, unique_sources)
-        unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch])
-        gammas = gammas[unique_sources_idx, :, :]
 
-        for k in range(args.num_topics):
-            gamma = gammas[:,k,:]
-            top_words = list(gamma.cpu().numpy().argsort(axis=1)[:,-args.num_words+1:][::-1])
-            print(top_words[source_id])
-            topic_words = [vocab[a] for a in top_words[source_id]]
-            topics_words.append(' '.join(topic_words))
-            print('Topic {}: {}'.format(k, topic_words))
+        for s in demo_source_indices:
+            for k in topics:                                                            
+                gamma = model.get_beta_sk(alpha, s, k)
+                #print(gamma.cpu().numpy().argsort().tolist())
+                #top_words = sum(gamma.cpu().numpy().argsort().tolist(),[])[-args.num_words+1:][::-1]
+                top_words = gamma.cpu().numpy().argsort().tolist()[-args.num_words+1:][::-1]
+                topic_words = [vocab[a] for a in top_words]
+                topics_words.append(' '.join(topic_words))
+                    
+                print('Source {} .. Topic {} ===> {}'.format(sources_map[s], k, topic_words))
 
-        if show_emb:
-            ## visualize word embeddings by using V to get nearest neighbors
+        if args.train_source_embeddings or epoch<=1:
+            print('\n')
             print('#'*100)
-            print('Visualize word embeddings by using output embedding matrix')
+            print('Visualize source embeddings ...')        
+            queries = ['China', 'Canada', 'United States', 'Italy']
             try:
-                embeddings = m.rho.weight  # Vocab_size x E
+                src_emb = model.source_lambda.weight  # Source_size x L
             except:
-                embeddings = m.rho         # Vocab_size x E
-            neighbors = []
+                src_emb = model.source_lambda         # Source_size x L
+            # neighbors = []
+            src_list = [v for k,v in sources_map.items()]
+            for src in queries:
+                print('source: {} .. neighbors: {}'.format(
+                    src, nearest_neighbors(src, src_emb, src_list, min(5, args.num_sources))))
+
+            print(model.source_lambda[0:10])
+        
+        if args.train_word_embeddings or epoch<=1:
+            print('\n')
+            print('#'*100)
+            print('Visualize word embeddings ...')
+            queries = ['border', 'vaccines', 'coronaviruses', 'masks']
+            try:
+                word_embeddings = model.rho.weight  # Vocab_size x E
+            except:
+                word_embeddings = model.rho         # Vocab_size x E
+            # neighbors = []
             for word in queries:
                 print('word: {} .. neighbors: {}'.format(
-                    word, nearest_neighbors(word, embeddings, vocab)))
+                    word, nearest_neighbors(word, word_embeddings, vocab, args.num_words)))
             print('#'*100)
 
-def evaluate(m, mode, source_map, source, tc=False, td=False):
+
+    # queries = ['government', 'hospital', 'health', 'people']
+    # source = 'United States'
+    # source_to_id_map = {}
+    # for id, src in source_map.items():
+    #     source_to_id_map[src] = id
+
+    # if source in source_to_id_map.keys():
+    #     source_id = source_to_id_map[source]
+    # else:
+    #     print(source_to_id_map.keys())
+
+    # unique_tokens = torch.tensor(np.unique(sum([sum(train_tokens[i].tolist(),[]) 
+    #         for i in range(train_tokens.shape[0])],[])))
+        
+    # sources_batch = torch.from_numpy(train_sources).to(device)
+    # unique_sources = sources_batch.unique()
+
+    # ## visualize topics using monte carlo
+    # with torch.no_grad():
+    #     print('#'*100)
+    #     print('Visualize topics...')
+    #     topics_words = []
+    #     gammas = m.get_beta_unique(unique_tokens, unique_sources)
+    #     unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch])
+    #     gammas = gammas[unique_sources_idx, :, :]
+
+    #     for k in range(args.num_topics):
+    #         gamma = gammas[:,k,:]
+    #         top_words = list(gamma.cpu().numpy().argsort(axis=1)[:,-args.num_words+1:][::-1])
+    #         print(top_words[source_id])
+    #         topic_words = [vocab[a] for a in top_words[source_id]]
+    #         topics_words.append(' '.join(topic_words))
+    #         print('Topic {}: {}'.format(k, topic_words))
+
+    #     if show_emb:
+    #         ## visualize word embeddings by using V to get nearest neighbors
+    #         print('#'*100)
+    #         print('Visualize word embeddings by using output embedding matrix')
+    #         try:
+    #             embeddings = m.rho.weight  # Vocab_size x E
+    #         except:
+    #             embeddings = m.rho         # Vocab_size x E
+    #         neighbors = []
+    #         for word in queries:
+    #             print('word: {} .. neighbors: {}'.format(
+    #                 word, nearest_neighbors(word, embeddings, vocab)))
+    #         print('#'*100)
+
+def evaluate(m, mode, tc=False, td=False):
     """Compute perplexity on document completion.
     """
     m.eval()
+
     with torch.no_grad():
         if mode == 'val':
             indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)
@@ -319,8 +423,8 @@ def evaluate(m, mode, source_map, source, tc=False, td=False):
 
         ## get \beta here
         beta = m.get_beta_unique(unique_tokens, unique_sources)
-        unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch])
-        beta = beta[unique_sources_idx, :, :]
+        #unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch])
+        #beta = beta[unique_sources_idx, :, :]
 
         ### do dc and tc here
         acc_loss = 0
@@ -357,27 +461,30 @@ def evaluate(m, mode, source_map, source, tc=False, td=False):
         cur_loss = acc_loss / cnt
         ppl_dc = round(math.exp(cur_loss), 1)
         print('*'*100)
-        print('{} Doc Completion PPL: {}'.format(source.upper(), ppl_dc))
+        print('{} Doc Completion PPL: {}'.format(mode.upper(), ppl_dc))
         print('*'*100)
 
-        source_to_id_map = {}
-        for id, src in source_map.items():
-            source_to_id_map[src] = id
+        # source_to_id_map = {}
+        # for id, src in source_map.items():
+        #     source_to_id_map[src] = id
 
-        if source in source_to_id_map.keys():
-            source_id = source_to_id_map[source]
-        else:
-            raise Exception(source+" not in map")
+        # if source in source_to_id_map.keys():
+        #     source_id = source_to_id_map[source]
+        # else:
+        #     raise Exception(source+" not in map")
 
         if tc or td:
-            beta = beta.data.cpu().numpy()
-            if tc:
-                print('Computing topic coherence...')
-                get_topic_coherence(beta, train_tokens, vocab, source_id)
-            if td:
-                print('Computing topic diversity...')
-                get_topic_diversity(beta, 25, source_id)
-        return ppl_dc
+            quality_results = get_topic_quality()
+        else:
+            quality_results = {}
+            # beta = beta.data.cpu().numpy()
+            # if tc:
+            #     print('Computing topic coherence...')
+            #     get_topic_coherence(beta, train_tokens, vocab, source_id)
+            # if td:
+            #     print('Computing topic diversity...')
+            #     get_topic_diversity(beta, 25, source_id)
+        return ppl_dc, quality_results
 
 if args.mode == 'train':
     ## train model on data 
@@ -390,7 +497,7 @@ if args.mode == 'train':
     print('\n')
     for epoch in range(1, args.epochs):
         train(epoch)
-        val_ppl = evaluate(model, 'val')
+        val_ppl, quality_results = evaluate(model, 'val')
         if val_ppl < best_val_ppl:
             with open(ckpt, 'wb') as f:
                 torch.save(model, f)
@@ -408,7 +515,7 @@ if args.mode == 'train':
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
-    val_ppl = evaluate(model, 'val', sources_map, "United States")
+    val_ppl, quality_results = evaluate(model, 'val')
 else:   
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
@@ -423,7 +530,7 @@ else:
 
     with torch.no_grad():
         ## get document completion perplexities
-        test_ppl = evaluate(model, 'test', sources_map, "United States", tc=args.tc, td=args.td)
+        test_ppl, quality_results = evaluate(model, 'test', tc=args.tc, td=args.td)
 
         ## get most used topics
         #indices = torch.tensor(range(args.num_docs_train))
