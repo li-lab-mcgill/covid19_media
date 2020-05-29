@@ -239,7 +239,7 @@ class MDETM(nn.Module):
         if self.train_embeddings: # rho: L x V
             logit = self.rho(alpha.reshape(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size))
         else: # rho: V x L
-            tmp = alpha.view(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size)
+            tmp = alpha.reshape(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size)
             logit = torch.mm(tmp, self.rho.permute(1, 0))
 
         logit = logit.view(alpha.size(0), alpha.size(1), alpha.size(2), -1) # S x K x T x V
