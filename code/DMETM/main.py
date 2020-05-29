@@ -84,7 +84,7 @@ parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows 
 ### evaluation, visualization, and logging-related arguments
 parser.add_argument('--num_words', type=int, default=20, help='number of words for topic viz')
 
-parser.add_argument('--log_interval', type=int, default=1, help='when to log training')
+parser.add_argument('--log_interval', type=int, default=10, help='when to log training')
 
 parser.add_argument('--visualize_every', type=int, default=1, help='when to visualize results')
 parser.add_argument('--eval_batch_size', type=int, default=1000, help='input batch size for evaluation')
@@ -93,9 +93,9 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 
 ### multi-sources-related parameters (DMETM)
-parser.add_argument('--use_source_embeddings', type=int, default=0, help='not using source embedding at all (identical to DETM)')
+parser.add_argument('--use_source_embeddings', type=int, default=1, help='not using source embedding at all (identical to DETM)')
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
-parser.add_argument('--train_source_embeddings', type=int, default=0, help='whether to fix lambda or train it')
+parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix lambda or train it')
 
 args = parser.parse_args()
 
@@ -282,6 +282,7 @@ def train(epoch):
     
 
     for idx, ind in enumerate(indices):
+
         optimizer.zero_grad()
         model.zero_grad()        
 
@@ -314,17 +315,22 @@ def train(epoch):
         loss, nll, kl_alpha, kl_eta, kl_theta = model(unique_tokens, data_batch, normalized_data_batch, 
             times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
 
-        # print("forward done.")
+        # set_trace()
 
+        # print("forward done.")
         # print("backward passing ...")
 
-        loss.backward()
+        # set_trace()
+
+        loss.backward()        
 
         # print("backward done.")
 
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         optimizer.step()
+
+        # set_trace()
 
         acc_loss += torch.sum(loss).item()
         acc_nll += torch.sum(nll).item()
@@ -334,7 +340,6 @@ def train(epoch):
         cnt += 1
 
         if idx % args.log_interval == 0 and idx > 0:
-        # if idx > 0:
             cur_loss = round(acc_loss / cnt, 2) 
             cur_nll = round(acc_nll / cnt, 2) 
             cur_kl_theta = round(acc_kl_theta_loss / cnt, 2) 
@@ -654,7 +659,7 @@ if args.mode == 'train':
     best_val_ppl = 1e9
     all_val_ppls = []
     
-    for epoch in range(1, args.epochs):        
+    for epoch in range(1, args.epochs):
         train(epoch)
         # if epoch % args.visualize_every == 0:
         #     visualize()
@@ -687,8 +692,8 @@ if args.mode == 'train':
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         if args.train_word_embeddings:
-            print('saving word embedding matrix rho...')            
-            rho = model.rho.cpu().detach().numpy()
+            print('saving word embedding matrix rho...')
+            rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         if args.train_source_embeddings:

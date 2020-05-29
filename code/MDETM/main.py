@@ -20,27 +20,37 @@ from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
-from detm import DETM
+from mdetm import MDETM
 from utils import nearest_neighbors, get_topic_coherence
 
 from IPython.core.debugger import set_trace
 
+import sys, importlib
+importlib.reload(sys.modules['data'])
+
+
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='gphin', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/gh/code/DMETM/data/GPHIN', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
+# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
+
+# parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
-parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/detm', help='path to save results')
+parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/mdetm', help='path to save results')
 
 parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
-# parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
+
 parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
+# parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=20, help='number of topics')
+
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
@@ -55,21 +65,27 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
+
 parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
+
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
+
 parser.add_argument('--enc_drop', type=float, default=0.1, help='dropout rate on encoder')
 parser.add_argument('--eta_dropout', type=float, default=0.1, help='dropout rate on rnn for eta')
+
 parser.add_argument('--clip', type=float, default=2.0, help='gradient clipping')
 parser.add_argument('--nonmono', type=int, default=10, help='number of bad hits allowed')
 parser.add_argument('--wdecay', type=float, default=1.2e-6, help='some l2 regularization')
-parser.add_argument('--anneal_lr', type=int, default=0, help='whether to anneal the learning rate or not')
+parser.add_argument('--anneal_lr', type=int, default=1, help='whether to anneal the learning rate or not')
 parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows or not')
 
 ### evaluation, visualization, and logging-related arguments
 parser.add_argument('--num_words', type=int, default=20, help='number of words for topic viz')
+
 parser.add_argument('--log_interval', type=int, default=10, help='when to log training')
+
 parser.add_argument('--visualize_every', type=int, default=1, help='when to visualize results')
 parser.add_argument('--eval_batch_size', type=int, default=1000, help='input batch size for evaluation')
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
@@ -77,7 +93,8 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 args = parser.parse_args()
 
-pca = PCA(n_components=2)
+# pca seems unused
+# pca = PCA(n_components=2)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 ## set seed
@@ -89,61 +106,79 @@ torch.manual_seed(args.seed)
 # 1. vocabulary
 print('Getting vocabulary ...')
 data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
+
 vocab, train, valid, test = data.get_data(data_file, temporal=True)
+
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
+
 
 # 1. training data
 print('Getting training data ...')
 train_tokens = train['tokens']
 train_counts = train['counts']
 train_times = train['times']
-
+train_sources = train['sources']
 
 # args.num_times = len(np.unique(train_times))
 timestamps_file = os.path.join(data_file, 'timestamps.pkl')
 all_timestamps = pickle.load(open(timestamps_file, 'rb'))
 args.num_times = len(all_timestamps)
 
-
 args.num_docs_train = len(train_tokens)
+
+
+# get all sources
+sources_map_file = os.path.join(data_file, 'sources_map.pkl')
+sources_map = pickle.load(open(sources_map_file, 'rb'))
+args.num_sources = len(sources_map)
+
+demo_source_indices = [k for k,v in sources_map.items() if v in ["China", "Canada", "United States"]]
+
+# swap keys and values (done once only)
+# sources_map={v:k for k,v in sources_map.items()}
+# with open(sources_map_file, 'wb') as f:
+#     pickle.dump(sources_map, f, protocol=pickle.HIGHEST_PROTOCOL)
+
 train_rnn_inp = data.get_rnn_input(
-    train_tokens, train_counts, train_times, args.num_times, args.vocab_size, args.num_docs_train)
+    train_tokens, train_counts, train_times, args.num_times, train_sources, args.vocab_size, args.num_docs_train)
 
 # 2. dev set
 print('Getting validation data ...')
 valid_tokens = valid['tokens']
 valid_counts = valid['counts']
 valid_times = valid['times']
+valid_sources = valid['sources']
 args.num_docs_valid = len(valid_tokens)
 valid_rnn_inp = data.get_rnn_input(
-    valid_tokens, valid_counts, valid_times, args.num_times, args.vocab_size, args.num_docs_valid)
+    valid_tokens, valid_counts, valid_times, args.num_times, valid_sources, args.vocab_size, args.num_docs_valid)
 
 # 3. test data
 print('Getting testing data ...')
 test_tokens = test['tokens']
 test_counts = test['counts']
 test_times = test['times']
+test_sources = test['sources']
 args.num_docs_test = len(test_tokens)
 test_rnn_inp = data.get_rnn_input(
-    test_tokens, test_counts, test_times, args.num_times, args.vocab_size, args.num_docs_test)
+    test_tokens, test_counts, test_times, args.num_times, test_sources, args.vocab_size, args.num_docs_test)
 
 test_1_tokens = test['tokens_1']
 test_1_counts = test['counts_1']
 test_1_times = test_times
 args.num_docs_test_1 = len(test_1_tokens)
 test_1_rnn_inp = data.get_rnn_input(
-    test_1_tokens, test_1_counts, test_1_times, args.num_times, args.vocab_size, args.num_docs_test)
+    test_1_tokens, test_1_counts, test_1_times, args.num_times, test_sources, args.vocab_size, args.num_docs_test)
 
 test_2_tokens = test['tokens_2']
 test_2_counts = test['counts_2']
 test_2_times = test_times
 args.num_docs_test_2 = len(test_2_tokens)
 test_2_rnn_inp = data.get_rnn_input(
-    test_2_tokens, test_2_counts, test_2_times, args.num_times, args.vocab_size, args.num_docs_test)
+    test_2_tokens, test_2_counts, test_2_times, args.num_times, test_sources, args.vocab_size, args.num_docs_test)
 
-## get embeddings 
-print('Getting embeddings ...')
+## get word embeddings 
+print('Getting word embeddings ...')
 emb_path = args.emb_path
 vect_path = os.path.join(args.data_path.split('/')[0], 'embeddings.pkl')   
 vectors = {}
@@ -154,20 +189,32 @@ with open(emb_path, 'rb') as f:
         if word in vocab:
             vect = np.array(line[1:]).astype(np.float)
             vectors[word] = vect
-embeddings = np.zeros((vocab_size, args.emb_size))
+word_embeddings = np.zeros((vocab_size, args.emb_size))
 words_found = 0
 for i, word in enumerate(vocab):
     try: 
-        embeddings[i] = vectors[word]
+        word_embeddings[i] = vectors[word]
         words_found += 1
     except KeyError:
-        embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
-embeddings = torch.from_numpy(embeddings).to(device)
-args.embeddings_dim = embeddings.size()
+        word_embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
+word_embeddings = torch.from_numpy(word_embeddings).to(device)
+args.embeddings_dim = word_embeddings.size()
+
+
+## get source embeddings
+print('Getting source embeddings ...')
+# sources_embeddings = torch.ones(args.num_sources, args.embeddings_dim[1])
+# sources_embeddings = torch.randn(args.num_sources, args.embeddings_dim[1], requires_grad=False).to(device)
+
+# assuming the file is located with other data files and named source_matrix.npy
+sources_embedding_path = os.path.join(data_file, 'sources_matrix.npy')
+# may need to convert to torch.tensor before using
+sources_embeddings = data.get_source_embeddings(sources_embedding_path)   # S x L numpy array
+
 
 print('\n')
 print('=*'*100)
-print('Training a Dynamic Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
+print('Training a Multi-source Dynamic Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
 print('=*'*100)
 
 ## define checkpoint
@@ -178,7 +225,7 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'detm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainWordEmbeddings_{}'.format(
+        'mdetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
             args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_embeddings))
 
@@ -188,8 +235,8 @@ if args.load_from != '':
     with open(args.load_from, 'rb') as f:
         model = torch.load(f)
 else:
-    model = DETM(args, embeddings)
-print('\nDETM architecture: {}'.format(model))
+    model = MDETM(args, word_embeddings, sources_embeddings)
+print('\nMDETM architecture: {}'.format(model))
 model.to(device)
 
 if args.optimizer == 'adam':
@@ -206,8 +253,10 @@ else:
     print('Defaulting to vanilla SGD')
     optimizer = optim.SGD(model.parameters(), lr=args.lr)
 
+
 def train(epoch):
-    """Train DETM on data for one epoch.
+    """
+        Train MDETM on data for one epoch.
     """
     model.train()
     acc_loss = 0
@@ -216,24 +265,61 @@ def train(epoch):
     acc_kl_eta_loss = 0
     acc_kl_alpha_loss = 0
     cnt = 0
+
     indices = torch.randperm(args.num_docs_train)
-    indices = torch.split(indices, args.batch_size) 
+    indices = torch.split(indices, args.batch_size)     
+    
+
     for idx, ind in enumerate(indices):
+
         optimizer.zero_grad()
-        model.zero_grad()
-        data_batch, times_batch = data.get_batch(
-            train_tokens, train_counts, ind, args.vocab_size, args.emb_size, temporal=True, times=train_times)
+        model.zero_grad()        
+
+        # print("batch ID: ", idx)
+        # print("sample ID: ", ind)
+        
+        data_batch, times_batch, sources_batch = data.get_batch(
+            train_tokens, train_counts, ind, args.vocab_size, train_sources, args.emb_size, temporal=True, times=train_times)
+
+        tokens_batch = train_tokens[ind]
+
         sums = data_batch.sum(1).unsqueeze(1)
+
         if args.bow_norm:
             normalized_data_batch = data_batch / sums
         else:
-            normalized_data_batch = data_batch
+            normalized_data_batch = data_batch        
 
-        loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, train_rnn_inp, args.num_docs_train)
-        loss.backward()
+        if tokens_batch.shape[0] == 1:
+            unique_tokens = np.unique(tokens_batch[0].tolist())
+        else:
+            unique_tokens = torch.tensor(np.unique(sum([sum(tokens_batch[i].tolist(),[]) 
+                for i in range(tokens_batch.shape[0])],[])))
+
+        # print("forward passing ...")
+
+        # loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
+        #     sources_batch, train_rnn_inp, args.num_docs_train)        
+
+        loss, nll, kl_alpha, kl_eta, kl_theta = model(unique_tokens, data_batch, normalized_data_batch, 
+            times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
+
+        # set_trace()
+
+        # print("forward done.")
+        # print("backward passing ...")
+
+        # set_trace()
+
+        loss.backward()        
+
+        # print("backward done.")
+
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         optimizer.step()
+
+        # set_trace()
 
         acc_loss += torch.sum(loss).item()
         acc_nll += torch.sum(nll).item()
@@ -251,6 +337,9 @@ def train(epoch):
             lr = optimizer.param_groups[0]['lr']
             print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. NELBO: {}'.format(
                 epoch, idx, len(indices), lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_loss))
+
+            if any(np.isnan([cur_loss, cur_nll, cur_kl_theta, cur_kl_eta, cur_kl_alpha])):
+                set_trace()
     
     cur_loss = round(acc_loss / cnt, 2) 
     cur_nll = round(acc_nll / cnt, 2) 
@@ -268,54 +357,64 @@ def visualize():
     """
     model.eval()
     with torch.no_grad():
-        alpha = model.mu_q_alpha
-        beta = model.get_beta(alpha) 
-        print('beta: ', beta.size())
+
+        alpha = model.mu_q_alpha # KxTxL
+        
+        # beta = model.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # SxKxTxV
+
         print('\n')
         print('#'*100)
         print('Visualize topics...')
-        # times = [0, 10, 40]
-        times = [0, int(beta.shape[1]/2), beta.shape[1]-1]
+        
+        topics = [0, int(args.num_topics/2), args.num_topics-1]
+        times = [0, int(max(train_times)/2), max(train_times)-1]
+        
+        
         topics_words = []
-        for k in range(args.num_topics):
-            for t in times:
-                gamma = beta[k, t, :]
-                top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])                
-                topic_words = [vocab[a] for a in top_words]
-                topics_words.append(' '.join(topic_words))
-                print('Topic {} .. Time: {} ===> {}'.format(k, t, topic_words)) 
 
-        print('\n')
-        print('Visualize word embeddings ...')
-        # queries = ['economic', 'assembly', 'security', 'management', 'debt', 'rights',  'africa']
-        # queries = ['economic', 'assembly', 'security', 'management', 'rights',  'africa']
-        queries = ['border', 'vaccines', 'coronaviruses', 'masks']
-        try:
-            embeddings = model.rho.weight  # Vocab_size x E
-        except:
-            embeddings = model.rho         # Vocab_size x E
-        # neighbors = []
-        for word in queries:
-            print('word: {} .. neighbors: {}'.format(
-                word, nearest_neighbors(word, embeddings, vocab, args.num_words)))
-        print('#'*100)
+        for s in demo_source_indices:
+            for k in topics:
+                for t in times:
+                    gamma = model.get_beta_skt(alpha, s, k, t)
+                    top_words = sum(gamma.cpu().numpy().argsort().tolist(),[])[-args.num_words+1:][::-1]
+                    topic_words = [vocab[a] for a in top_words]
+                    topics_words.append(' '.join(topic_words))
+                    
+                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[s], k, t, topic_words))
 
-        # print('\n')
-        # print('Visualize word evolution ...')
-        # topic_0 = None ### k 
-        # queries_0 = ['woman', 'gender', 'man', 'mankind', 'humankind'] ### v 
+        if args.train_source_embeddings or epoch<=1:
+            print('\n')
+            print('#'*100)
+            print('Visualize source embeddings ...')        
+            queries = ['China', 'Canada', 'United States', 'Italy']
+            try:
+                src_emb = model.source_lambda.weight  # Source_size x L
+            except:
+                src_emb = model.source_lambda         # Source_size x L
+            # neighbors = []
+            src_list = [v for k,v in sources_map.items()]
+            for src in queries:
+                print('source: {} .. neighbors: {}'.format(
+                    src, nearest_neighbors(src, src_emb, src_list, min(5, args.num_sources))))
 
-        # topic_1 = None
-        # queries_1 = ['africa', 'colonial', 'racist', 'democratic']
+            print(model.source_lambda[0:10])
+        
+        if args.train_embeddings or epoch<=1:
+            print('\n')
+            print('#'*100)
+            print('Visualize word embeddings ...')
+            queries = ['border', 'vaccines', 'coronaviruses', 'masks']
+            try:
+                word_embeddings = model.rho.weight  # Vocab_size x E
+            except:
+                word_embeddings = model.rho         # Vocab_size x E
+            # neighbors = []
+            for word in queries:
+                print('word: {} .. neighbors: {}'.format(
+                    word, nearest_neighbors(word, word_embeddings, vocab, args.num_words)))
+            print('#'*100)
 
-        # topic_2 = None
-        # queries_2 = ['poverty', 'sustainable', 'trade']
 
-        # topic_3 = None
-        # queries_3 = ['soviet', 'convention', 'iran']
-
-        # topic_4 = None # climate
-        # queries_4 = ['environment', 'impact', 'threats', 'small', 'global', 'climate']
 
 def _eta_helper(rnn_inp):
     inp = model.q_eta_map(rnn_inp).unsqueeze(1)
@@ -354,21 +453,27 @@ def get_completion_ppl(source):
     """
     model.eval()
     with torch.no_grad():
-        alpha = model.mu_q_alpha
+        alpha = model.mu_q_alpha # KxTxL
         if source == 'val':
-            indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)
+            indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)            
             tokens = valid_tokens
             counts = valid_counts
             times = valid_times
+            sources = valid_sources
 
             eta = get_eta('val')
 
             acc_loss = 0
             cnt = 0
             for idx, ind in enumerate(indices):
-                data_batch, times_batch = data.get_batch(
-                    tokens, counts, ind, args.vocab_size, args.emb_size, temporal=True, times=times)
+
+                token_batch = tokens[ind]
+                
+                data_batch, times_batch, sources_batch = data.get_batch(
+                    tokens, counts, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=times)
+
                 sums = data_batch.sum(1).unsqueeze(1)
+
                 if args.bow_norm:
                     normalized_data_batch = data_batch / sums
                 else:
@@ -376,15 +481,30 @@ def get_completion_ppl(source):
 
                 eta_td = eta[times_batch.type('torch.LongTensor')]
                 theta = get_theta(eta_td, normalized_data_batch)
-                alpha_td = alpha[:, times_batch.type('torch.LongTensor'), :]
+                
+                # work only with the unique sources and tokens in the batch to save memory
+                unique_sources = sources_batch.unique()
+                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch])
+
+                unique_times = times_batch.unique()
+                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch])
+
+                unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
+                    for i in range(token_batch.shape[0])],[])))
 
                 # set_trace()
 
-                beta = model.get_beta(alpha_td).permute(1, 0, 2)
+                beta = model.get_beta(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
+                beta = beta[times_batch.type('torch.LongTensor'),:,:,sources_batch.type('torch.LongTensor')]
+
                 loglik = theta.unsqueeze(2) * beta
                 loglik = loglik.sum(1)
+                
                 loglik = torch.log(loglik)
+
+                # nll = -loglik * data_batch[:,unique_tokens]
                 nll = -loglik * data_batch
+
                 nll = nll.sum(-1)
                 loss = nll / sums.squeeze()
                 loss = loss.mean().item()
@@ -400,9 +520,8 @@ def get_completion_ppl(source):
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             tokens_1 = test_1_tokens
             counts_1 = test_1_counts
-
             tokens_2 = test_2_tokens
-            counts_2 = test_2_counts
+            counts_2 = test_2_counts            
 
             eta_1 = get_eta('test')
 
@@ -410,9 +529,15 @@ def get_completion_ppl(source):
             cnt = 0
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
-                data_batch_1, times_batch_1 = data.get_batch(
-                    tokens_1, counts_1, ind, args.vocab_size, args.emb_size, temporal=True, times=test_times)
+
+                token_batch_1 = tokens_1[ind]
+                token_batch_2 = tokens_2[ind]
+
+                data_batch_1, times_batch_1, sources_batch_1 = data.get_batch(
+                    tokens_1, counts_1, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
+                
                 sums_1 = data_batch_1.sum(1).unsqueeze(1)
+
                 if args.bow_norm:
                     normalized_data_batch_1 = data_batch_1 / sums_1
                 else:
@@ -421,15 +546,31 @@ def get_completion_ppl(source):
                 eta_td_1 = eta_1[times_batch_1.type('torch.LongTensor')]
                 theta = get_theta(eta_td_1, normalized_data_batch_1)
 
-                data_batch_2, times_batch_2 = data.get_batch(
-                    tokens_2, counts_2, ind, args.vocab_size, args.emb_size, temporal=True, times=test_times)
+                data_batch_2, times_batch_2, sources_batch_2 = data.get_batch(
+                    tokens_2, counts_2, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
 
-                alpha_td = alpha[:, times_batch_2.type('torch.LongTensor'), :]
-                beta = model.get_beta(alpha_td).permute(1, 0, 2)
+                unique_sources = sources_batch_1.unique()
+                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch_1])
+
+                unique_times = times_batch_1.unique()
+                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch_1])
+
+                uniq_tokens_list = sum([sum(token_batch_1[i].tolist(),[]) for i in range(token_batch_1.shape[0])],[])
+                uniq_tokens_list.extend(sum([sum(token_batch_2[i].tolist(),[]) for i in range(token_batch_2.shape[0])],[]))                
+                unique_tokens = torch.tensor(np.unique(uniq_tokens_list))
+
+                # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
+                # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
+
+                beta = model.get_beta(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
+                beta = beta[times_batch_2.type('torch.LongTensor'),:,:,sources_batch_2.type('torch.LongTensor')]
+
                 loglik = theta.unsqueeze(2) * beta
-                loglik = loglik.sum(1)
+                loglik = loglik.sum(1)                
+
                 loglik = torch.log(loglik)
+                # nll = -loglik * data_batch_2[:,unique_tokens]
                 nll = -loglik * data_batch_2
                 nll = nll.sum(-1)
                 loss = nll / sums_2.squeeze()
@@ -447,7 +588,7 @@ def _diversity_helper(beta, num_tops):
     list_w = np.zeros((args.num_topics, num_tops))
     for k in range(args.num_topics):
         gamma = beta[k, :]
-        top_words = gamma.cpu().numpy().argsort()[-num_tops:][::-1]
+        top_words = gamma.detach().cpu().numpy().argsort()[-num_tops:][::-1]
         list_w[k, :] = top_words
     list_w = np.reshape(list_w, (-1))
     list_w = list(list_w)
@@ -462,41 +603,49 @@ def get_topic_quality():
     with torch.no_grad():
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha) 
-        print('beta: ', beta.size())
+        print('beta: ', beta.size()) # SxKxTxV
 
         print('\n')
         print('#'*100)
         print('Get topic diversity...')
         num_tops = 25
-        TD_all = np.zeros((args.num_times,))
-        for tt in range(args.num_times):
-            TD_all[tt] = _diversity_helper(beta[:, tt, :], num_tops)
+        TD_all = np.zeros((args.num_sources, args.num_times))
+
+        for ss in range(args.num_sources):
+            for tt in range(args.num_times):
+                TD_all[ss,tt] = _diversity_helper(beta[ss, :, tt, :], num_tops)
+
         TD = np.mean(TD_all)
         print('Topic Diversity is: {}'.format(TD))
 
         print('\n')
         print('Get topic coherence...')
         print('train_tokens: ', train_tokens[0])
-        TC_all = []
-        cnt_all = []
-        for tt in range(args.num_times):
-            tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().detach().numpy(), train_tokens, vocab)
-            TC_all.append(tc)
-            cnt_all.append(cnt)
+        TC_all = np.zeros((args.num_sources, args.num_times))
+        cnt_all = np.zeros((args.num_sources, args.num_times))
+        for ss in range(args.num_sources):
+            for tt in range(args.num_times):
+                tc, cnt = get_topic_coherence(beta[ss, :, tt, :].cpu().detach().numpy(), train_tokens, vocab)
+                TC_all[ss,tt] = tc
+                cnt_all[ss,tt] = cnt
         print('TC_all: ', TC_all)
         TC_all = torch.tensor(TC_all)
+        TC = np.mean(TC_all)
         print('TC_all: ', TC_all.size())
         print('\n')
         print('Get topic quality...')
-        quality = tc * TD
-        print('Topic Quality is: {}'.format(quality))
+        TQ = TC * TD
+        print('Topic Quality is: {}'.format(TQ))
         print('#'*100)
+        return {"TD":TD, "TC":TC, "TQ":TQ}
+
 
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
     best_epoch = 0
     best_val_ppl = 1e9
     all_val_ppls = []
+    
     for epoch in range(1, args.epochs):
         train(epoch)
         # if epoch % args.visualize_every == 0:
@@ -505,7 +654,7 @@ if args.mode == 'train':
         print('val_ppl: ', val_ppl)
         if val_ppl < best_val_ppl:
             with open(ckpt, 'wb') as f:
-                torch.save(model, f)
+                torch.save(model, f) # UNCOMMENT FOR REAL RUN
             best_epoch = epoch
             best_val_ppl = val_ppl
         else:
@@ -514,20 +663,22 @@ if args.mode == 'train':
             if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
                 optimizer.param_groups[0]['lr'] /= args.lr_factor
         all_val_ppls.append(val_ppl)
-    with open(ckpt, 'rb') as f:
-        model = torch.load(f)
+    # with open(ckpt, 'rb') as f:
+    #     model = torch.load(f)
     model = model.to(device)
     model.eval()
     with torch.no_grad():
-        print('saving topic matrix beta...')
+
         alpha = model.mu_q_alpha
-        beta = model.get_beta(alpha).cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True)
+        print('saving alpha...')
+        alpha = model.mu_q_alpha.cpu().detach().numpy()
+        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
+
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
-            # rho = model.rho.weight.cpu().numpy()
             rho = model.rho.weight.cpu().detach().numpy()
-            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
+            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
+
         print('computing validation perplexity...')
         val_ppl = get_completion_ppl('val')
         print('computing test perplexity...')
@@ -542,18 +693,22 @@ else:
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
-        
-    print('saving alpha...')
-    with torch.no_grad():
-        # alpha = model.mu_q_alpha.cpu().numpy()
-        alpha = model.mu_q_alpha.cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
 
     print('computing validation perplexity...')
     val_ppl = get_completion_ppl('val')
     print('computing test perplexity...')
     test_ppl = get_completion_ppl('test')
     print('computing topic coherence and topic diversity...')
-    get_topic_quality()
+    tq = get_topic_quality()
+
+    f=open(ckpt+'_tq.txt','w')
+    s1='\n'.join([k+': '+str(v) for k,v in tq.items()])
+    f.write(s1)
+    f.close()
+
     print('visualizing topics and embeddings...')
     visualize()
+
+
+
+

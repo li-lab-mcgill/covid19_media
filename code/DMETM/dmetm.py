@@ -38,8 +38,8 @@ class DMETM(nn.Module):
 
         ## define the word embedding matrix \rho: L x V
         if args.train_word_embeddings:
-            # self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False)
-            self.rho = nn.Parameter(torch.randn(args.vocab_size, args.rho_size)) 
+            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False) # L x V
+            # self.rho = nn.Parameter(torch.randn(args.vocab_size, args.rho_size)) 
             # self.rho = nn.Parameter(word_embeddings)
         else:
             num_embeddings, emsize = word_embeddings.size()
@@ -224,7 +224,6 @@ class DMETM(nn.Module):
         """
         # alpha: K x T x L
         # source_lambda: S x L
-        # set_trace()
 
         # K x T' x L
         alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
@@ -272,8 +271,15 @@ class DMETM(nn.Module):
         # S x L x L * L x (K x T) -> S x L x (K x T) -> S x L x K x T -> S x K x T x L
         alpha_s = torch.matmul(source_lambda_s, tmp).view(source_lambda_s.shape[0], 
             source_lambda_s.shape[1], alpha.shape[0], alpha.shape[1]).permute(0,2,3,1)
+
+        # set_trace()
         
-        logit = torch.matmul(alpha_s, self.rho.permute(1, 0)) # S x K x T x L * L x V -> S x K x T x V
+        if self.train_word_embeddings:
+            # S x K x T x L -> (S x K x T) x L * L x V -> (S x K x T) x V
+            logit = self.rho(alpha_s.reshape(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size))
+            logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1)
+        else:
+            logit = torch.matmul(alpha_s, self.rho.permute(1, 0)) # S x K x T x L * L x V -> S x K x T x V
         
         return F.softmax(logit, dim=-1) # S x K x T x V
 
@@ -353,7 +359,7 @@ class DMETM(nn.Module):
 
     def check_beta(self, alpha, uniq_tokens, uniq_sources, uniq_times):
         
-        set_trace()
+        # set_trace()
 
         # verify get_beta_full and get_beta produce the same outputs
         beta_full_fast = self.get_beta_full(alpha) # S x K x T x V
@@ -429,6 +435,8 @@ class DMETM(nn.Module):
         return nll          
 
     def forward(self, unique_tokens, bows, normalized_bows, times, sources, rnn_inp, num_docs):
+
+        # set_trace()
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz         
