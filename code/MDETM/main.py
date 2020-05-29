@@ -49,7 +49,7 @@ parser.add_argument('--min_df', type=int, default=10, help='to get the right dat
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=1, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=5, help='number of topics')
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
@@ -306,14 +306,14 @@ def train(epoch):
 
         # set_trace()
 
-        print("forward done.")
-        print("backward passing ...")
+        # print("forward done.")
+        # print("backward passing ...")
 
         # set_trace()
 
         loss.backward()        
 
-        print("backward done.")
+        # print("backward done.")
 
         if args.clip > 0:
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
