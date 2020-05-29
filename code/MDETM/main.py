@@ -41,7 +41,7 @@ parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directo
 # parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
-parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
+parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/mdetm', help='path to save results')
 
 parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
 
@@ -49,7 +49,7 @@ parser.add_argument('--min_df', type=int, default=10, help='to get the right dat
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=5, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=20, help='number of topics')
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
@@ -214,7 +214,7 @@ sources_embeddings = data.get_source_embeddings(sources_embedding_path)   # S x 
 
 print('\n')
 print('=*'*100)
-print('Training a Dynamic Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
+print('Training a Multi-source Dynamic Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
 print('=*'*100)
 
 ## define checkpoint
@@ -225,7 +225,7 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'dmetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
+        'mdetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
             args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_embeddings))
 
@@ -236,7 +236,7 @@ if args.load_from != '':
         model = torch.load(f)
 else:
     model = MDETM(args, word_embeddings, sources_embeddings)
-print('\nDETM architecture: {}'.format(model))
+print('\nMDETM architecture: {}'.format(model))
 model.to(device)
 
 if args.optimizer == 'adam':
@@ -256,7 +256,7 @@ else:
 
 def train(epoch):
     """
-        Train DETM on data for one epoch.
+        Train MDETM on data for one epoch.
     """
     model.train()
     acc_loss = 0
