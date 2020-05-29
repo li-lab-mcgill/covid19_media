@@ -14,7 +14,7 @@ from pdb import set_trace
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-class DMETM(nn.Module):
+class MDETM(nn.Module):
     def __init__(self, args, word_embeddings, sources_embeddings):
         super(DMETM, self).__init__()
 
@@ -46,27 +46,14 @@ class DMETM(nn.Module):
             rho = nn.Embedding(num_embeddings, emsize)
             rho.weight.data = word_embeddings
             self.rho = rho.weight.data.clone().float().to(device)
-
-        
-        ## define the source-specific embedding \lambda S x L' (DMETM)
-        if args.use_source_embeddings:
-            if args.train_source_embeddings:
-                # self.source_lambda = nn.Parameter(torch.randn(args.num_sources, args.rho_size))
-                self.source_lambda = nn.Parameter(torch.ones(args.num_sources, args.rho_size))
-                # self.source_lambda = nn.Parameter(sources_embeddings)
-            else:
-                # source_lambda = nn.Embedding(args.num_sources, args.rho_size)
-                # source_lambda.weight.data = sources_embeddings
-                # self.source_lambda = source_lambda.weight.data.clone().float().to(device)
-                self.source_lambda = sources_embeddings.clone().float().to(device)
-        else: # not using source embedding at all (i.e., identical to DETM)
-            self.source_lambda = torch.ones(args.num_sources, args.rho_size).clone().float().to(device)
-
-
-        ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
-        self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
-        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
     
+
+        ## MDETM specific parameter
+        ## define the variational parameters for the source-specific topic embeddings over time (alpha) ... alpha is S x K x T x L
+        self.mu_q_alpha = nn.Parameter(torch.randn(args.sources, args.num_topics, args.num_times, args.rho_size))
+        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.sources, args.num_topics, args.num_times, args.rho_size))
+    
+
         ## define variational distribution for \theta_{1:D} via amortizartion... theta is K x D
         self.q_theta = nn.Sequential(
                     nn.Linear(args.vocab_size+args.num_topics, args.t_hidden_size), 
@@ -131,26 +118,38 @@ class DMETM(nn.Module):
             kl = -0.5 * torch.sum(1 + q_logsigma - q_mu.pow(2) - q_logsigma.exp(), dim=-1)
         return kl
 
-    def get_alpha(self): ## mean field
-        alphas = torch.zeros(self.num_times, self.num_topics, self.rho_size).to(device)
+    ## source-specific alpha S x K x T x L
+    ## mean field on q(alpha)
+    def get_alpha(self):
+
+        # first create alpha to have dimension T x S x K x L for the ease of indexing time
+        alphas = torch.zeros(self.num_times, self.num_sources, self.num_topics, self.rho_size).to(device)
         kl_alpha = []
 
-        alphas[0] = self.reparameterize(self.mu_q_alpha[:, 0, :], self.logsigma_q_alpha[:, 0, :])
+        alphas[0] = self.reparameterize(self.mu_q_alpha[:, :, 0, :], self.logsigma_q_alpha[:, :, 0, :])
 
-        p_mu_0 = torch.zeros(self.num_topics, self.rho_size).to(device)
-        logsigma_p_0 = torch.zeros(self.num_topics, self.rho_size).to(device)
-        kl_0 = self.get_kl(self.mu_q_alpha[:, 0, :], self.logsigma_q_alpha[:, 0, :], p_mu_0, logsigma_p_0)
+        p_mu_0 = torch.zeros(self.num_sources, self.num_topics, self.rho_size).to(device) # S x K x L
+        logsigma_p_0 = torch.zeros(self.num_sources, self.num_topics, self.rho_size).to(device)
+
+        kl_0 = self.get_kl(self.mu_q_alpha[:, :, 0, :], self.logsigma_q_alpha[:, :, 0, :], p_mu_0, logsigma_p_0)
         kl_alpha.append(kl_0)
+
         for t in range(1, self.num_times):
-            alphas[t] = self.reparameterize(self.mu_q_alpha[:, t, :], self.logsigma_q_alpha[:, t, :]) 
+
+            alphas[t] = self.reparameterize(self.mu_q_alpha[:, :, t, :], self.logsigma_q_alpha[:, :, t, :]) 
             
             p_mu_t = alphas[t-1]
-            logsigma_p_t = torch.log(self.delta * torch.ones(self.num_topics, self.rho_size).to(device))
-            kl_t = self.get_kl(self.mu_q_alpha[:, t, :], self.logsigma_q_alpha[:, t, :], p_mu_t, logsigma_p_t)
+
+            # S x K x L
+            logsigma_p_t = torch.log(self.delta * torch.ones(self.num_sources, self.num_topics, self.rho_size).to(device))
+
+            kl_t = self.get_kl(self.mu_q_alpha[:, :, t, :], self.logsigma_q_alpha[:, :, t, :], p_mu_t, logsigma_p_t)
+
             kl_alpha.append(kl_t)
+
         kl_alpha = torch.stack(kl_alpha).sum()
 
-        alphas = alphas.permute(1,0,2) # TxKxL -> KxTxL
+        alphas = alphas.permute(1,2,0,3) # T x S x K x L -> S x K x T x L
 
         return alphas, kl_alpha.sum()
 
@@ -217,216 +216,36 @@ class DMETM(nn.Module):
         return theta, kl_theta
 
 
-    # incorporate source-specific embedding lambda
-    # by taking the **inner product** of alpha with S sets of L x L diagonal matrix
-    def get_beta(self, alpha, uniq_tokens, uniq_sources, uniq_times):
-        """Returns the topic matrix beta of shape S x K x T x V
-        """
-        # alpha: K x T x L
-        # source_lambda: S x L
-
-        # K x T' x L
-        alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
-        
-        # S x L -> S' x L
-        source_lambda_s = self.source_lambda[uniq_sources.type('torch.LongTensor')]
-
-        # S' x L -> S' x L x L
-        source_lambda_s = source_lambda_s.unsqueeze(2).expand(*source_lambda_s.size(), source_lambda_s.size(1))
-
-        # S' x L x L * L x L -> S' x L x L (i.e. S' sets of L x L diagonal matrices)
-        source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1)).to(device)
-
-        # K x T' x L -> L x K x T' -> L x (K x T')
-        tmp = alpha_s.permute(2,0,1).view(alpha_s.shape[2], alpha_s.shape[0]*alpha_s.shape[1])
-
-        # S' x L x L * L x (K x T') -> S' x L x (K x T') -> S' x L x K x T' -> S' x K x T' x L
-        alpha_s = torch.matmul(source_lambda_s, tmp).view(source_lambda_s.shape[0], 
-            source_lambda_s.shape[1], alpha_s.shape[0], alpha_s.shape[1]).permute(0,2,3,1)
-        
-        logit = torch.matmul(alpha_s, self.rho.permute(1, 0)) # S' x K x T' x L * L x V -> S' x K x T' x V
-
-        return F.softmax(logit, dim=-1)[:,:,:,uniq_tokens.type('torch.LongTensor')] # S' x K x T' x V'
-
-
-    # get beta for full vocab (can be memory consuming for large vocab, time, source)
-    def get_beta_full(self, alpha):
-        """Returns the topic matrix beta of shape S x K x T x V
-        """
-        # alpha: K x T x L
-        # source_lambda: S x L
-
-        # set_trace()
-
-        # S x L -> S x L x L
-        source_lambda_s = self.source_lambda.unsqueeze(2).expand(*self.source_lambda.size(), self.source_lambda.size(1))
-
-        # S x L x L * L x L -> S x L x L (i.e. S sets of L x L diagonal matrices)
-        source_lambda_s = source_lambda_s * torch.eye(source_lambda_s.size(1)).to(device)
-
-        # K x T x L -> L x K x T -> L x (K x T)
-        tmp = alpha.permute(2,0,1)
-        tmp = tmp.reshape(tmp.shape[0], tmp.shape[1]*tmp.shape[2])
-
-        # S x L x L * L x (K x T) -> S x L x (K x T) -> S x L x K x T -> S x K x T x L
-        alpha_s = torch.matmul(source_lambda_s, tmp).view(source_lambda_s.shape[0], 
-            source_lambda_s.shape[1], alpha.shape[0], alpha.shape[1]).permute(0,2,3,1)
-
-        # set_trace()
-        
-        if self.train_word_embeddings:
-            # S x K x T x L -> (S x K x T) x L * L x V -> (S x K x T) x V
-            logit = self.rho(alpha_s.reshape(alpha_s.size(0)*alpha_s.size(1)*alpha_s.size(2), self.rho_size))
-            logit = logit.view(alpha_s.size(0), alpha_s.size(1), alpha_s.size(2), -1)
-        else:
-            logit = torch.matmul(alpha_s, self.rho.permute(1, 0)) # S x K x T x L * L x V -> S x K x T x V
-        
-        return F.softmax(logit, dim=-1) # S x K x T x V
-
-
-    # incorporate source-specific embedding lambda
-    # by taking the **element-wise** product of alpha with S sets of L x L diagonal matrix
-    def get_beta_elementwise(self, alpha, uniq_tokens, uniq_sources, uniq_times):
-        """Returns the topic matrix beta of shape S x K x T x V
-        """
-        # alpha: K x T x L
-        # source_lambda: S x L            
-
-        # 1 x K x T' x L -> S x K x T' x L
-        alpha_s = alpha[:,uniq_times.type('torch.LongTensor'),:]
-        alpha_s = alpha_s.unsqueeze(0).repeat(uniq_sources.shape[0], 1, 1, 1)
-
-        # S' x 1 x L -> S' x 1 x 1 x L -> S' x K x T x L
-        source_lambda_s = self.source_lambda[uniq_sources.type('torch.LongTensor')]
-
-        num_uniq_times = uniq_times.shape[0]
-        
-        # S' x 1 x 1 x L -> S' x K x T' x L
-        source_lambda_s = source_lambda_s.unsqueeze(1).unsqueeze(1).repeat(1,self.num_topics, num_uniq_times,1)
-        
-        alpha_s = alpha_s * source_lambda_s # S' x K x T' x L
-        
-        # (S' x T' x K) x L prod L x V' = (S' x T' x K) x V'
-        logit = torch.matmul(alpha_s, self.rho.permute(1, 0))
-
-        return F.softmax(logit, dim=-1)[:, :, :, uniq_tokens.type('torch.LongTensor')] # S x K x T x V
-
-     
-
-
-    # get beta for full vocab (can be memory consuming for large vocab, time, source)
-    def get_beta_full_elementwise(self, alpha):
-        """Returns the topic matrix beta of shape S x K x T x V
-        """
-        # alpha: K x T x L
-        # source_lambda: S x L            
-
-        # 1 x K x T x L -> S x K x T x L
-        alpha_s_full = alpha.unsqueeze(0).repeat(self.num_sources, 1, 1, 1)
-
-        # S x 1 x L -> S x 1 x 1 x L -> S x K x T x L
-        source_lambda_s_full = self.source_lambda.unsqueeze(1).unsqueeze(1).repeat(1, self.num_topics, self.num_times, 1)
-
-        alpha_s_full = alpha_s_full * source_lambda_s_full # S x K x T x L
-        
-        tmp = alpha_s_full.view(alpha_s_full.size(0)*alpha_s_full.size(1)*alpha_s_full.size(2), self.rho_size) # (S x K x T) x L
-        
-        # (S x K x T) x L prod L x V = (S x K x T) x V
-        logit_full = torch.mm(tmp, self.rho.permute(1, 0))
-
-        logit_full = logit_full.view(alpha_s_full.size(0), alpha_s_full.size(1), alpha_s_full.size(2), -1) # S x K x T x V
-        
-        return F.softmax(logit_full, dim=-1) # S x K x T x V
-
-
-
     # get beta at specific source s, topic k, time t
     def get_beta_skt(self, alpha, s, k, t):
         """Returns the full topic matrix beta of shape S x K x T x V
         """
-        # alpha: K x T x L
-        # source_lambda: S x L
-
-        # 1 x 1 x L -> L
-        alpha_kt = alpha[k,t,:].squeeze()
-
-        alpha_skt = alpha_kt * self.source_lambda[s,:]
-
-        # 1 x L prod L x V = L x V
-        logit = torch.mm(alpha_skt.unsqueeze(0), self.rho.permute(1, 0))
+        # alpha: S x K x T x L        
+        
+        alpha_skt = alpha[s,k,t,:].squeeze() # S x K x T x L -> 1 x 1 x 1 x L -> L
+        
+        logit = torch.mm(alpha_skt.unsqueeze(0), self.rho.permute(1, 0)) # 1 x L prod L x V = L x V
 
         return F.softmax(logit, dim=-1) # 1 x V
 
-    def check_beta(self, alpha, uniq_tokens, uniq_sources, uniq_times):
-        
-        # set_trace()
 
-        # verify get_beta_full and get_beta produce the same outputs
-        beta_full_fast = self.get_beta_full(alpha) # S x K x T x V
-        beta_full_fast_sel = beta_full_fast[uniq_sources.type('torch.LongTensor')] # S' x K x T x V
-        beta_full_fast_sel = beta_full_fast_sel[:,:,uniq_times.type('torch.LongTensor'),:] # S' x K x T' x V
-        beta_full_fast_sel = beta_full_fast_sel[:,:,:,uniq_tokens.type('torch.LongTensor')] # S' x K x T' x V'
-        beta_sel_fast = self.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # S' x K x T' x V'
-        print((beta_full_fast_sel - beta_sel_fast).sum())
+    def get_beta(self, alpha):
+        """Returns the topic matrix beta of shape T x K x V
+        """
+        # alpha: S x K x T x L        
 
-        
-        # verify full beta calculation
-        beta_full_fast = self.get_beta_full(alpha) # S x K x T x V
-        beta_full_slow = torch.zeros(self.num_sources, self.num_topics, self.num_times, self.rho.size(0))
+        if self.train_word_embeddings: # rho: L x V
+            logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size))
+        else: # rho: V x L
+            tmp = alpha.view(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size)
+            logit = torch.mm(tmp, self.rho.permute(1, 0))
 
-        for i in range(self.num_sources):
-            for k in range(self.num_topics):
-                for t in range(self.num_times):
-                    beta_full_slow[int(i),int(k),int(t),:] = self.get_beta_skt(alpha, int(i),int(k),int(t))
-
-        print((beta_full_fast - beta_full_slow).sum()) # should return a very small number
-        
-        # print((torch.randn(self.num_sources, self.num_topics, self.num_times, self.rho.size(0)) - beta_full_slow).sum()) # compare with background
-        
-        # verify beta calculation on select features
-        beta_sel_fast = self.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # S' x K x T' x V'
-        
-        beta_sel_slow = torch.zeros(uniq_sources.shape[0], self.num_topics, uniq_times.shape[0], uniq_tokens.shape[0])
-
-        for i in range(uniq_sources.shape[0]):
-            for k in range(self.num_topics):
-                for t in range(uniq_times.shape[0]):
-                    source_idx = int(uniq_sources[i])
-                    time_idx = int(uniq_times[t])
-                    tmp = self.get_beta_skt(alpha, source_idx, k, time_idx).squeeze() # 1 x V
-                    beta_sel_slow[i, k, t,:] = tmp[uniq_tokens.type('torch.LongTensor')]
-        
-        print((beta_sel_fast - beta_sel_slow).sum())
-
-        beta_full_slow_sel = beta_full_slow[uniq_sources.type('torch.LongTensor')]
-        beta_full_slow_sel = beta_full_slow_sel[:,:,uniq_times.type('torch.LongTensor'),:]
-        beta_full_slow_sel = beta_full_slow_sel[:,:,:,uniq_tokens.type('torch.LongTensor')]
-
-        print((beta_full_slow_sel - beta_sel_slow).sum())
+        logit = logit.view(alpha.size(0), alpha.size(1), alpha.size(2), -1) # S x K x T x L x V
+        beta = F.softmax(logit, dim=-1)
+        return beta             
 
 
-    # def get_beta(self, alpha):
-    #     """Returns the topic matrix \beta of shape T x K x V
-    #     """
-    #     if self.train_word_embeddings:
-    #         logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
-    #     else:
-    #         tmp = alpha.view(alpha.size(0)*alpha.size(1), self.rho_size)
-    #         logit = torch.mm(tmp, self.rho.permute(1, 0)) 
-    #     logit = logit.view(alpha.size(0), alpha.size(1), -1)
-    #     beta = F.softmax(logit, dim=-1)
-    #     return beta 
-
-
-    def get_nll(self, theta, beta, bows, unique_tokens):
-        theta = theta.unsqueeze(1)
-        loglik = torch.bmm(theta, beta).squeeze(1)        
-        loglik = torch.log(loglik)
-        nll = -loglik * bows[:,unique_tokens]
-        nll = nll.sum(-1)
-        return nll  
-
-    def get_nll_full(self, theta, beta, bows):
+    def get_nll(self, theta, beta, bows):
         theta = theta.unsqueeze(1)
         loglik = torch.bmm(theta, beta).squeeze(1)
         loglik = torch.log(loglik)
@@ -448,25 +267,13 @@ class DMETM(nn.Module):
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
 
         kl_theta = kl_theta.sum() * coeff
-
-        unique_sources = sources.unique()
-        unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources])
-
-        unique_times = times.unique()
-        unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times])
-
-        # self.check_beta(alpha, unique_tokens, unique_sources, unique_times)
         
-        # beta = self.get_beta(alpha, unique_tokens, unique_sources, unique_times) # S' x K x T' x V'
-        # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
-        # nll = self.get_nll(theta, beta, bows, unique_tokens)
-
         # test for difference between DMETM and DETM
-        beta = self.get_beta_full(alpha)        
+        beta = self.get_beta(alpha)        
 
         beta = beta[sources.type('torch.LongTensor'), :, times.type('torch.LongTensor'), :] # D' x K x V'
         
-        nll = self.get_nll_full(theta, beta, bows)
+        nll = self.get_nll(theta, beta, bows)
         
         nll = nll.sum() * coeff
         nelbo = nll + kl_alpha + kl_eta + kl_theta

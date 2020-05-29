@@ -20,7 +20,7 @@ from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
-from dmetm import DMETM
+from mdetm import MDETM
 from utils import nearest_neighbors, get_topic_coherence
 
 from IPython.core.debugger import set_trace
@@ -92,7 +92,7 @@ parser.add_argument('--load_from', type=str, default='', help='the name of the c
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
 
-### multi-sources-related parameters (DMETM)
+### multi-sources-related parameters (MDETM)
 parser.add_argument('--use_source_embeddings', type=int, default=1, help='not using source embedding at all (identical to DETM)')
 parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
 parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix lambda or train it')
@@ -246,7 +246,7 @@ if args.load_from != '':
     with open(args.load_from, 'rb') as f:
         model = torch.load(f)
 else:
-    model = DMETM(args, word_embeddings, sources_embeddings)
+    model = MDETM(args, word_embeddings, sources_embeddings)
 print('\nDETM architecture: {}'.format(model))
 model.to(device)
 
