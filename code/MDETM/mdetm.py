@@ -16,7 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class MDETM(nn.Module):
     def __init__(self, args, word_embeddings, sources_embeddings):
-        super(DMETM, self).__init__()
+        super(MDETM, self).__init__()
 
         ## define hyperparameters
         self.num_topics = args.num_topics
@@ -50,8 +50,8 @@ class MDETM(nn.Module):
 
         ## MDETM specific parameter
         ## define the variational parameters for the source-specific topic embeddings over time (alpha) ... alpha is S x K x T x L
-        self.mu_q_alpha = nn.Parameter(torch.randn(args.sources, args.num_topics, args.num_times, args.rho_size))
-        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.sources, args.num_topics, args.num_times, args.rho_size))
+        self.mu_q_alpha = nn.Parameter(torch.randn(args.num_sources, args.num_topics, args.num_times, args.rho_size))
+        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.num_sources, args.num_topics, args.num_times, args.rho_size))
     
 
         ## define variational distribution for \theta_{1:D} via amortizartion... theta is K x D
@@ -232,7 +232,9 @@ class MDETM(nn.Module):
     def get_beta(self, alpha):
         """Returns the topic matrix beta of shape T x K x V
         """
-        # alpha: S x K x T x L        
+        # alpha: S x K x T x L
+
+        set_trace()
 
         if self.train_word_embeddings: # rho: L x V
             logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size))
@@ -240,7 +242,7 @@ class MDETM(nn.Module):
             tmp = alpha.view(alpha.size(0)*alpha.size(1)*alpha.size(2), self.rho_size)
             logit = torch.mm(tmp, self.rho.permute(1, 0))
 
-        logit = logit.view(alpha.size(0), alpha.size(1), alpha.size(2), -1) # S x K x T x L x V
+        logit = logit.view(alpha.size(0), alpha.size(1), alpha.size(2), -1) # S x K x T x V
         beta = F.softmax(logit, dim=-1)
         return beta             
 
