@@ -223,17 +223,27 @@ class MDETM(nn.Module):
         q_theta = self.q_theta(inp)
 
         if self.enc_drop > 0:
-            q_theta = self.t_drop(q_theta)
+            q_theta = self.t_drop(q_theta)        
+
+        mu_theta = self.mu_q_theta(q_theta)
+
+        mu_theta = mu_theta.view(bsz, self.num_sources, self.num_topics)
+
+        batch_ind = torch.tensor(np.array([i for i in range(bsz)]))
         
-        set_trace()
+        mu_theta = mu_theta[batch_ind, sources.type('torch.LongTensor'), :]
 
-        mu_theta = self.mu_q_theta(q_theta) * zeros_factor
+        logsigma_theta = self.logsigma_q_theta(q_theta)
 
-        logsigma_theta = self.logsigma_q_theta(q_theta) * zeros_factor
+        logsigma_theta = logsigma_theta.view(bsz, self.num_sources, self.num_topics)
+
+        logsigma_theta = logsigma_theta[batch_ind,sources.type('torch.LongTensor'),:]
 
         z = self.reparameterize(mu_theta, logsigma_theta)
 
-        theta = F.softmax(z, dim=-1)        
+        theta = F.softmax(z, dim=-1)
+
+        eta_td = eta_td.view(bsz, self.num_sources, self.num_topics)[batch_ind, sources.type('torch.LongTensor'), :]
 
         kl_theta = self.get_kl(mu_theta, logsigma_theta, eta_td, torch.zeros(self.num_topics).to(device))
 
