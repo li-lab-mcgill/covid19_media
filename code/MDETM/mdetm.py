@@ -208,9 +208,9 @@ class MDETM(nn.Module):
         """Returns the topic proportions.
         """
         # T x (S x K) -> D x (S x K)
-        eta_td = eta[times.type('torch.LongTensor')]
+        bsz = bows.size(0)
 
-        bsz = eta_td.size(0)
+        eta_td = eta[times.type('torch.LongTensor')]
 
         zeros_factor = torch.zeros(bsz, self.num_sources, self.num_topics)
 
@@ -237,7 +237,12 @@ class MDETM(nn.Module):
 
         logsigma_theta = logsigma_theta.view(bsz, self.num_sources, self.num_topics)
 
-        logsigma_theta = logsigma_theta[batch_ind,sources.type('torch.LongTensor'),:]
+        logsigma_theta = logsigma_theta[batch_ind,sources.type('torch.LongTensor'),:]        
+
+        if (logsigma_theta > self.max_logsigma_t).sum() > 0:
+            logsigma_theta[logsigma_theta > self.max_logsigma_t] = self.max_logsigma_t
+        elif (logsigma_theta < self.min_logsigma_t).sum() > 0:
+            logsigma_theta[logsigma_theta < self.min_logsigma_t] = self.min_logsigma_t        
 
         z = self.reparameterize(mu_theta, logsigma_theta)
 

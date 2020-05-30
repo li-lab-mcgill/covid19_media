@@ -49,35 +49,37 @@ parser.add_argument('--min_df', type=int, default=10, help='to get the right dat
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=2, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=5, help='number of topics')
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
-parser.add_argument('--train_embeddings', type=int, default=0, help='whether to fix rho or train it')
+parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
-parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
+parser.add_argument('--delta', type=float, default=0.001, help='prior variance')
 
 ### optimization-related arguments
-parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
+parser.add_argument('--lr', type=float, default=0.0005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
-parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train')
 
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
 
-parser.add_argument('--enc_drop', type=float, default=0.1, help='dropout rate on encoder')
-parser.add_argument('--eta_dropout', type=float, default=0.1, help='dropout rate on rnn for eta')
+parser.add_argument('--enc_drop', type=float, default=0.2, help='dropout rate on encoder')
+parser.add_argument('--eta_dropout', type=float, default=0.2, help='dropout rate on rnn for eta')
 
 parser.add_argument('--clip', type=float, default=2.0, help='gradient clipping')
 parser.add_argument('--nonmono', type=int, default=10, help='number of bad hits allowed')
+
 parser.add_argument('--wdecay', type=float, default=1.2e-6, help='some l2 regularization')
+
 parser.add_argument('--anneal_lr', type=int, default=1, help='whether to anneal the learning rate or not')
 parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows or not')
 
@@ -421,8 +423,8 @@ def _eta_helper(rnn_inp):
     hidden = model.init_hidden()
     output, _ = model.q_eta(inp, hidden)
     output = output.squeeze()
-    etas = torch.zeros(model.num_times, model.num_topics).to(device)
-    inp_0 = torch.cat([output[0], torch.zeros(model.num_topics,).to(device)], dim=0)
+    etas = torch.zeros(model.num_times, model.num_sources * model.num_topics).to(device)
+    inp_0 = torch.cat([output[0], torch.zeros(model.num_sources * model.num_topics,).to(device)], dim=0)
     etas[0] = model.mu_q_eta(inp_0)
     for t in range(1, model.num_times):
         inp_t = torch.cat([output[t], etas[t-1]], dim=0)
@@ -439,12 +441,23 @@ def get_eta(source):
             rnn_1_inp = test_1_rnn_inp
             return _eta_helper(rnn_1_inp)
 
-def get_theta(eta, bows):
+def get_theta(eta, bows, times, sources):
     model.eval()
     with torch.no_grad():
-        inp = torch.cat([bows, eta], dim=1)
+        bsz = bows.size(0)
+        eta_td = eta[times.type('torch.LongTensor')]        
+        zeros_factor = torch.zeros(bsz, model.num_sources, model.num_topics)
+        zeros_factor[:,sources.type('torch.LongTensor'),:] = 1
+        eta_td = zeros_factor.view(bsz, model.num_sources * model.num_topics) * eta_td
+
+        inp = torch.cat([bows, eta_td], dim=1)
         q_theta = model.q_theta(inp)
         mu_theta = model.mu_q_theta(q_theta)
+        batch_ind = torch.tensor(np.array([i for i in range(bsz)]))
+
+        mu_theta = mu_theta.view(bsz, model.num_sources, model.num_topics)
+        mu_theta = mu_theta[batch_ind, sources.type('torch.LongTensor'), :]
+
         theta = F.softmax(mu_theta, dim=-1)
         return theta    
 
@@ -466,8 +479,6 @@ def get_completion_ppl(source):
             acc_loss = 0
             cnt = 0
             for idx, ind in enumerate(indices):
-
-                token_batch = tokens[ind]
                 
                 data_batch, times_batch, sources_batch = data.get_batch(
                     tokens, counts, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=times)
@@ -478,9 +489,8 @@ def get_completion_ppl(source):
                     normalized_data_batch = data_batch / sums
                 else:
                     normalized_data_batch = data_batch
-
-                eta_td = eta[times_batch.type('torch.LongTensor')]
-                theta = get_theta(eta_td, normalized_data_batch)
+                
+                theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
                 
                 # set_trace()
 
@@ -519,9 +529,6 @@ def get_completion_ppl(source):
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
 
-                token_batch_1 = tokens_1[ind]
-                token_batch_2 = tokens_2[ind]
-
                 data_batch_1, times_batch_1, sources_batch_1 = data.get_batch(
                     tokens_1, counts_1, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
                 
@@ -531,9 +538,8 @@ def get_completion_ppl(source):
                     normalized_data_batch_1 = data_batch_1 / sums_1
                 else:
                     normalized_data_batch_1 = data_batch_1
-
-                eta_td_1 = eta_1[times_batch_1.type('torch.LongTensor')]
-                theta = get_theta(eta_td_1, normalized_data_batch_1)
+                
+                theta = get_theta(eta_1, normalized_data_batch_1, times_batch_1, sources_batch_1)
 
                 data_batch_2, times_batch_2, sources_batch_2 = data.get_batch(
                     tokens_2, counts_2, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
