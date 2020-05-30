@@ -56,19 +56,23 @@ class MDETM(nn.Module):
 
         ## define variational distribution for \theta_{1:D} via amortizartion... theta is K x D
         self.q_theta = nn.Sequential(
-                    nn.Linear(args.vocab_size+args.num_topics, args.t_hidden_size), 
+                    nn.Linear(args.vocab_size+args.num_sources*args.num_topics, args.t_hidden_size), 
                     self.theta_act,
                     nn.Linear(args.t_hidden_size, args.t_hidden_size),
                     self.theta_act,
                 )
-        self.mu_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
-        self.logsigma_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
 
-        ## define variational distribution for \eta via amortizartion... eta is K x T
+        self.mu_q_theta = nn.Linear(args.t_hidden_size, args.num_sources * args.num_topics, bias=True)
+        self.logsigma_q_theta = nn.Linear(args.t_hidden_size, args.num_sources * args.num_topics, bias=True)
+
+        ## define variational distribution for \eta via amortizartion... eta is S x K x T
         self.q_eta_map = nn.Linear(args.vocab_size, args.eta_hidden_size)
+
         self.q_eta = nn.LSTM(args.eta_hidden_size, args.eta_hidden_size, args.eta_nlayers, dropout=args.eta_dropout)
-        self.mu_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
-        self.logsigma_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
+
+        self.mu_q_eta = nn.Linear(args.eta_hidden_size+args.num_sources*args.num_topics, args.num_sources * args.num_topics, bias=True)
+
+        self.logsigma_q_eta = nn.Linear(args.eta_hidden_size+args.num_sources*args.num_topics, args.num_sources * args.num_topics, bias=True)
         
         self.max_logsigma_t = 10
         self.min_logsigma_t = -10
@@ -159,60 +163,80 @@ class MDETM(nn.Module):
         output, _ = self.q_eta(inp, hidden)
         output = output.squeeze()
 
-        etas = torch.zeros(self.num_times, self.num_topics).to(device)
-        kl_eta = []
+        etas = torch.zeros(self.num_times, self.num_sources * self.num_topics).to(device) # T x (S x K)
+        kl_eta = []        
 
-        inp_0 = torch.cat([output[0], torch.zeros(self.num_topics,).to(device)], dim=0)
-        mu_0 = self.mu_q_eta(inp_0)
-        logsigma_0 = self.logsigma_q_eta(inp_0)
-        etas[0] = self.reparameterize(mu_0, logsigma_0)
+        inp_0 = torch.cat([output[0], torch.zeros(self.num_sources * self.num_topics, ).to(device)], dim=0)
 
-        p_mu_0 = torch.zeros(self.num_topics,).to(device)
-        logsigma_p_0 = torch.zeros(self.num_topics,).to(device)
+        mu_0 = self.mu_q_eta(inp_0) # (S x K) x 1
+
+        logsigma_0 = self.logsigma_q_eta(inp_0) # (S x K) x 1
+
+        etas[0] = self.reparameterize(mu_0, logsigma_0) # (S x K) x 1
+
+        p_mu_0 = torch.zeros(self.num_sources * self.num_topics, ).to(device)
+        logsigma_p_0 = torch.zeros(self.num_sources * self.num_topics, ).to(device)
+
         kl_0 = self.get_kl(mu_0, logsigma_0, p_mu_0, logsigma_p_0)
+
         kl_eta.append(kl_0)
+
         for t in range(1, self.num_times):
+            
             inp_t = torch.cat([output[t], etas[t-1]], dim=0)
-            mu_t = self.mu_q_eta(inp_t)
 
-            # if torch.isnan(mu_t).sum() != 0:
-            #     for param in self.mu_q_eta.parameters():
-            #         if torch.isnan(param).sum() != 0:
-            #             raise Exception(param.grad)
+            mu_t = self.mu_q_eta(inp_t) # (S x K) x 1
 
-            logsigma_t = self.logsigma_q_eta(inp_t)        
+            logsigma_t = self.logsigma_q_eta(inp_t) # (S x K) x 1
 
             if any(logsigma_t > self.max_logsigma_t):
                 logsigma_t[logsigma_t > self.max_logsigma_t] = self.max_logsigma_t
             elif any(logsigma_t < self.min_logsigma_t):
                 logsigma_t[logsigma_t < self.min_logsigma_t] = self.min_logsigma_t
 
-            etas[t] = self.reparameterize(mu_t, logsigma_t)
+            etas[t] = self.reparameterize(mu_t, logsigma_t) # (S x K) x 1
 
             p_mu_t = etas[t-1]
-            logsigma_p_t = torch.log(self.delta * torch.ones(self.num_topics,).to(device))
+            logsigma_p_t = torch.log(self.delta * torch.ones(self.num_sources * self.num_topics,).to(device))
             kl_t = self.get_kl(mu_t, logsigma_t, p_mu_t, logsigma_p_t)
             kl_eta.append(kl_t)
         kl_eta = torch.stack(kl_eta).sum()
         return etas, kl_eta
 
 
-
-    def get_theta(self, eta, bows, times): ## amortized inference
+    def get_theta(self, eta, bows, times, sources): ## amortized inference
         """Returns the topic proportions.
-        """        
+        """
+        # T x (S x K) -> D x (S x K)
         eta_td = eta[times.type('torch.LongTensor')]
+
+        bsz = eta_td.size(0)
+
+        zeros_factor = torch.zeros(bsz, self.num_sources, self.num_topics)
+
+        zeros_factor[:,sources.type('torch.LongTensor'),:] = 1
+
+        eta_td = zeros_factor.view(bsz, self.num_sources * self.num_topics) * eta_td
+
         inp = torch.cat([bows, eta_td], dim=1)
+        
         q_theta = self.q_theta(inp)
 
         if self.enc_drop > 0:
             q_theta = self.t_drop(q_theta)
+        
+        set_trace()
 
-        mu_theta = self.mu_q_theta(q_theta)
-        logsigma_theta = self.logsigma_q_theta(q_theta)
+        mu_theta = self.mu_q_theta(q_theta) * zeros_factor
+
+        logsigma_theta = self.logsigma_q_theta(q_theta) * zeros_factor
+
         z = self.reparameterize(mu_theta, logsigma_theta)
-        theta = F.softmax(z, dim=-1)
+
+        theta = F.softmax(z, dim=-1)        
+
         kl_theta = self.get_kl(mu_theta, logsigma_theta, eta_td, torch.zeros(self.num_topics).to(device))
+
         return theta, kl_theta
 
 
@@ -253,7 +277,7 @@ class MDETM(nn.Module):
         loglik = torch.log(loglik)
         nll = -loglik * bows
         nll = nll.sum(-1)
-        return nll          
+        return nll
 
     def forward(self, unique_tokens, bows, normalized_bows, times, sources, rnn_inp, num_docs):
 
@@ -266,7 +290,7 @@ class MDETM(nn.Module):
 
         eta, kl_eta = self.get_eta(rnn_inp)
         
-        theta, kl_theta = self.get_theta(eta, normalized_bows, times)
+        theta, kl_theta = self.get_theta(eta, normalized_bows, times, sources)
 
         kl_theta = kl_theta.sum() * coeff
         

@@ -482,16 +482,6 @@ def get_completion_ppl(source):
                 eta_td = eta[times_batch.type('torch.LongTensor')]
                 theta = get_theta(eta_td, normalized_data_batch)
                 
-                # work only with the unique sources and tokens in the batch to save memory
-                unique_sources = sources_batch.unique()
-                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch])
-
-                unique_times = times_batch.unique()
-                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch])
-
-                unique_tokens = torch.tensor(np.unique(sum([sum(token_batch[i].tolist(),[]) 
-                    for i in range(token_batch.shape[0])],[])))
-
                 # set_trace()
 
                 beta = model.get_beta(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
@@ -502,7 +492,6 @@ def get_completion_ppl(source):
                 
                 loglik = torch.log(loglik)
 
-                # nll = -loglik * data_batch[:,unique_tokens]
                 nll = -loglik * data_batch
 
                 nll = nll.sum(-1)
@@ -549,19 +538,6 @@ def get_completion_ppl(source):
                 data_batch_2, times_batch_2, sources_batch_2 = data.get_batch(
                     tokens_2, counts_2, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
-
-                unique_sources = sources_batch_1.unique()
-                unique_sources_idx = torch.cat([(unique_sources == source).nonzero()[0] for source in sources_batch_1])
-
-                unique_times = times_batch_1.unique()
-                unique_times_idx = torch.cat([(unique_times == time).nonzero()[0] for time in times_batch_1])
-
-                uniq_tokens_list = sum([sum(token_batch_1[i].tolist(),[]) for i in range(token_batch_1.shape[0])],[])
-                uniq_tokens_list.extend(sum([sum(token_batch_2[i].tolist(),[]) for i in range(token_batch_2.shape[0])],[]))                
-                unique_tokens = torch.tensor(np.unique(uniq_tokens_list))
-
-                # beta = model.get_beta(alpha, unique_tokens, unique_sources, unique_times)
-                # beta = beta[unique_sources_idx, :, unique_times_idx, :] # D' x K x V'
 
                 beta = model.get_beta(alpha).permute(2,1,3,0) # S x K x T x V -> T x K x V x S
                 beta = beta[times_batch_2.type('torch.LongTensor'),:,:,sources_batch_2.type('torch.LongTensor')]
