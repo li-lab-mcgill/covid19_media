@@ -38,21 +38,25 @@ def _fetch_temporal(path, name):
         count_file = os.path.join(path, 'bow_tr_counts')
         time_file = os.path.join(path, 'bow_tr_timestamps')
         source_file = os.path.join(path, 'bow_tr_sources.pkl')
+        label_file = os.path.join(path, 'bow_tr_labels.pkl')
     elif name == 'valid':
         token_file = os.path.join(path, 'bow_va_tokens')
         count_file = os.path.join(path, 'bow_va_counts')
         time_file = os.path.join(path, 'bow_va_timestamps')
         source_file = os.path.join(path, 'bow_va_sources.pkl')
+        label_file = os.path.join(path, 'bow_va_labels.pkl')
     else:
         token_file = os.path.join(path, 'bow_ts_tokens')
         count_file = os.path.join(path, 'bow_ts_counts')
         time_file = os.path.join(path, 'bow_ts_timestamps')
         source_file = os.path.join(path, 'bow_ts_sources.pkl')
+        label_file = os.path.join(path, 'bow_ts_labels.pkl')
     
     tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
     counts = scipy.io.loadmat(count_file)['counts'].squeeze()
     times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
     sources = np.array(pickle.load(open(source_file, 'rb')))
+    labels = np.array(pickle.load(open(source_file, 'rb')))
 
     if name == 'test':
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
