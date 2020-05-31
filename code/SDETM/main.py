@@ -32,8 +32,12 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+
+parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
+
 
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
@@ -201,17 +205,6 @@ for i, word in enumerate(vocab):
         word_embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
 word_embeddings = torch.from_numpy(word_embeddings).to(device)
 args.embeddings_dim = word_embeddings.size()
-
-
-## get source embeddings
-print('Getting source embeddings ...')
-# sources_embeddings = torch.ones(args.num_sources, args.embeddings_dim[1])
-# sources_embeddings = torch.randn(args.num_sources, args.embeddings_dim[1], requires_grad=False).to(device)
-
-# assuming the file is located with other data files and named source_matrix.npy
-sources_embedding_path = os.path.join(data_file, 'sources_matrix.npy')
-# may need to convert to torch.tensor before using
-sources_embeddings = data.get_source_embeddings(sources_embedding_path)   # S x L numpy array
 
 
 print('\n')
