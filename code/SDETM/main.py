@@ -139,12 +139,6 @@ sources_map_file = os.path.join(data_file, 'sources_map.pkl')
 sources_map = pickle.load(open(sources_map_file, 'rb'))
 args.num_sources = len(sources_map)
 
-demo_source_indices = [k for k,v in sources_map.items() if v in ["China", "Canada", "United States"]]
-
-# swap keys and values (done once only)
-# sources_map={v:k for k,v in sources_map.items()}
-# with open(sources_map_file, 'wb') as f:
-#     pickle.dump(sources_map, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, args.num_times, train_sources, args.vocab_size, args.num_docs_train)
@@ -251,7 +245,7 @@ else:
 
 def train(epoch):
     """
-        Train DETM on data for one epoch.
+        Train S-DETM on data for one epoch.
     """
     model.train()
     acc_loss = 0
