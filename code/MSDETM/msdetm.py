@@ -141,51 +141,60 @@ class SDETM(nn.Module):
 
         return alphas, kl_alpha.sum() # T x K x L
 
-    def get_eta(self, rnn_inp): ## structured amortized inference
-        inp = self.q_eta_map(rnn_inp).unsqueeze(1)
-        hidden = self.init_hidden()
-        output, _ = self.q_eta(inp, hidden)
-        output = output.squeeze()
 
-        etas = torch.zeros(self.num_times, self.num_topics).to(device)
+    ## get source-specific etas
+    def get_eta(self, rnn_inp): ## structured amortized inference
+
+        etas = torch.zeros(self.num_sources, self.num_times, self.num_topics).to(device)
         kl_eta = []
 
-        inp_0 = torch.cat([output[0], torch.zeros(self.num_topics,).to(device)], dim=0)
-        mu_0 = self.mu_q_eta(inp_0)
-        logsigma_0 = self.logsigma_q_eta(inp_0)
-        etas[0] = self.reparameterize(mu_0, logsigma_0)
+        for s in range(self.num_sources):
+            
+            inp = self.q_eta_map(rnn_inp[s]).unsqueeze(1)
+            
+            hidden = self.init_hidden()
+            output, _ = self.q_eta(inp, hidden)
+            output = output.squeeze()
 
-        p_mu_0 = torch.zeros(self.num_topics,).to(device)
-        logsigma_p_0 = torch.zeros(self.num_topics,).to(device)
-        kl_0 = self.get_kl(mu_0, logsigma_0, p_mu_0, logsigma_p_0)
-        kl_eta.append(kl_0)
-        for t in range(1, self.num_times):
-            inp_t = torch.cat([output[t], etas[t-1]], dim=0)
-            mu_t = self.mu_q_eta(inp_t)
+            inp_0 = torch.cat([output[0], torch.zeros(self.num_topics,).to(device)], dim=0)
+            mu_0 = self.mu_q_eta(inp_0)
+            logsigma_0 = self.logsigma_q_eta(inp_0)
+            
+            etas[s, 0] = self.reparameterize(mu_0, logsigma_0)
 
-            logsigma_t = self.logsigma_q_eta(inp_t)        
+            p_mu_0 = torch.zeros(self.num_topics,).to(device)
+            logsigma_p_0 = torch.zeros(self.num_topics,).to(device)
+            kl_0 = self.get_kl(mu_0, logsigma_0, p_mu_0, logsigma_p_0)
+            kl_eta.append(kl_0)
 
-            if any(logsigma_t > self.max_logsigma_t):
-                logsigma_t[logsigma_t > self.max_logsigma_t] = self.max_logsigma_t
-            elif any(logsigma_t < self.min_logsigma_t):
-                logsigma_t[logsigma_t < self.min_logsigma_t] = self.min_logsigma_t
+            for t in range(1, self.num_times):
+                inp_t = torch.cat([output[t], etas[s, t-1]], dim=0)
+                mu_t = self.mu_q_eta(inp_t)
 
-            etas[t] = self.reparameterize(mu_t, logsigma_t)
+                logsigma_t = self.logsigma_q_eta(inp_t)        
 
-            p_mu_t = etas[t-1]
-            logsigma_p_t = torch.log(self.delta * torch.ones(self.num_topics,).to(device))
-            kl_t = self.get_kl(mu_t, logsigma_t, p_mu_t, logsigma_p_t)
-            kl_eta.append(kl_t)
+                if any(logsigma_t > self.max_logsigma_t):
+                    logsigma_t[logsigma_t > self.max_logsigma_t] = self.max_logsigma_t
+                elif any(logsigma_t < self.min_logsigma_t):
+                    logsigma_t[logsigma_t < self.min_logsigma_t] = self.min_logsigma_t
+
+                etas[s, t] = self.reparameterize(mu_t, logsigma_t)
+
+                p_mu_t = etas[s, t-1]
+                logsigma_p_t = torch.log(self.delta * torch.ones(self.num_topics,).to(device))
+                kl_t = self.get_kl(mu_t, logsigma_t, p_mu_t, logsigma_p_t)
+                kl_eta.append(kl_t)
+
         kl_eta = torch.stack(kl_eta).sum()
         return etas, kl_eta
 
 
 
-    def get_theta(self, eta, bows, times): ## amortized inference
+    def get_theta(self, eta, bows, times, sources): ## amortized inference
         """Returns the topic proportions.
         """        
-        eta_td = eta[times.type('torch.LongTensor')]
-        inp = torch.cat([bows, eta_td], dim=1)
+        eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')]
+        inp = torch.cat([bows, eta_std], dim=1)
         q_theta = self.q_theta(inp)
 
         if self.enc_drop > 0:
@@ -201,12 +210,12 @@ class SDETM(nn.Module):
 
         z = self.reparameterize(mu_theta, logsigma_theta)
         theta = F.softmax(z, dim=-1)
-        kl_theta = self.get_kl(mu_theta, logsigma_theta, eta_td, torch.zeros(self.num_topics).to(device))
+        kl_theta = self.get_kl(mu_theta, logsigma_theta, eta_std, torch.zeros(self.num_topics).to(device))
         return theta, kl_theta
 
 
     def get_beta(self, alpha):
-        """Returns the topic matrix \beta of shape T x K x V
+        """Returns the topic matrix beta of shape T x K x V
         """
         if self.train_embeddings:            
             logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
