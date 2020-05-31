@@ -15,7 +15,7 @@ from pdb import set_trace
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SDETM(nn.Module):
-    def __init__(self, args, word_embeddings, sources_embeddings):
+    def __init__(self, args, word_embeddings):
         super(SDETM, self).__init__()
 
         ## define hyperparameters
@@ -30,14 +30,14 @@ class SDETM(nn.Module):
         self.eta_nlayers = args.eta_nlayers
         self.t_drop = nn.Dropout(args.enc_drop)
         self.delta = args.delta
-        self.train_word_embeddings = args.train_word_embeddings
+        self.train_embeddings = args.train_embeddings
 
         self.num_sources = args.num_sources
 
         self.theta_act = self.get_activation(args.theta_act)
 
         ## define the word embedding matrix \rho: L x V
-        if args.train_word_embeddings:
+        if args.train_embeddings:
             self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False) # L x V
         else:
             num_embeddings, emsize = word_embeddings.size()
@@ -72,7 +72,7 @@ class SDETM(nn.Module):
 
         ## define supervised component
         self.classifier = nn.Linear(args.num_topics, args.num_sources, bias=True)
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss(reduction='sum')
 
 
     def get_activation(self, act):
@@ -137,11 +137,9 @@ class SDETM(nn.Module):
             logsigma_p_t = torch.log(self.delta * torch.ones(self.num_topics, self.rho_size).to(device))
             kl_t = self.get_kl(self.mu_q_alpha[:, t, :], self.logsigma_q_alpha[:, t, :], p_mu_t, logsigma_p_t)
             kl_alpha.append(kl_t)
-        kl_alpha = torch.stack(kl_alpha).sum()
+        kl_alpha = torch.stack(kl_alpha).sum()        
 
-        alphas = alphas.permute(1,0,2) # TxKxL -> KxTxL
-
-        return alphas, kl_alpha.sum()
+        return alphas, kl_alpha.sum() # T x K x L
 
     def get_eta(self, rnn_inp): ## structured amortized inference
         inp = self.q_eta_map(rnn_inp).unsqueeze(1)
@@ -210,7 +208,7 @@ class SDETM(nn.Module):
     def get_beta(self, alpha):
         """Returns the topic matrix \beta of shape T x K x V
         """
-        if self.train_word_embeddings:
+        if self.train_embeddings:            
             logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
         else:
             tmp = alpha.view(alpha.size(0)*alpha.size(1), self.rho_size)
@@ -231,7 +229,7 @@ class SDETM(nn.Module):
 
     def get_prediction(self, theta, labels):
         outputs = self.classifier(theta)
-        pred_loss = criterion(outputs, labels)
+        pred_loss = self.criterion(outputs, labels.type('torch.LongTensor'))
         return pred_loss
 
 
@@ -251,7 +249,7 @@ class SDETM(nn.Module):
         nll = self.get_nll(theta, beta, bows)        
         nll = nll.sum() * coeff        
 
-        pred_loss = self.get_prediction(self, theta, sources)
+        pred_loss = self.get_prediction(theta, sources) * coeff
 
         nelbo = nll + kl_alpha + kl_eta + kl_theta + pred_loss
         

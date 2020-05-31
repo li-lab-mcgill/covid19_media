@@ -8,6 +8,10 @@ import math
 
 from torch import nn
 
+# from IPython.core.debugger import set_trace
+from pdb import set_trace
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DETM(nn.Module):
@@ -172,8 +176,9 @@ class DETM(nn.Module):
 
     def get_beta(self, alpha):
         """Returns the topic matrix \beta of shape K x V
-        """
+        """        
         if self.train_embeddings:
+            set_trace()
             logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
         else:
             tmp = alpha.view(alpha.size(0)*alpha.size(1), self.rho_size)

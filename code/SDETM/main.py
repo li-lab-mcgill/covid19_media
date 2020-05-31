@@ -20,7 +20,7 @@ from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
-from dmetm import DMETM
+from sdetm import SDETM
 from utils import nearest_neighbors, get_topic_coherence
 
 from IPython.core.debugger import set_trace
@@ -41,7 +41,7 @@ parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directo
 # parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
-parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/dmetm', help='path to save results')
+parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/sdetm', help='path to save results')
 
 parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
 
@@ -56,7 +56,7 @@ parser.add_argument('--emb_size', type=int, default=300, help='dimension of embe
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
-parser.add_argument('--train_word_embeddings', type=int, default=1, help='whether to fix rho or train it')
+parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
@@ -92,16 +92,8 @@ parser.add_argument('--load_from', type=str, default='', help='the name of the c
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
 
-### multi-sources-related parameters (DMETM)
-parser.add_argument('--use_source_embeddings', type=int, default=1, help='not using source embedding at all (identical to DETM)')
-parser.add_argument('--num_sources', type=int, default=1, help='number of sources (e.g., countries)')
-parser.add_argument('--train_source_embeddings', type=int, default=1, help='whether to fix lambda or train it')
-
 args = parser.parse_args()
 
-if not args.use_source_embeddings:
-    print("When use_source_embeddings is 0, model will not train the source embeddings")
-    args.train_source_embeddings = 0
 
 # pca seems unused
 # pca = PCA(n_components=2)
@@ -235,10 +227,9 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'dmetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainWordEmbeddings_{}_useSourceEmbeddings_{}_trainSourceEmbeddings_{}'.format(
+        'sdetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
-            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_word_embeddings, 
-            args.use_source_embeddings, args.train_source_embeddings))
+            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_embeddings))
 
 ## define model and optimizer
 if args.load_from != '':
@@ -246,7 +237,7 @@ if args.load_from != '':
     with open(args.load_from, 'rb') as f:
         model = torch.load(f)
 else:
-    model = DMETM(args, word_embeddings, sources_embeddings)
+    model = SDETM(args, word_embeddings)
 print('\nDETM architecture: {}'.format(model))
 model.to(device)
 
@@ -360,8 +351,8 @@ def train(epoch):
 
     lr = optimizer.param_groups[0]['lr']
     print('*'*100)
-    print('Epoch----->{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. NELBO: {}'.format(
-            epoch, lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_loss))
+    print('Epoch----->{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. NELBO: {}'.format(
+            epoch, lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_loss))
     print('*'*100)
 
 def visualize():
@@ -411,7 +402,7 @@ def visualize():
 
             print(model.source_lambda[0:10])
         
-        if args.train_word_embeddings or epoch<=1:
+        if args.train_embeddings or epoch<=1:
             print('\n')
             print('#'*100)
             print('Visualize word embeddings ...')
@@ -480,8 +471,6 @@ def get_completion_ppl(source):
 
             cnt = 0
             for idx, ind in enumerate(indices):
-
-                token_batch = tokens[ind]
                 
                 data_batch, times_batch, sources_batch = data.get_batch(
                     tokens, counts, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=times)
@@ -506,9 +495,10 @@ def get_completion_ppl(source):
                 loss = nll / sums.squeeze()
                 loss = loss.mean().item()
                 acc_loss += loss
-                
-                _, pred_loss = self.get_prediction(theta, sources)
-                acc_pred_loss += pred_loss
+                                
+                pred_loss = model.get_prediction(theta, sources_batch)
+
+                acc_pred_loss += pred_loss / data_batch.size(0)
 
                 cnt += 1
 
@@ -516,7 +506,8 @@ def get_completion_ppl(source):
             cur_pred_loss = acc_pred_loss / cnt
 
             ppl_all = round(math.exp(cur_loss), 1)
-            pdl_all = round(math.exp(cur_pred_loss), 1)
+            pdl_all = round(cur_pred_loss.item(), 2)
+            
 
             print('*'*100)
             print('{} PPL: {} .. PDL: {}'.format(source.upper(), ppl_all, pdl_all))
@@ -566,16 +557,16 @@ def get_completion_ppl(source):
                 loss = loss.mean().item()
                 acc_loss += loss
 
-                _, pred_loss = self.get_prediction(theta, test_sources)
-                acc_pred_loss += pred_loss
+                pred_loss = model.get_prediction(theta, sources_batch_2)
+                acc_pred_loss += pred_loss / data_batch_1.size(0)
 
                 cnt += 1
 
             cur_loss = acc_loss / cnt
             cur_pred_loss = acc_pred_loss / cnt
             
-            ppl_dc = round(math.exp(cur_loss), 1)
-            pdl_dc = round(math.exp(cur_pred_loss), 1)
+            ppl_dc = round(math.exp(cur_loss), 1)   
+            pdl_dc = round(cur_pred_loss.item(), 2)
 
             print('*'*100)
             print('{} Doc Completion PPL: {} .. Doc Classification PDL: {}'.format(source.upper(), ppl_dc, pdl_dc))
@@ -648,6 +639,9 @@ if args.mode == 'train':
         train(epoch)
         # if epoch % args.visualize_every == 0:
         #     visualize()
+        
+        # print(model.classifier.weight)
+
         val_ppl, val_pdl = get_completion_ppl('val')
         
         if val_ppl < best_val_ppl:
@@ -676,15 +670,10 @@ if args.mode == 'train':
         alpha = model.mu_q_alpha.cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
-        if args.train_word_embeddings:
+        if args.train_embeddings:
             print('saving word embedding matrix rho...')
             rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
-
-        if args.train_source_embeddings:
-            print('saving source embedding matrix rho...')            
-            source_lambda = model.source_lambda.cpu().detach().numpy()
-            scipy.io.savemat(ckpt+'_lambda.mat', {'values': source_lambda}, do_compression=True) # UNCOMMENT FOR REAL RUN
 
         print('computing validation perplexity...')
         val_ppl, val_pdl = get_completion_ppl('val')
