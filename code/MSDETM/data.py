@@ -67,7 +67,7 @@ def _fetch_temporal(path, name):
         counts_1 = scipy.io.loadmat(count_1_file)['counts'].squeeze()
         tokens_2 = scipy.io.loadmat(token_2_file)['tokens'].squeeze()
         counts_2 = scipy.io.loadmat(count_2_file)['counts'].squeeze()
-        return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources,
+        return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources, 'labels': labels,
                     'tokens_1': tokens_1, 'counts_1': counts_1, 
                         'tokens_2': tokens_2, 'counts_2': counts_2} 
 
@@ -89,7 +89,7 @@ def get_data(path, temporal=False):
 
     return vocab, train, valid, test
 
-def get_batch(tokens, counts, ind, vocab_size, sources, emsize=300, temporal=False, times=None):
+def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temporal=False, times=None):
     
     """fetch input data by batch."""
     batch_size = len(ind)
@@ -104,9 +104,12 @@ def get_batch(tokens, counts, ind, vocab_size, sources, emsize=300, temporal=Fal
         
         doc = tokens[doc_id]
         count = counts[doc_id]
-        
+
         source = sources[doc_id]
         sources_batch[i] = source
+
+        label = labels[doc_id]
+        labels_batch[i] = label
 
         if temporal:
             timestamp = times[doc_id]
@@ -127,25 +130,61 @@ def get_batch(tokens, counts, ind, vocab_size, sources, emsize=300, temporal=Fal
 
     if temporal:
         times_batch = torch.from_numpy(times_batch).to(device)
-        return data_batch, times_batch, sources_batch
+        return data_batch, times_batch, sources_batch, labels_batch
 
-    return data_batch, sources_batch
+    return data_batch, sources_batch, labels_batch
 
-def get_rnn_input(tokens, counts, times, num_times, sources, vocab_size, num_docs):
+
+## get source-specific word frequencies at each time point t
+def get_rnn_input(tokens, counts, times, sources, num_times, num_sources, vocab_size, num_docs):
+
     indices = torch.randperm(num_docs)
     indices = torch.split(indices, 1000)
-    rnn_input = torch.zeros(num_times, vocab_size).to(device)
-    cnt = torch.zeros(num_times, ).to(device)
+    
+    rnn_input = torch.zeros(num_sources, num_times, vocab_size).to(device)
+
+    cnt = torch.zeros(num_sources, num_times).to(device)
+
     for idx, ind in enumerate(indices):
-        data_batch, times_batch, sources_batch = get_batch(tokens, counts, ind, vocab_size, sources, temporal=True, times=times)
+        
+        data_batch, times_batch, sources_batch, labels_batch = \
+            get_batch(tokens, counts, ind, sources, labels, vocab_size, temporal=True, times=times)
+
         for t in range(num_times):
-            tmp = (times_batch == t).nonzero()
-            docs = data_batch[tmp].squeeze().sum(0)
-            rnn_input[t] += docs
-            cnt[t] += len(tmp)
+            for s in range(num_sources):
+                tmp = (times_batch == t and sources_batch == s).nonzero()
+                docs = data_batch[tmp].squeeze().sum(0)
+                rnn_input[s,t] += docs
+                cnt[s,t] += len(tmp)
+
         if idx % 20 == 0:
             print('idx: {}/{}'.format(idx, len(indices)))
+
     rnn_input = (rnn_input + 1e-16) / (cnt.unsqueeze(1) + 1e-16)
     return rnn_input
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
