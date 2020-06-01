@@ -62,12 +62,12 @@ def _fetch_temporal(path, name):
     labels = np.array(pickle.load(open(label_file, 'rb')))
 
 
-    # DEBUG MULTI-CLASS ONLY (START)
-    targets = torch.zeros(len(tokens), 10)
-    for i in range(len(tokens)):
-        targets[i,labels[i]] = 1
-    labels = targets
-    # DEBUG MULTI-CLASS ONLY (END)
+    # DEMO MULTI-CLASS ONLY (START)
+    # targets = torch.zeros(len(tokens), 10)
+    # for i in range(len(tokens)):
+    #     targets[i,labels[i]] = 1
+    # labels = targets
+    # DEMO MULTI-CLASS ONLY (END)
 
 
     if name == 'test':
