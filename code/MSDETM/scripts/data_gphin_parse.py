@@ -295,14 +295,15 @@ def read_data(data_file):
             countries_mod.append("International Olympic Committee")
         else:
             countries_mod.append(country)
+    
 
     all_docs = []
     all_times = []
     all_countries = []
-    all_labels = []
+    twoD_array_labels = labels_mod
 
-    for (doc, timestamp, country, label) in zip(docs, timestamps, countries_mod, labels_mod):
-        if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country) or pd.isna(label):
+    for (doc, timestamp, country) in zip(docs, timestamps, countries_mod):
+        if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country):
             continue
         doc = doc.encode('ascii',errors='ignore').decode()
         doc = doc.lower().replace('\n', ' ').replace("’", " ").replace("'", " ").translate(str.maketrans(string.punctuation + "0123456789", ' '*len(string.punctuation + "0123456789"))).split()
@@ -321,13 +322,12 @@ def read_data(data_file):
 
             all_times.append(d)
             c = country.strip()
-            l = label.strip()
             #print(c)
             all_countries.append(c)
-            all_labels.append(l)
+    print(all_countries)
             #print(all_labels) This works, gives all the labels in an array all_labels
 
-    return all_docs, all_times, all_countries, all_labels
+    return all_docs, all_times, all_countries, twoD_array_labels
 
     # for (pid, tt) in zip(all_pids, all_timestamps):
     #     path_read = 'raw/acl_abstracts/acl_data-combined/all_papers'
@@ -698,10 +698,12 @@ if __name__ == '__main__':
     args = get_args()
 
     # read in the data file
-    all_docs, all_times, all_countries, all_labels = read_data(args.data_file_path)
+    all_docs, all_times, all_countries, twoD_array_labels = read_data(args.data_file_path)
 
     # preprocess the news articles
     #all_docs, train_docs, test_docs, init_countries = preprocess(train, test)
+    #Label names are already given
+    all_labels = ['LAND_SCREENING','BORDER_CLOSING','AIRPORT_SCREENING_ENTRY','AIRPORT_SCREENING_EXIT','TESTING_CASE_DETECTION','QUARANTINE/MONITORING','TRAVEL_ADVISORY','TRAVEL_BANS/CANCELLATION','TRADE_BANS','EDUCATION_CAMPAIGN','MASS_GATHERING_CANCELLATION','RESTRICTING_OR_LIMITING_GATHERINGS','CLOSING_PUBLIC_PLACES','LOCKDOWN_OR_CURFEW','EASING_RESTRICTION','VACCINE_MCM_DEPLOYED','PPE']
 
     # get a list of stopwords
     stopwords = get_stopwords(args.stopwords_path)
@@ -712,7 +714,7 @@ if __name__ == '__main__':
     print(label_map)
 
     # split data into train, test and validation and corresponding countries in BOW format
-    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, all_labels, label_map)
+    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, twoD_array_labels, label_map)
 
     save_data(args.save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map)
     print('Data ready !!')
