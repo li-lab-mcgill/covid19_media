@@ -61,6 +61,15 @@ def _fetch_temporal(path, name):
     sources = np.array(pickle.load(open(source_file, 'rb')))
     labels = np.array(pickle.load(open(label_file, 'rb')))
 
+
+    # DEBUG MULTI-CLASS ONLY (START)        
+    targets = torch.zeros(len(tokens), 10)
+    for i in range(len(tokens)):
+        targets[i,labels[i]] = 1
+    labels = targets
+    # DEBUG MULTI-CLASS ONLY (END)
+
+
     if name == 'test':
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
         count_1_file = os.path.join(path, 'bow_ts_h1_counts')
@@ -102,7 +111,13 @@ def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temp
         times_batch = np.zeros((batch_size, ))
 
     sources_batch = np.zeros((batch_size, ))
-    labels_batch = np.zeros((batch_size, )) 
+
+    if len(labels.shape) == 2: # multi-clas labels
+        labels_batch = np.zeros((batch_size, labels.shape[1])) 
+    else: # single-class of vector of integer class labels
+        labels_batch = np.zeros((batch_size, ))
+    
+    # set_trace()
 
     for i, doc_id in enumerate(ind):        
         

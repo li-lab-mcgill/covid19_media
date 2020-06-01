@@ -249,7 +249,7 @@ class MSDETM(nn.Module):
 
         outputs = self.classifier(theta)
 
-        if self.multiclass: # multi-class prediction loss as independent Bernoulli
+        if self.multiclass_labels: # multi-class prediction loss as independent Bernoulli
 
             pred_loss = (-labels * F.log_softmax(outputs, dim=-1) - (1-labels) * F.log_softmax(1-outputs, dim=-1)).sum()
 
