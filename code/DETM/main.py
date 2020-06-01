@@ -28,11 +28,11 @@ from IPython.core.debugger import set_trace
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-# parser.add_argument('--dataset', type=str, default='gphin', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/gh/code/DMETM/data/GPHIN', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='gphin', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/gh/code/DMETM/data/GPHIN', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
 
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 

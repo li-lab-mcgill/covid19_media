@@ -32,6 +32,8 @@ class MSDETM(nn.Module):
         self.delta = args.delta
         self.train_embeddings = args.train_embeddings
 
+        self.predict_labels = args.predict_labels
+
         self.num_sources = args.num_sources
 
         self.theta_act = self.get_activation(args.theta_act)
@@ -70,8 +72,8 @@ class MSDETM(nn.Module):
         self.min_logsigma_t = -10
 
 
-        ## define supervised component
-        self.classifier = nn.Linear(args.num_topics, args.num_sources, bias=True)
+        ## define supervised component for predicting labels
+        self.classifier = nn.Linear(args.num_topics, args.num_labels, bias=True)
         self.criterion = nn.CrossEntropyLoss(reduction='sum')
 
 
@@ -257,7 +259,10 @@ class MSDETM(nn.Module):
         nll = self.get_nll(theta, beta, bows)        
         nll = nll.sum() * coeff        
 
-        pred_loss = self.get_prediction(theta, sources) * coeff
+        pred_loss = 0
+
+        if self.predict_labels:
+            pred_loss = self.get_prediction(theta, sources) * coeff
 
         nelbo = nll + kl_alpha + kl_eta + kl_theta + pred_loss
         

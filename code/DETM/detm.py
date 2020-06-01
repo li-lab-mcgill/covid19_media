@@ -178,7 +178,6 @@ class DETM(nn.Module):
         """Returns the topic matrix \beta of shape K x V
         """        
         if self.train_embeddings:
-            set_trace()
             logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
         else:
             tmp = alpha.view(alpha.size(0)*alpha.size(1), self.rho_size)

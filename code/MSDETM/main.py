@@ -94,6 +94,7 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
+parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
 
 args = parser.parse_args()
 
@@ -134,11 +135,16 @@ args.num_times = len(all_timestamps)
 
 args.num_docs_train = len(train_tokens)
 
-
 # get all sources
 sources_map_file = os.path.join(data_file, 'sources_map.pkl')
 sources_map = pickle.load(open(sources_map_file, 'rb'))
 args.num_sources = len(sources_map)
+
+
+# get all labels
+labels_map_file = os.path.join(data_file, 'labels_map.pkl')
+labels_map = pickle.load(open(labels_map_file, 'rb'))
+args.num_labels = len(labels_map)
 
 
 train_rnn_inp = data.get_rnn_input(
@@ -246,7 +252,7 @@ if args.load_from != '':
         model = torch.load(f)
 else:
     model = MSDETM(args, word_embeddings)
-print('\nDETM architecture: {}'.format(model))
+print('\nMSDETM architecture: {}'.format(model))
 model.to(device)
 
 
@@ -484,8 +490,11 @@ def get_completion_ppl(source):
                 loss = nll / sums.squeeze()
                 loss = loss.mean().item()
                 acc_loss += loss
-                                
-                pred_loss = model.get_prediction(theta, sources_batch)
+
+                pred_loss = 0
+                
+                if args.predict_labels:
+                    pred_loss = model.get_prediction(theta, sources_batch)
 
                 acc_pred_loss += pred_loss / data_batch.size(0)
 
@@ -548,7 +557,11 @@ def get_completion_ppl(source):
                 loss = loss.mean().item()
                 acc_loss += loss
 
-                pred_loss = model.get_prediction(theta, sources_batch_2)
+                pred_loss = 0
+
+                if args.predict_labels:
+                    pred_loss = model.get_prediction(theta, sources_batch_2)
+                    
                 acc_pred_loss += pred_loss / data_batch_1.size(0)
 
                 cnt += 1
