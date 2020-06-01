@@ -59,6 +59,7 @@ def read_data(data_file):
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
 
+    # Array initialization for each label 
     land_screenings = [] #0
     border_closings = [] #1
     airport_screening_entries = [] #2
@@ -77,7 +78,7 @@ def read_data(data_file):
     vaccines = [] #15
     ppes = [] #16
 
-    #Get numpy arrays
+    #Get numpy arrays for each label in gphin_scraper.csv 
     df = pd.read_csv(data_file)
     land_screenings = df['LAND_SCREENING'].values
     border_closings = df['BORDER_CLOSING'].values
@@ -102,9 +103,14 @@ def read_data(data_file):
 
     nbre_labels = 17
     countries_mod = []
-    labels_mod = [[ 0 for value in range(17)] for i in range(len(ppes))]
+    labels_mod = [[ 0 for value in range(17)] for i in range(len(ppes))] #This initiates an array of 17 columns
+                                                                         # with the number of rows equal to 17  
+                                                                         # and the number of columns equal to the length
+                                                                         # of one of the arrays (ex.ppe), which is equal to 
+                                                                         # the number of docs in the document 
+                                                
 
-    #Each intervention will be a number from 0-16
+    #Each intervention will be a number from 0-16 in the 2D array columns, from left to right
 
     #0 - Land Screening
     i=0
@@ -114,7 +120,7 @@ def read_data(data_file):
         else:
             labels_mod[i][0] = '0'
         i = i+1
-    print(labels_mod)
+    #print(labels_mod)
 
     #1 - BorderClosing
     i=0
@@ -262,7 +268,7 @@ def read_data(data_file):
 
     # Now we have a labels_mod 2D array with the number of labels are columns 
     # and the number of docs as rows
-    print(labels_mod)
+    #print(labels_mod)
 
     for country in countries:
         if not pd.isna(country):
@@ -300,7 +306,17 @@ def read_data(data_file):
     all_docs = []
     all_times = []
     all_countries = []
-    twoD_array_labels = labels_mod
+    twoD_array_labels = labels_mod # This is the 2D array created with rows : number docs and columns : nbre labels
+                                   # It's populated by 0 and 1 depending on whether the article in the row is
+                                   # checked under a certain category
+
+                                   # The categories are listed [0-16] as ['LAND_SCREENING','BORDER_CLOSING',
+                                   # 'AIRPORT_SCREENING_ENTRY','AIRPORT_SCREENING_EXIT'
+                                   # ,'TESTING_CASE_DETECTION','QUARANTINE/MONITORING','TRAVEL_ADVISORY',
+                                   # 'TRAVEL_BANS/CANCELLATION','TRADE_BANS','EDUCATION_CAMPAIGN',
+                                   # 'MASS_GATHERING_CANCELLATION','RESTRICTING_OR_LIMITING_GATHERINGS',
+                                   # 'CLOSING_PUBLIC_PLACES','LOCKDOWN_OR_CURFEW','EASING_RESTRICTION',
+                                   # 'VACCINE_MCM_DEPLOYED','PPE'] in order (from left to right) 
 
     for (doc, timestamp, country) in zip(docs, timestamps, countries_mod):
         if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country):
@@ -324,7 +340,7 @@ def read_data(data_file):
             c = country.strip()
             #print(c)
             all_countries.append(c)
-    print(all_countries)
+    #print(all_countries)
             #print(all_labels) This works, gives all the labels in an array all_labels
 
     return all_docs, all_times, all_countries, twoD_array_labels
@@ -472,22 +488,22 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, la
     vocab = list(set([w for idx_d in range(trSize) for w in docs[idx_permute[idx_d]].split() if w in word2id]))
     word2id = dict([(w, j) for j, w in enumerate(vocab)])
     id2word = dict([(j, w) for j, w in enumerate(vocab)])
-    print('  vocabulary after removing words not in train: {}'.format(len(vocab)))
+    print('vocabulary after removing words not in train: {}'.format(len(vocab)))
 
     docs_tr = [[word2id[w] for w in docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
     timestamps_tr = [time2id[timestamps[idx_permute[idx_d]]] for idx_d in range(trSize)]
     countries_tr = [source_map[countries[idx_permute[idx_d]]] for idx_d in range(trSize)]
-    labels_tr = [label_map[labels[idx_permute[idx_d]]] for idx_d in range(trSize)]
+    labels_tr = [labels[idx_permute[idx_d]] for idx_d in range(trSize)]
 
     docs_ts = [[word2id[w] for w in docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(tsSize)]
     timestamps_ts = [time2id[timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
     countries_ts = [source_map[countries[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
-    labels_ts = [label_map[labels[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)] 
+    labels_ts = [labels[idx_permute[idx_d+trSize]] for idx_d in range(tsSize)] 
 
     docs_va = [[word2id[w] for w in docs[idx_permute[idx_d+trSize+tsSize]].split() if w in word2id] for idx_d in range(vaSize)]
     timestamps_va = [time2id[timestamps[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
     countries_va = [source_map[countries[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
-    labels_va = [label_map[labels[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
+    labels_va = [labels[idx_permute[idx_d+trSize+tsSize]] for idx_d in range(vaSize)]
 
     print('  number of documents (train): {} [this should be equal to {} and {}]'.format(len(docs_tr), trSize, len(timestamps_tr)))
     print('  number of documents (test): {} [this should be equal to {} and {}]'.format(len(docs_ts), tsSize, len(timestamps_ts)))
@@ -710,8 +726,8 @@ if __name__ == '__main__':
 
     # get the vocabulary of words, word2id map and id2word map and time2id and id2time maps
     vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map = get_features(all_docs, stopwords, all_times, all_countries, all_labels)
-    print(source_map)
-    print(label_map)
+    #print(source_map)
+    #print(label_map)
 
     # split data into train, test and validation and corresponding countries in BOW format
     bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, twoD_array_labels, label_map)
