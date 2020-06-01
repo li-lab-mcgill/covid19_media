@@ -31,11 +31,11 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
@@ -95,7 +95,7 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
 
-parser.add_argument('--multiclass_labels', type=int, default=1, help='whether to predict labels')
+parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
 args = parser.parse_args()
 
@@ -127,6 +127,12 @@ train_counts = train['counts']
 train_times = train['times']
 train_sources = train['sources']
 train_labels = train['labels']
+
+
+if len(train_labels.shape) == 2 and args.multiclass_labels == 0:
+    print("multiclass_labels is turned off but multi-class label file is provided")
+    print("multiclass_labels has been turned on.")
+    args.multiclass_labels = 1
 
 
 # args.num_times = len(np.unique(train_times))
@@ -424,15 +430,20 @@ def _eta_helper(rnn_inp):
     
     return etas
 
-def get_eta(source):
+def get_eta(data_type):
     model.eval()
     with torch.no_grad():
-        if source == 'val':
+        if data_type == 'val':
             rnn_inp = valid_rnn_inp
             return _eta_helper(rnn_inp)
-        else:
+        elif data_type == 'test':
             rnn_1_inp = test_1_rnn_inp
             return _eta_helper(rnn_1_inp)
+        elif data_type == 'train':
+            return _eta_helper(train_rnn_inp)
+        else:
+            raise Exception('invalid data_type: '.data_type)
+
 
 def get_theta(eta, bows, times, sources):
     model.eval()
@@ -639,6 +650,7 @@ if args.mode == 'train':
     best_epoch = 0
     best_val_ppl = 1e9
     all_val_ppls = []
+    all_val_pdls = []
     
     for epoch in range(1, args.epochs):
         train(epoch)
@@ -660,6 +672,7 @@ if args.mode == 'train':
             if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
                 optimizer.param_groups[0]['lr'] /= args.lr_factor
         all_val_ppls.append(val_ppl)
+        all_val_pdls.append(val_pdl)
 
     # with open(ckpt, 'rb') as f:
     #     model = torch.load(f)
@@ -669,17 +682,23 @@ if args.mode == 'train':
                 
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
-        beta = model.get_beta(alpha).cpu().numpy()
+        beta = model.get_beta(alpha).cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True)
+
         
         print('saving alpha...')
         alpha = model.mu_q_alpha.cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
 
-        
+
         print('saving classifer weights...')
         classifer_weights = model.classifier.weight.cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_classifer.mat', {'values': classifer_weights}, do_compression=True)
+
+
+        print('saving eta ...')
+        eta = get_eta('train').cpu().detach().numpy()
+        scipy.io.savemat(ckpt+'_eta.mat', {'values': eta}, do_compression=True)
 
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
@@ -689,13 +708,19 @@ if args.mode == 'train':
         print('computing validation perplexity...')
         val_ppl, val_pdl = get_completion_ppl('val')
         print('computing test perplexity...')
-        test_ppl, val_pdl = get_completion_ppl('test')
+        test_ppl, test_pdl = get_completion_ppl('test')
 
         f=open(ckpt+'_ppl.txt','w')
         s1='\n'.join([str(i) for i in all_val_ppls])
         s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
         f.write(s1)
         f.close()
+
+        f=open(ckpt+'_pdl.txt','w')
+        s1='\n'.join([str(i) for i in all_val_pdls])
+        s1=s1+'\nlast val_pdl: '+str(val_pdl)+'\nlast test_ppl: '+str(test_pdl)
+        f.write(s1)
+        f.close()        
 else: 
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
