@@ -230,7 +230,7 @@ args.embeddings_dim = word_embeddings.size()
 
 print('\n')
 print('=*'*100)
-print('Training a Supervised Dynamic Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
+print('Training a Multi-Source Semi-Supervised Dynamic Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
 print('=*'*100)
 
 ## define checkpoint
@@ -252,7 +252,7 @@ if args.load_from != '':
         model = torch.load(f)
 else:
     model = MSDETM(args, word_embeddings)
-print('\nMSDETM architecture: {}'.format(model))
+print('\nMS-DETM architecture: {}'.format(model))
 model.to(device)
 
 
@@ -489,23 +489,23 @@ def get_completion_ppl(source):
                 nll = nll.sum(-1)
                 loss = nll / sums.squeeze()
                 loss = loss.mean().item()
-                acc_loss += loss
-
-                pred_loss = torch.tensor(0)
+                acc_loss += loss                
                 
                 if args.predict_labels:
                     pred_loss = model.get_prediction(theta, sources_batch)
-
-                acc_pred_loss += pred_loss / data_batch.size(0)
+                    acc_pred_loss += pred_loss / data_batch.size(0)
 
                 cnt += 1
 
-            cur_loss = acc_loss / cnt
-            cur_pred_loss = acc_pred_loss / cnt
+            cur_loss = acc_loss / cnt            
 
             ppl_all = round(math.exp(cur_loss), 1)
-            pdl_all = round(cur_pred_loss.item(), 2)
-            
+
+            if args.predict_labels:
+                cur_pred_loss = acc_pred_loss / cnt
+                pdl_all = round(cur_pred_loss.item(), 2)
+            else:
+                pdl_all = 0
 
             print('*'*100)
             print('{} PPL: {} .. PDL: {}'.format(source.upper(), ppl_all, pdl_all))
@@ -561,16 +561,18 @@ def get_completion_ppl(source):
 
                 if args.predict_labels:
                     pred_loss = model.get_prediction(theta, sources_batch_2)
-
-                acc_pred_loss += pred_loss / data_batch_1.size(0)
+                    acc_pred_loss += pred_loss / data_batch_1.size(0)
 
                 cnt += 1
 
-            cur_loss = acc_loss / cnt
-            cur_pred_loss = acc_pred_loss / cnt
-            
-            ppl_dc = round(math.exp(cur_loss), 1)   
-            pdl_dc = round(cur_pred_loss.item(), 2)
+            cur_loss = acc_loss / cnt                        
+            ppl_dc = round(math.exp(cur_loss), 1)               
+
+            if args.predict_labels:
+                cur_pred_loss = acc_pred_loss / cnt
+                pdl_all = round(cur_pred_loss.item(), 2)
+            else:
+                pdl_all = 0            
 
             print('*'*100)
             print('{} Doc Completion PPL: {} .. Doc Classification PDL: {}'.format(source.upper(), ppl_dc, pdl_dc))

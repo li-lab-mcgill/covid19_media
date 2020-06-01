@@ -262,9 +262,10 @@ class MSDETM(nn.Module):
         pred_loss = torch.tensor(0.0)
 
         if self.predict_labels:
-            pred_loss = self.get_prediction(theta, sources) * coeff        
-        
-        nelbo = nll + kl_alpha + kl_eta + kl_theta + pred_loss
+            pred_loss = self.get_prediction(theta, sources) * coeff
+            nelbo = nll + kl_alpha + kl_eta + kl_theta + pred_loss
+        else:
+            nelbo = nll + kl_alpha + kl_eta + kl_theta
         
         return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss
 
