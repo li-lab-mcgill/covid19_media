@@ -644,25 +644,32 @@ if args.mode == 'train':
             if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
                 optimizer.param_groups[0]['lr'] /= args.lr_factor
         all_val_ppls.append(val_ppl)
+        
     # with open(ckpt, 'rb') as f:
     #     model = torch.load(f)
     model = model.to(device)
     model.eval()
     with torch.no_grad():
                 
-        # print('saving topic matrix beta...')
-        # beta = model.get_beta_full(alpha).cpu().numpy()
-        # scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True) # UNCOMMENT FOR REAL RUN
-
-        alpha = model.mu_q_alpha
+        print('saving topic matrix beta...')
+        beta = model.get_beta(alpha).cpu().numpy()
+        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True)
+        
         print('saving alpha...')
         alpha = model.mu_q_alpha.cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True) # UNCOMMENT FOR REAL RUN
+        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
+
+        
+        print('saving classifer weights...')
+        classifer_weights = model.classifier.weight.cpu().detach().numpy()
+        scipy.io.savemat(ckpt+'_classifer.mat', {'values': classifer_weights}, do_compression=True)
+
 
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
             rho = model.rho.weight.cpu().detach().numpy()
-            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True) # UNCOMMENT FOR REAL RUN
+            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
+
 
         print('computing validation perplexity...')
         val_ppl, val_pdl = get_completion_ppl('val')
