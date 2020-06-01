@@ -291,7 +291,6 @@ def train(epoch):
 
         optimizer.zero_grad()
         model.zero_grad()        
-
         
         data_batch, times_batch, sources_batch, labels_batch = data.get_batch(
             train_tokens, train_counts, ind, train_sources, train_labels, 

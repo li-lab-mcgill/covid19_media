@@ -239,16 +239,12 @@ class MSDETM(nn.Module):
 
 
     def get_prediction_loss(self, theta, labels):
-        outputs = self.classifier(theta)
-        
-        set_trace()
+        outputs = self.classifier(theta)        
         pred_loss = self.criterion(outputs, labels.type('torch.LongTensor').to(device))
         return pred_loss
 
 
-    def forward(self, unique_tokens, bows, normalized_bows, times, sources, labels, rnn_inp, num_docs):
-
-        # set_trace()
+    def forward(self, unique_tokens, bows, normalized_bows, times, sources, labels, rnn_inp, num_docs):        
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz         

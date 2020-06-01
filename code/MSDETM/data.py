@@ -131,6 +131,7 @@ def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temp
     
     data_batch = torch.from_numpy(data_batch).float().to(device)
     sources_batch = torch.from_numpy(sources_batch).to(device)
+    labels_batch = torch.from_numpy(labels_batch).to(device)
 
     if temporal:
         times_batch = torch.from_numpy(times_batch).to(device)
