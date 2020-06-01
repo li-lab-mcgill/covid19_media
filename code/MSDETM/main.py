@@ -94,6 +94,7 @@ parser.add_argument('--load_from', type=str, default='', help='the name of the c
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
 parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
+parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
 args = parser.parse_args()
 

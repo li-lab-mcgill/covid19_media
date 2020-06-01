@@ -33,6 +33,7 @@ class MSDETM(nn.Module):
         self.train_embeddings = args.train_embeddings
 
         self.predict_labels = args.predict_labels
+        self.multiclass_labels = args.multiclass_labels
 
         self.num_sources = args.num_sources
         self.num_labels = args.num_labels
@@ -238,10 +239,25 @@ class MSDETM(nn.Module):
         return nll
 
 
-    def get_prediction_loss(self, theta, labels):
-        outputs = self.classifier(theta)        
-        pred_loss = self.criterion(outputs, labels.type('torch.LongTensor').to(device))
-        return pred_loss
+    def get_prediction_loss(self, theta, labels):        
+
+        # test code only
+        # targets = torch.zeros(theta.size(0), self.num_labels)
+        # for i in range(theta.size(0)):
+        #     targets[i,labels[i].type('torch.LongTensor').item()] = 1
+        # labels = targets
+
+        outputs = self.classifier(theta)
+
+        if self.multiclass: # multi-class prediction loss as independent Bernoulli
+
+            pred_loss = (-labels * F.log_softmax(outputs, dim=-1) - (1-labels) * F.log_softmax(1-outputs, dim=-1)).sum()
+
+        else: # single-label prediction
+            
+            pred_loss = self.criterion(outputs, labels.type('torch.LongTensor').to(device))
+
+        return pred_loss    
 
 
     def forward(self, unique_tokens, bows, normalized_bows, times, sources, labels, rnn_inp, num_docs):        
