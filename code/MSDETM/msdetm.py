@@ -35,6 +35,7 @@ class MSDETM(nn.Module):
         self.predict_labels = args.predict_labels
 
         self.num_sources = args.num_sources
+        self.num_labels = args.num_labels
 
         self.theta_act = self.get_activation(args.theta_act)
 
@@ -237,13 +238,15 @@ class MSDETM(nn.Module):
         return nll
 
 
-    def get_prediction(self, theta, labels):
+    def get_prediction_loss(self, theta, labels):
         outputs = self.classifier(theta)
+        
+        set_trace()
         pred_loss = self.criterion(outputs, labels.type('torch.LongTensor').to(device))
         return pred_loss
 
 
-    def forward(self, unique_tokens, bows, normalized_bows, times, sources, rnn_inp, num_docs):
+    def forward(self, unique_tokens, bows, normalized_bows, times, sources, labels, rnn_inp, num_docs):
 
         # set_trace()
 
@@ -262,7 +265,7 @@ class MSDETM(nn.Module):
         pred_loss = torch.tensor(0.0)
 
         if self.predict_labels:
-            pred_loss = self.get_prediction(theta, sources) * coeff
+            pred_loss = self.get_prediction_loss(theta, labels) * coeff
             nelbo = nll + kl_alpha + kl_eta + kl_theta + pred_loss
         else:
             nelbo = nll + kl_alpha + kl_eta + kl_theta

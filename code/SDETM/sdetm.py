@@ -229,7 +229,7 @@ class SDETM(nn.Module):
 
     def get_prediction(self, theta, labels):
         outputs = self.classifier(theta)
-        pred_loss = self.criterion(outputs, labels.type('torch.LongTensor'))
+        pred_loss = self.criterion(outputs, labels.type('torch.LongTensor').to(device))
         return pred_loss
 
 

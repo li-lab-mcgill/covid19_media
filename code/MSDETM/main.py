@@ -93,7 +93,7 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
-parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
+parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
 
 args = parser.parse_args()
 
@@ -314,9 +314,8 @@ def train(epoch):
 
         # print("forward passing ...")
 
-
         loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(unique_tokens, data_batch, normalized_data_batch, 
-            times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
+            times_batch, sources_batch, labels_batch, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
 
@@ -491,7 +490,7 @@ def get_completion_ppl(source):
                 acc_loss += loss                
                 
                 if args.predict_labels:
-                    pred_loss = model.get_prediction(theta, sources_batch)
+                    pred_loss = model.get_prediction_loss(theta, sources_batch)
                     acc_pred_loss += pred_loss / data_batch.size(0)
 
                 cnt += 1
@@ -559,7 +558,7 @@ def get_completion_ppl(source):
                 pred_loss = torch.tensor(0)
 
                 if args.predict_labels:
-                    pred_loss = model.get_prediction(theta, sources_batch_2)
+                    pred_loss = model.get_prediction_loss(theta, sources_batch_2)
                     acc_pred_loss += pred_loss / data_batch_1.size(0)
 
                 cnt += 1
