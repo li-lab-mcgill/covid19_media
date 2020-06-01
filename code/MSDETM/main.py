@@ -307,7 +307,7 @@ def train(epoch):
             unique_tokens = torch.tensor(np.unique(sum([sum(tokens_batch[i].tolist(),[]) 
                 for i in range(tokens_batch.shape[0])],[])))
 
-        print("forward passing ...")
+        # print("forward passing ...")
 
 
         loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(unique_tokens, data_batch, normalized_data_batch, 
@@ -315,8 +315,8 @@ def train(epoch):
 
         # set_trace()
 
-        print("forward done.")
-        print("backward passing ...")
+        # print("forward done.")
+        # print("backward passing ...")
 
         # set_trace()
 
@@ -432,6 +432,9 @@ def get_eta(source):
 def get_theta(eta, bows, times, sources):
     model.eval()
     with torch.no_grad():
+        
+        set_trace()
+
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
         inp = torch.cat([bows, eta_std], dim=1)
         q_theta = model.q_theta(inp)        
@@ -471,9 +474,8 @@ def get_completion_ppl(source):
                     normalized_data_batch = data_batch / sums
                 else:
                     normalized_data_batch = data_batch
-
-                eta_td = eta[times_batch.type('torch.LongTensor')]
-                theta = get_theta(eta_td, normalized_data_batch, times_batch, sources_batch)
+                
+                theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
                 alpha_td = alpha[:, times_batch.type('torch.LongTensor'), :]                
                 
                 beta = model.get_beta(alpha_td).permute(1, 0, 2)
@@ -529,9 +531,8 @@ def get_completion_ppl(source):
                     normalized_data_batch_1 = data_batch_1 / sums_1
                 else:
                     normalized_data_batch_1 = data_batch_1
-
-                eta_td_1 = eta_1[times_batch_1.type('torch.LongTensor')]
-                theta = get_theta(eta_td_1, normalized_data_batch_1, times_batch_1, sources_batch_1)
+                
+                theta = get_theta(eta_1, normalized_data_batch_1, times_batch_1, sources_batch_1)
 
                 data_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
                     tokens_2, counts_2, ind, test_sources, test_labels,
