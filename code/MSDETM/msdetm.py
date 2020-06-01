@@ -259,11 +259,11 @@ class MSDETM(nn.Module):
         nll = self.get_nll(theta, beta, bows)        
         nll = nll.sum() * coeff        
 
-        pred_loss = torch.tensor(0)
+        pred_loss = torch.tensor(0.0)
 
         if self.predict_labels:
-            pred_loss = self.get_prediction(theta, sources) * coeff
-
+            pred_loss = self.get_prediction(theta, sources) * coeff        
+        
         nelbo = nll + kl_alpha + kl_eta + kl_theta + pred_loss
         
         return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss
