@@ -58,6 +58,18 @@ def read_data(data_file):
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
     labels = data['WHO_CATEGORY'].values
+
+    land_screenings = data['LAND_SCREENING'].values 
+    border_closings = data['BORDER_CLOSING'].values
+    airport_screening_entries = data['AIRPORT_SCREENING_ENTRY'].values
+    airport_screening_exits = data['AIRPORT_SCREENING_EXIT'].values
+    testing_cases = data['TESTING_CASE_DETECTION'].values
+    quarantine_monitors = data['QUARANTINE/MONITORING'].values
+    travel_advisory = data['TRAVEL_ADVISORY'].values
+    travel_bans_cancellation = data['TRAVEL_BANS/CANCELLATION'].values
+    trade_bans = data['TRADE_BANS'].values
+
+
     print(labels)
     countries_mod = []
     labels_mod=[]
