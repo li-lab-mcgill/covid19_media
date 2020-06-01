@@ -52,7 +52,7 @@ def _fetch_temporal(path, name):
         count_file = os.path.join(path, 'bow_ts_counts')
         time_file = os.path.join(path, 'bow_ts_timestamps')
         source_file = os.path.join(path, 'bow_ts_sources.pkl')
-        label_file = os.path.join(path, 'bow_ts_labels.pkl')
+        label_file = os.path.join(path, 'bow_ts_labels.pkl')    
     
     tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
     counts = scipy.io.loadmat(count_file)['counts'].squeeze()
@@ -103,14 +103,14 @@ def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temp
     sources_batch = np.zeros((batch_size, ))
     labels_batch = np.zeros((batch_size, ))
 
-    for i, doc_id in enumerate(ind):
+    for i, doc_id in enumerate(ind):        
         
         doc = tokens[doc_id]
         count = counts[doc_id]
 
         source = sources[doc_id]
-        sources_batch[i] = source
-
+        sources_batch[i] = source        
+        
         label = labels[doc_id]
         labels_batch[i] = label
 
@@ -150,8 +150,7 @@ def get_rnn_input(tokens, counts, times, sources, labels, num_times, num_sources
 
     for idx, ind in enumerate(indices):
         
-        data_batch, times_batch, sources_batch, labels_batch = \
-            get_batch(tokens, counts, ind, sources, labels, vocab_size, temporal=True, times=times)
+        data_batch, times_batch, sources_batch, labels_batch = get_batch(tokens, counts, ind, sources, labels, vocab_size, temporal=True, times=times)
 
         for t in range(num_times):
             for src in range(num_sources):

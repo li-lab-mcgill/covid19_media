@@ -170,6 +170,7 @@ test_times = test['times']
 test_sources = test['sources']
 test_labels = test['labels']
 
+
 args.num_docs_test = len(test_tokens)
 test_rnn_inp = data.get_rnn_input(
     test_tokens, test_counts, test_times, test_sources, test_labels,
