@@ -718,7 +718,7 @@ if args.mode == 'train':
 
         f=open(ckpt+'_pdl.txt','w')
         s1='\n'.join([str(i) for i in all_val_pdls])
-        s1=s1+'\nlast val_pdl: '+str(val_pdl)+'\nlast test_ppl: '+str(test_pdl)
+        s1=s1+'\nlast val_pdl: '+str(val_pdl)+'\nlast test_pdl: '+str(test_pdl)
         f.write(s1)
         f.close()        
 else: 
