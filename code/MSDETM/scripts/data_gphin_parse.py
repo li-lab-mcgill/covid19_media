@@ -12,6 +12,7 @@ import argparse
 import pandas as pd
 from datetime import datetime
 import time
+import pandas as pd
 
 # Maximum / minimum document frequency
 max_df = 0.7
@@ -57,186 +58,211 @@ def read_data(data_file):
     docs = data.SUMMARY.values
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
-    labels = data['WHO_CATEGORY'].values
 
-    land_screenings = data['LAND_SCREENING'].values #0
-    border_closings = data['BORDER_CLOSING'].values #1
-    airport_screening_entries = data['AIRPORT_SCREENING_ENTRY'].values #2
-    airport_screening_exits = data['AIRPORT_SCREENING_EXIT'].values #3
-    testing_cases = data['TESTING_CASE_DETECTION'].values #4
-    quarantine_monitors = data['QUARANTINE/MONITORING'].values #5
-    travel_advisory = data['TRAVEL_ADVISORY'].values #6
-    travel_bans_cancellation = data['TRAVEL_BANS/CANCELLATION'].values #7
-    trade_bans = data['TRADE_BANS'].values #8
-    education_campains = data['EDUCATION_CAMPAIGN'].values #9
-    mass_gatherings = data['MASS_GATHERING_CANCELLATION'].values #10
-    limit_gatherings = data['RESTRICTING_OR_LIMITING_GATHERINGS'].values #11
-    close_public_spaces = data['CLOSING_PUBLIC_PLACES'].values #12
-    lock_or_curfews = data['LOCKDOWN_OR_CURFEW'].values #13
-    ease_restrictions = data['EASING_RESTRICTION'].values #14
-    vaccines = data['VACCINE_MCM_DEPLOYED'].values #15
-    ppes = data['PPE'].values #16
+    land_screenings = [] #0
+    border_closings = [] #1
+    airport_screening_entries = [] #2
+    airport_screening_exits = [] #3
+    testing_cases = [] #4
+    quarantine_monitors = [] #5
+    travel_advisory = [] #6
+    travel_bans_cancellation = [] #7
+    trade_bans = [] #8
+    education_campains = [] #9
+    mass_gatherings = [] #10
+    limit_gatherings = [] #11
+    close_public_spaces = [] #12
+    lock_or_curfews = [] #13
+    ease_restrictions = [] #14
+    vaccines = [] #15
+    ppes = [] #16
+
+    #Get numpy arrays
+    df = pd.read_csv(data_file)
+    land_screenings = df['LAND_SCREENING'].values
+    border_closings = df['BORDER_CLOSING'].values
+    airport_screening_entries = df['AIRPORT_SCREENING_ENTRY'].values
+    airport_screening_exits = df['AIRPORT_SCREENING_EXIT'].values
+    testing_cases=df['TESTING_CASE_DETECTION'].values
+    quarantine_monitors=df['QUARANTINE/MONITORING'].values
+    travel_advisory=df['TRAVEL_ADVISORY'].values
+    travel_bans_cancellation=df['TRAVEL_BANS/CANCELLATION'].values
+    trade_bans=df['TRADE_BANS'].values
+
+    education_campains=df['EDUCATION_CAMPAIGN'].values
+    testing_cases=df['TESTING_CASE_DETECTION'].values
+    mass_gatherings=df['MASS_GATHERING_CANCELLATION'].values
+    limit_gatherings=df['RESTRICTING_OR_LIMITING_GATHERINGS'].values
+    close_public_spaces=df['CLOSING_PUBLIC_PLACES'].values
+    lock_or_curfews=df['LOCKDOWN_OR_CURFEW'].values
+
+    ease_restrictions=df['EASING_RESTRICTION'].values
+    vaccines=df['VACCINE_MCM_DEPLOYED'].values
+    ppes=df['PPE'].values
 
     nbre_labels = 17
-    print(labels)
     countries_mod = []
-    labels_mod=[]
-    labels_mod.append([]) #Making the 2D array for labels in GPHIN
+    labels_mod = [[ 0 for value in range(17)] for i in range(len(ppes))]
 
     #Each intervention will be a number from 0-16
 
     #0 - Land Screening
     i=0
     for isintervention in land_screenings:
-        if isintervention is 'True':
-            labels_mod[i][0].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][0] = '1'
         else:
-            labels_mod[i][0].append(['0'])
+            labels_mod[i][0] = '0'
         i = i+1
+    print(labels_mod)
 
     #1 - BorderClosing
     i=0
     for isintervention in border_closings:
-        if isintervention is 'True':
-            labels_mod[i][1].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][1] = '1'
         else:
-            labels_mod[i][1].append(['0'])
+            labels_mod[i][1] = '0'
         i = i+1
 
     #2 - airport_screening_entries 
     i=0
     for isintervention in airport_screening_entries:
-        if isintervention is 'True':
-            labels_mod[i][2].append(['1'])
-        else
-            labels_mod[i][2].append(['0'])
+        if isintervention == 'True':
+            labels_mod[i][2] = '1'
+        else:
+            labels_mod[i][2] = '0'
         i = i+1
 
     #3 - airport_screening_exits  
     i=0
     for isintervention in airport_screening_exits:
-        if isintervention is 'True':
-            labels_mod[i][3].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][3] = '1'
         else:
-            labels_mod[i][3].append(['0'])
+            labels_mod[i][3] = '0'
         i = i+1
 
     #4 - testing_cases  
     i=0
     for isintervention in testing_cases:
-        if isintervention is 'True':
-            labels_mod[i][4].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][4] = '1'
         else:
-            labels_mod[i][4].append(['0'])
+            labels_mod[i][4] = '0'
         i = i+1
 
     #5 - quarantine_monitors   
     i=0
     for isintervention in quarantine_monitors:
-        if isintervention is 'True':
-            labels_mod[i][5].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][5] = '1'
         else:
-            labels_mod[i][5].append(['0'])
+            labels_mod[i][5] = '0'
         i = i+1
 
     #6 - travel_advisory    
     i=0
     for isintervention in travel_advisory:
-        if isintervention is 'True':
-            labels_mod[i][6].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][6] = '1'
         else:
-            labels_mod[i][6].append(['0'])
+            labels_mod[i][6] = '0'
         i = i+1
 
     #7 - travel_bans_cancellation     
     i=0
     for isintervention in travel_bans_cancellation:
-        if isintervention is 'True':
-            labels_mod[i][7].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][7] = '1'
         else:
-            labels_mod[i][7].append(['0'])
+            labels_mod[i][7] = '0'
         i = i+1
 
     #8 - travel_bans_cancellation     
     i=0
     for isintervention in trade_bans:
-        if isintervention is 'True':
-            labels_mod[i][8].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][8] = '1'
         else:
-            labels_mod[i][8].append(['0'])
+            labels_mod[i][8] = '0'
         i = i+1
 
     #9 - education_campains      
     i=0
     for isintervention in education_campains:
-        if isintervention is 'True':
-            labels_mod[i][9].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][9] = '1'
         else:
-            labels_mod[i][9].append(['0'])
+            labels_mod[i][9] = '0'
         i = i+1
 
     #10 - mass_gatherings       
     i=0
     for isintervention in mass_gatherings:
-        if isintervention is 'True':
-            labels_mod[i][10].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][10] = '1'
         else:
-            labels_mod[i][10].append(['0'])
+            labels_mod[i][10] = '0'
         i = i+1
 
     #11 - limit_gatherings        
     i=0
     for isintervention in limit_gatherings:
-        if isintervention is 'True':
-            labels_mod[i][11].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][11] = '1'
         else:
-            labels_mod[i][11].append(['0'])
+            labels_mod[i][11] = '0'
         i = i+1
 
     #12 - close_public_spaces         
     i=0
     for isintervention in close_public_spaces:
-        if isintervention is 'True':
-            labels_mod[i][12].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][12] = '1'
         else:
-            labels_mod[i][12].append(['0'])
+            labels_mod[i][12] = '0'
         i = i+1
 
     #13 - lock_or_curfews          
     i=0
     for isintervention in lock_or_curfews:
-        if isintervention is 'True':
-            labels_mod[i][13].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][13] = '1'
         else:
-            labels_mod[i][13].append(['0'])
+            labels_mod[i][13] = '0'
         i = i+1
 
     #14 - ease_restrictions           
     i=0
     for isintervention in ease_restrictions:
-        if isintervention is 'True':
-            labels_mod[i][14].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][14] = '1'
         else:
-            labels_mod[i][14].append(['0'])
+            labels_mod[i][14] = '0'
         i = i+1
 
     #15 - ease_restrictions           
     i=0
     for isintervention in vaccines:
-        if isintervention is 'True':
-            labels_mod[i][15].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][15] = '1'
         else:
-            labels_mod[i][15].append(['0'])
+            labels_mod[i][15] = '0'
         i = i+1
     
     #16 - ppes            
     i=0
     for isintervention in ppes:
-        if isintervention is 'True':
-            labels_mod[i][16].append(['1'])
+        if isintervention == 'True':
+            labels_mod[i][16] = '1'
         else:
-            labels_mod[i][16].append(['0'])
+            labels_mod[i][16] = '0'
         i = i+1
+
+    # Now we have a labels_mod 2D array with the number of labels are columns 
+    # and the number of docs as rows
+    print(labels_mod)
 
     for country in countries:
         if not pd.isna(country):
