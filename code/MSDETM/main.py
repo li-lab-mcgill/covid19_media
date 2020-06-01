@@ -244,6 +244,7 @@ else:
 print('\nDETM architecture: {}'.format(model))
 model.to(device)
 
+
 if args.optimizer == 'adam':
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wdecay)
 elif args.optimizer == 'adagrad':
@@ -281,11 +282,10 @@ def train(epoch):
         optimizer.zero_grad()
         model.zero_grad()        
 
-        # print("batch ID: ", idx)
-        # print("sample ID: ", ind)
         
         data_batch, times_batch, sources_batch = data.get_batch(
-            train_tokens, train_counts, ind, args.vocab_size, train_sources, args.emb_size, temporal=True, times=train_times)
+            train_tokens, train_counts, ind, train_sources, train_labels, 
+            args.vocab_size, args.emb_size, temporal=True, times=train_times)
 
         tokens_batch = train_tokens[ind]
 
@@ -317,7 +317,7 @@ def train(epoch):
 
         # set_trace()
 
-        loss.backward()        
+        loss.backward()
 
         # print("backward done.")
 
@@ -358,81 +358,62 @@ def train(epoch):
             epoch, lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_loss))
     print('*'*100)
 
+
 def visualize():
     """Visualizes topics and embeddings and word usage evolution.
     """
     model.eval()
     with torch.no_grad():
-
-        alpha = model.mu_q_alpha # KxTxL
-        
-        # beta = model.get_beta(alpha, uniq_tokens, uniq_sources, uniq_times) # SxKxTxV
-
+        alpha = model.mu_q_alpha
+        beta = model.get_beta(alpha) 
+        print('beta: ', beta.size())
         print('\n')
         print('#'*100)
         print('Visualize topics...')
-        
-        topics = [0, int(args.num_topics/2), args.num_topics-1]
-        times = [0, int(max(train_times)/2), max(train_times)-1]
-        
-        
+        # times = [0, 10, 40]
+        times = [0, int(beta.shape[1]/2), beta.shape[1]-1]
         topics_words = []
+        for k in range(args.num_topics):
+            for t in times:
+                gamma = beta[k, t, :]
+                top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])                
+                topic_words = [vocab[a] for a in top_words]
+                topics_words.append(' '.join(topic_words))
+                print('Topic {} .. Time: {} ===> {}'.format(k, t, topic_words)) 
 
-        for s in demo_source_indices:
-            for k in topics:
-                for t in times:
-                    gamma = model.get_beta_skt(alpha, s, k, t)
-                    top_words = sum(gamma.cpu().numpy().argsort().tolist(),[])[-args.num_words+1:][::-1]
-                    topic_words = [vocab[a] for a in top_words]
-                    topics_words.append(' '.join(topic_words))
-                    
-                    print('Source {} .. Topic {} .. Time: {} ===> {}'.format(sources_map[s], k, t, topic_words))
-
-        if args.train_source_embeddings or epoch<=1:
-            print('\n')
-            print('#'*100)
-            print('Visualize source embeddings ...')        
-            queries = ['China', 'Canada', 'United States', 'Italy']
-            try:
-                src_emb = model.source_lambda.weight  # Source_size x L
-            except:
-                src_emb = model.source_lambda         # Source_size x L
-            # neighbors = []
-            src_list = [v for k,v in sources_map.items()]
-            for src in queries:
-                print('source: {} .. neighbors: {}'.format(
-                    src, nearest_neighbors(src, src_emb, src_list, min(5, args.num_sources))))
-
-            print(model.source_lambda[0:10])
-        
-        if args.train_embeddings or epoch<=1:
-            print('\n')
-            print('#'*100)
-            print('Visualize word embeddings ...')
-            queries = ['border', 'vaccines', 'coronaviruses', 'masks']
-            try:
-                word_embeddings = model.rho.weight  # Vocab_size x E
-            except:
-                word_embeddings = model.rho         # Vocab_size x E
-            # neighbors = []
-            for word in queries:
-                print('word: {} .. neighbors: {}'.format(
-                    word, nearest_neighbors(word, word_embeddings, vocab, args.num_words)))
-            print('#'*100)
+        print('\n')
+        print('Visualize word embeddings ...')
+        # queries = ['economic', 'assembly', 'security', 'management', 'debt', 'rights',  'africa']
+        # queries = ['economic', 'assembly', 'security', 'management', 'rights',  'africa']
+        queries = ['border', 'vaccines', 'coronaviruses', 'masks']
+        try:
+            embeddings = model.rho.weight  # Vocab_size x E
+        except:
+            embeddings = model.rho         # Vocab_size x E
+        # neighbors = []
+        for word in queries:
+            print('word: {} .. neighbors: {}'.format(
+                word, nearest_neighbors(word, embeddings, vocab, args.num_words)))
+        print('#'*100)
 
 
 
 def _eta_helper(rnn_inp):
-    inp = model.q_eta_map(rnn_inp).unsqueeze(1)
-    hidden = model.init_hidden()
-    output, _ = model.q_eta(inp, hidden)
-    output = output.squeeze()
-    etas = torch.zeros(model.num_times, model.num_topics).to(device)
-    inp_0 = torch.cat([output[0], torch.zeros(model.num_topics,).to(device)], dim=0)
-    etas[0] = model.mu_q_eta(inp_0)
-    for t in range(1, model.num_times):
-        inp_t = torch.cat([output[t], etas[t-1]], dim=0)
-        etas[t] = model.mu_q_eta(inp_t)
+
+    etas = torch.zeros(self.num_sources, self.num_times, self.num_topics).to(device)
+    for s in range(self.num_sources):
+
+        inp = self.q_eta_map(rnn_inp[s]).unsqueeze(1)        
+        hidden = self.init_hidden()
+        output, _ = self.q_eta(inp, hidden)
+        output = output.squeeze()
+        inp_0 = torch.cat([output[0], torch.zeros(self.num_topics,).to(device)], dim=0)
+        etas[s, 0] = self.mu_q_eta(inp_0)
+
+        for t in range(1, self.num_times):
+            inp_t = torch.cat([output[t], etas[s, t-1]], dim=0)
+            etas[s, t] = self.mu_q_eta(inp_t)
+    
     return etas
 
 def get_eta(source):
@@ -466,6 +447,7 @@ def get_completion_ppl(source):
             counts = valid_counts
             times = valid_times
             sources = valid_sources
+            labels = valid_labels
 
             eta = get_eta('val')
 
@@ -476,7 +458,8 @@ def get_completion_ppl(source):
             for idx, ind in enumerate(indices):
                 
                 data_batch, times_batch, sources_batch = data.get_batch(
-                    tokens, counts, ind, args.vocab_size, sources, args.emb_size, temporal=True, times=times)
+                    tokens, counts, ind, sources, labels, 
+                    args.vocab_size, args.emb_size, temporal=True, times=times)
 
                 sums = data_batch.sum(1).unsqueeze(1)
 
@@ -532,8 +515,9 @@ def get_completion_ppl(source):
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
 
-                data_batch_1, times_batch_1, sources_batch_1 = data.get_batch(
-                    tokens_1, counts_1, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
+                data_batch_1, times_batch_1, sources_batch_1, labels_batch_1 = data.get_batch(
+                    tokens_1, counts_1, ind, test_sources, test_labels,
+                    args.vocab_size, args.emb_size, temporal=True, times=test_times)
                 
                 sums_1 = data_batch_1.sum(1).unsqueeze(1)
 
@@ -545,8 +529,10 @@ def get_completion_ppl(source):
                 eta_td_1 = eta_1[times_batch_1.type('torch.LongTensor')]
                 theta = get_theta(eta_td_1, normalized_data_batch_1)
 
-                data_batch_2, times_batch_2, sources_batch_2 = data.get_batch(
-                    tokens_2, counts_2, ind, args.vocab_size, test_sources, args.emb_size, temporal=True, times=test_times)
+                data_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
+                    tokens_2, counts_2, ind, test_sources, test_labels,
+                    args.vocab_size, args.emb_size, temporal=True, times=test_times)
+
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
 
                 alpha_td = alpha[:, times_batch_2.type('torch.LongTensor'), :]
