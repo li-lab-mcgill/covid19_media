@@ -147,13 +147,12 @@ class MSDETM(nn.Module):
 
         etas = torch.zeros(self.num_sources, self.num_times, self.num_topics).to(device)
         kl_eta = []
-
-        hidden = self.init_hidden()
+        
 
         for src in range(self.num_sources):
             
             inp = self.q_eta_map(rnn_inp[src]).unsqueeze(1)
-                        
+            hidden = self.init_hidden()
             output, _ = self.q_eta(inp, hidden)
             output = output.squeeze()
 
