@@ -246,7 +246,7 @@ def remove_by_threshold(in_docs, in_timestamps, in_countries, thr, in_labels):
             out_docs.append(doc)
             out_timestamps.append(in_timestamps[ii])
             out_countries.append(in_countries[ii])
-            out_labels.append(in_labels)
+            out_labels.append(in_labels[ii])
     return out_docs, out_timestamps, out_countries, out_labels
 
 def create_bow(doc_indices, words, n_docs, vocab_size):
@@ -284,7 +284,7 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, la
     docs_ts = [[word2id[w] for w in docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(tsSize)]
     timestamps_ts = [time2id[timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
     countries_ts = [source_map[countries[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
-    labels_ts = [label_map[labels[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
+    labels_ts = [label_map[labels[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)] 
 
     docs_va = [[word2id[w] for w in docs[idx_permute[idx_d+trSize+tsSize]].split() if w in word2id] for idx_d in range(vaSize)]
     timestamps_va = [time2id[timestamps[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
