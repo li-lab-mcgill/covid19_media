@@ -58,6 +58,7 @@ def read_data(data_file):
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
     labels = data['WHO_CATEGORY'].values
+    print(labels)
     countries_mod = []
     labels_mod=[]
     for country in countries:
@@ -126,6 +127,7 @@ def read_data(data_file):
             #print(c)
             all_countries.append(c)
             all_labels.append(l)
+            #print(all_labels) This works, gives all the labels in an array all_labels
 
     return all_docs, all_times, all_countries, all_labels
 
@@ -200,8 +202,8 @@ def get_features(docs, stops, timestamps, sources, labels, min_df=min_df, max_df
     # Create mapping of labels
     label_map = {}
     i = 0
-    for c in np.unique(labels):
-        label_map[c] = i
+    for lab in np.unique(labels):
+        label_map[lab] = i
         i += 1
 
     return vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map
@@ -509,6 +511,7 @@ if __name__ == '__main__':
     # get the vocabulary of words, word2id map and id2word map and time2id and id2time maps
     vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map = get_features(all_docs, stopwords, all_times, all_countries, all_labels)
     print(source_map)
+    print(label_map)
 
     # split data into train, test and validation and corresponding countries in BOW format
     bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, all_labels, label_map)
