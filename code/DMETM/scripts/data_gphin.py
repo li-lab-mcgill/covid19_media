@@ -148,7 +148,7 @@ def read_data(data_file):
     #     for line in docs:
     #         f.write(line + '\n')
 
-def get_features(docs, stops, timestamps, sources, min_df=min_df, max_df=max_df):
+def get_features(docs, stops, timestamps, sources, labels, min_df=min_df, max_df=max_df):
     # Create count vectorizer
     print('counting document frequency of words...')
     cvectorizer = CountVectorizer(min_df=min_df, max_df=max_df, stop_words=None)
@@ -193,7 +193,14 @@ def get_features(docs, stops, timestamps, sources, min_df=min_df, max_df=max_df)
         source_map[c] = i
         i += 1
 
-    return vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map
+    # Create mapping of labels
+    label_map = {}
+    i = 0
+    for c in np.unique(labels):
+        label_map[c] = i
+        i += 1
+
+    return vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map
 
 def create_list_words(in_docs):
     # Getting lists of words and doc_indices
@@ -207,30 +214,34 @@ def create_doc_indices(in_docs):
     return [int(x) for y in aux for x in y]
 
 
-def remove_empty(in_docs, in_timestamps, in_countries):
+def remove_empty(in_docs, in_timestamps, in_countries, in_labels):
 
     # Remove empty documents
     print('removing empty documents...')
     out_docs = []
     out_timestamps = []
     out_countries = []
+    out_labels = []
     for ii, doc in enumerate(in_docs):
         if(doc!=[]):
             out_docs.append(doc)
             out_timestamps.append(in_timestamps[ii])
             out_countries.append(in_countries[ii])
-    return out_docs, out_timestamps, out_countries
+            out_labels.append(in_labels[ii])
+    return out_docs, out_timestamps, out_countries, out_labels
 
-def remove_by_threshold(in_docs, in_timestamps, in_countries, thr):
+def remove_by_threshold(in_docs, in_timestamps, in_countries, thr, in_labels):
     out_docs = []
     out_timestamps = []
     out_countries = []
+    out_labels = []
     for ii, doc in enumerate(in_docs):
         if(len(doc)>thr):
             out_docs.append(doc)
             out_timestamps.append(in_timestamps[ii])
             out_countries.append(in_countries[ii])
-    return out_docs, out_timestamps, out_countries
+            out_labels.append(in_labels)
+    return out_docs, out_timestamps, out_countries, out_labels
 
 def create_bow(doc_indices, words, n_docs, vocab_size):
     # Create bow representation
@@ -238,7 +249,7 @@ def create_bow(doc_indices, words, n_docs, vocab_size):
     return sparse.coo_matrix(([1]*len(doc_indices),(doc_indices, words)), shape=(n_docs, vocab_size)).tocsr()
 
 
-def split_data(cvz, docs, timestamps, word2id, countries, source_map):
+def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, label_map):
 
     # Split in train/test/valid
     print('tokenizing documents and splitting into train/test/valid...')
@@ -251,6 +262,7 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map):
     print(num_docs)
     print(len(timestamps))
     print(len(countries))
+    print(len(labels))
 
     # Remove words not in train_data
     vocab = list(set([w for idx_d in range(trSize) for w in docs[idx_permute[idx_d]].split() if w in word2id]))
@@ -261,26 +273,29 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map):
     docs_tr = [[word2id[w] for w in docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
     timestamps_tr = [time2id[timestamps[idx_permute[idx_d]]] for idx_d in range(trSize)]
     countries_tr = [source_map[countries[idx_permute[idx_d]]] for idx_d in range(trSize)]
+    labels_tr = [label_map[labels[idx_permute[idx_d]]] for idx_d in range(trSize)]
 
     docs_ts = [[word2id[w] for w in docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(tsSize)]
     timestamps_ts = [time2id[timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
     countries_ts = [source_map[countries[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
+    labels_ts = [label_map[labels[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
 
     docs_va = [[word2id[w] for w in docs[idx_permute[idx_d+trSize+tsSize]].split() if w in word2id] for idx_d in range(vaSize)]
     timestamps_va = [time2id[timestamps[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
     countries_va = [source_map[countries[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
+    labels_va = [label_map[labels[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
 
     print('  number of documents (train): {} [this should be equal to {} and {}]'.format(len(docs_tr), trSize, len(timestamps_tr)))
     print('  number of documents (test): {} [this should be equal to {} and {}]'.format(len(docs_ts), tsSize, len(timestamps_ts)))
     print('  number of documents (valid): {} [this should be equal to {} and {}]'.format(len(docs_va), vaSize, len(timestamps_va)))
     #return docs_tr, docs_ts, docs_va, timestamps_tr, timestamps_ts, timestamps_va
 
-    docs_tr, timestamps_tr, countries_tr = remove_empty(docs_tr, timestamps_tr, countries_tr)
-    docs_ts, timestamps_ts, countries_ts = remove_empty(docs_ts, timestamps_ts, countries_ts)
-    docs_va, timestamps_va, countries_va = remove_empty(docs_va, timestamps_va, countries_va)
+    docs_tr, timestamps_tr, countries_tr, labels_tr = remove_empty(docs_tr, timestamps_tr, countries_tr, labels_tr)
+    docs_ts, timestamps_ts, countries_ts, labels_ts = remove_empty(docs_ts, timestamps_ts, countries_ts, labels_ts)
+    docs_va, timestamps_va, countries_va, labels_va = remove_empty(docs_va, timestamps_va, countries_va, labels_va)
 
     # Remove test documents with length=1
-    docs_ts, timestamps_ts, countries_ts = remove_by_threshold(docs_ts, timestamps_ts, countries_ts, 1)
+    docs_ts, timestamps_ts, countries_ts, labels_ts = remove_by_threshold(docs_ts, timestamps_ts, countries_ts, 1, in_labels)
 
     # Split test set in 2 halves
     print('splitting test documents in 2 halves...')
@@ -292,6 +307,9 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map):
 
     countries_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for (doc,c) in zip(docs_ts,countries_ts)]
     countries_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for (doc,c) in zip(docs_ts,countries_ts)]
+
+    labels_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for (doc,c) in zip(docs_ts,labels_ts)]
+    labels_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for (doc,c) in zip(docs_ts,labels_ts)]
 
     words_tr = create_list_words(docs_tr)
     words_ts = create_list_words(docs_ts)
@@ -350,7 +368,7 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map):
     del doc_indices_ts_h2
     del doc_indices_va
 
-    return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va
+    return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va
 
 
 # Write files for LDA C++ code
@@ -381,7 +399,7 @@ def split_bow(bow_in, n_docs):
     counts = [[c for c in bow_in[doc,:].data] for doc in range(n_docs)]
     return indices, counts
 
-def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, min_df=min_df):
+def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map, min_df=min_df):
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
     if not os.path.isdir(path_save):
         os.system('mkdir -p ' + path_save)
@@ -397,6 +415,10 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
     # save the source to id mapping
     print(source_map.values())
     pickle.dump(source_map, open(path_save + "sources_map.pkl","wb"))
+
+    # save the label to id mapping
+    print(label_map.values())
+    pickle.dump(label_map, open(path_save + "labels_map.pkl","wb"))
 
     # Also write the vocabulary and timestamps
     with open(path_save + 'vocab.txt', "w") as f:
@@ -424,6 +446,12 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
     pickle.dump(c_tr, open(path_save+"bow_tr_sources.pkl","wb"))
     pickle.dump(c_ts, open(path_save+"bow_ts_sources.pkl","wb"))
     pickle.dump(c_va, open(path_save+"bow_va_sources.pkl","wb"))
+
+    # save source information
+    print(labl_va)
+    pickle.dump(labl_tr, open(path_save+"bow_tr_labels.pkl","wb"))
+    pickle.dump(labl_ts, open(path_save+"bow_ts_labels.pkl","wb"))
+    pickle.dump(labl_va, open(path_save+"bow_va_labels.pkl","wb"))
 
     bow_tr_tokens, bow_tr_counts = split_bow(bow_tr, n_docs_tr)
     savemat(path_save + 'bow_tr_tokens.mat', {'tokens': bow_tr_tokens}, do_compression=True)
@@ -475,12 +503,12 @@ if __name__ == '__main__':
     stopwords = get_stopwords(args.stopwords_path)
 
     # get the vocabulary of words, word2id map and id2word map and time2id and id2time maps
-    vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map = get_features(all_docs, stopwords, all_times, all_countries)
+    vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map = get_features(all_docs, stopwords, all_times, all_countries, all_labels)
     print(source_map)
 
     # split data into train, test and validation and corresponding countries in BOW format
-    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map)
+    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, all_labels, label_map)
 
-    save_data(args.save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map)
+    save_data(args.save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map)
     print('Data ready !!')
     print('*************')
