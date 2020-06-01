@@ -71,7 +71,7 @@ def _fetch_temporal(path, name):
                     'tokens_1': tokens_1, 'counts_1': counts_1, 
                         'tokens_2': tokens_2, 'counts_2': counts_2} 
 
-    return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources}
+    return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources, 'labels': labels}
 
 def get_data(path, temporal=False):
     ### load vocabulary

@@ -14,9 +14,9 @@ from pdb import set_trace
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-class SDETM(nn.Module):
+class MSDETM(nn.Module):
     def __init__(self, args, word_embeddings):
-        super(SDETM, self).__init__()
+        super(MSDETM, self).__init__()
 
         ## define hyperparameters
         self.num_topics = args.num_topics

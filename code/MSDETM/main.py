@@ -20,7 +20,7 @@ from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
-from sdetm import SDETM
+from msdetm import MSDETM
 from utils import nearest_neighbors, get_topic_coherence
 
 from IPython.core.debugger import set_trace
@@ -45,7 +45,7 @@ parser.add_argument('--data_path', type=str, default='../../data/WHO', help='dir
 # parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
-parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/sdetm', help='path to save results')
+parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/msdetm', help='path to save results')
 
 parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
 
@@ -125,6 +125,8 @@ train_tokens = train['tokens']
 train_counts = train['counts']
 train_times = train['times']
 train_sources = train['sources']
+train_labels = train['labels']
+
 
 # args.num_times = len(np.unique(train_times))
 timestamps_file = os.path.join(data_file, 'timestamps.pkl')
@@ -141,7 +143,9 @@ args.num_sources = len(sources_map)
 
 
 train_rnn_inp = data.get_rnn_input(
-    train_tokens, train_counts, train_times, args.num_times, train_sources, args.vocab_size, args.num_docs_train)
+    train_tokens, train_counts, train_times, train_sources, 
+    args.num_times, args.vocab_size, args.num_docs_train)
+
 
 # 2. dev set
 print('Getting validation data ...')
@@ -149,9 +153,13 @@ valid_tokens = valid['tokens']
 valid_counts = valid['counts']
 valid_times = valid['times']
 valid_sources = valid['sources']
+valid_labels = train['labels']
+
+
 args.num_docs_valid = len(valid_tokens)
 valid_rnn_inp = data.get_rnn_input(
-    valid_tokens, valid_counts, valid_times, args.num_times, valid_sources, args.vocab_size, args.num_docs_valid)
+    valid_tokens, valid_counts, valid_times, valid_sources,
+    args.num_times, args.vocab_size, args.num_docs_valid)
 
 # 3. test data
 print('Getting testing data ...')
@@ -159,23 +167,31 @@ test_tokens = test['tokens']
 test_counts = test['counts']
 test_times = test['times']
 test_sources = test['sources']
+test_labels = test['labels']
+
 args.num_docs_test = len(test_tokens)
 test_rnn_inp = data.get_rnn_input(
-    test_tokens, test_counts, test_times, args.num_times, test_sources, args.vocab_size, args.num_docs_test)
+    test_tokens, test_counts, test_times, test_sources,
+    args.num_times, args.vocab_size, args.num_docs_test)
+
 
 test_1_tokens = test['tokens_1']
 test_1_counts = test['counts_1']
 test_1_times = test_times
 args.num_docs_test_1 = len(test_1_tokens)
 test_1_rnn_inp = data.get_rnn_input(
-    test_1_tokens, test_1_counts, test_1_times, args.num_times, test_sources, args.vocab_size, args.num_docs_test)
+    test_1_tokens, test_1_counts, test_1_times, test_sources, 
+    args.num_times, args.vocab_size, args.num_docs_test)
+
 
 test_2_tokens = test['tokens_2']
 test_2_counts = test['counts_2']
 test_2_times = test_times
 args.num_docs_test_2 = len(test_2_tokens)
 test_2_rnn_inp = data.get_rnn_input(
-    test_2_tokens, test_2_counts, test_2_times, args.num_times, test_sources, args.vocab_size, args.num_docs_test)
+    test_2_tokens, test_2_counts, test_2_times, test_sources, 
+    args.num_times, args.vocab_size, args.num_docs_test)
+
 
 ## get word embeddings 
 print('Getting word embeddings ...')
@@ -214,7 +230,7 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'sdetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
+        'msdetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
             args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_embeddings))
 
@@ -224,7 +240,7 @@ if args.load_from != '':
     with open(args.load_from, 'rb') as f:
         model = torch.load(f)
 else:
-    model = SDETM(args, word_embeddings)
+    model = MSDETM(args, word_embeddings)
 print('\nDETM architecture: {}'.format(model))
 model.to(device)
 
