@@ -432,15 +432,12 @@ def get_eta(source):
 def get_theta(eta, bows, times, sources):
     model.eval()
     with torch.no_grad():
-        
-        set_trace()
-
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
         inp = torch.cat([bows, eta_std], dim=1)
         q_theta = model.q_theta(inp)        
         mu_theta = model.mu_q_theta(q_theta)
         theta = F.softmax(mu_theta, dim=-1)        
-        return theta, kl_theta    
+        return theta
 
 def get_completion_ppl(source):
     """Returns document completion perplexity.
