@@ -87,7 +87,7 @@ parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows 
 ### evaluation, visualization, and logging-related arguments
 parser.add_argument('--num_words', type=int, default=20, help='number of words for topic viz')
 
-parser.add_argument('--log_interval', type=int, default=10, help='when to log training')
+parser.add_argument('--log_interval', type=int, default=1, help='when to log training')
 
 parser.add_argument('--visualize_every', type=int, default=1, help='when to visualize results')
 parser.add_argument('--eval_batch_size', type=int, default=1000, help='input batch size for evaluation')
@@ -306,18 +306,16 @@ def train(epoch):
             unique_tokens = torch.tensor(np.unique(sum([sum(tokens_batch[i].tolist(),[]) 
                 for i in range(tokens_batch.shape[0])],[])))
 
-        # print("forward passing ...")
+        print("forward passing ...")
 
-        # loss, nll, kl_alpha, kl_eta, kl_theta = model(data_batch, normalized_data_batch, times_batch, 
-        #     sources_batch, train_rnn_inp, args.num_docs_train)        
 
         loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(unique_tokens, data_batch, normalized_data_batch, 
             times_batch, sources_batch, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
 
-        # print("forward done.")
-        # print("backward passing ...")
+        print("forward done.")
+        print("backward passing ...")
 
         # set_trace()
 
@@ -404,19 +402,19 @@ def visualize():
 
 def _eta_helper(rnn_inp):
 
-    etas = torch.zeros(self.num_sources, self.num_times, self.num_topics).to(device)
-    for s in range(self.num_sources):
+    etas = torch.zeros(model.num_sources, model.num_times, model.num_topics).to(device)
+    for s in range(model.num_sources):
 
-        inp = self.q_eta_map(rnn_inp[s]).unsqueeze(1)        
-        hidden = self.init_hidden()
-        output, _ = self.q_eta(inp, hidden)
+        inp = model.q_eta_map(rnn_inp[s]).unsqueeze(1)        
+        hidden = model.init_hidden()
+        output, _ = model.q_eta(inp, hidden)
         output = output.squeeze()
-        inp_0 = torch.cat([output[0], torch.zeros(self.num_topics,).to(device)], dim=0)
-        etas[s, 0] = self.mu_q_eta(inp_0)
+        inp_0 = torch.cat([output[0], torch.zeros(model.num_topics,).to(device)], dim=0)
+        etas[s, 0] = model.mu_q_eta(inp_0)
 
-        for t in range(1, self.num_times):
+        for t in range(1, model.num_times):
             inp_t = torch.cat([output[t], etas[s, t-1]], dim=0)
-            etas[s, t] = self.mu_q_eta(inp_t)
+            etas[s, t] = model.mu_q_eta(inp_t)
     
     return etas
 
@@ -656,6 +654,7 @@ if args.mode == 'train':
     with torch.no_grad():
                 
         print('saving topic matrix beta...')
+        alpha = model.mu_q_alpha
         beta = model.get_beta(alpha).cpu().numpy()
         scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True)
         

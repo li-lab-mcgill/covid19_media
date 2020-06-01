@@ -148,11 +148,12 @@ class MSDETM(nn.Module):
         etas = torch.zeros(self.num_sources, self.num_times, self.num_topics).to(device)
         kl_eta = []
 
-        for s in range(self.num_sources):
+        hidden = self.init_hidden()
+
+        for src in range(self.num_sources):
             
-            inp = self.q_eta_map(rnn_inp[s]).unsqueeze(1)
-            
-            hidden = self.init_hidden()
+            inp = self.q_eta_map(rnn_inp[src]).unsqueeze(1)
+                        
             output, _ = self.q_eta(inp, hidden)
             output = output.squeeze()
 
@@ -160,7 +161,7 @@ class MSDETM(nn.Module):
             mu_0 = self.mu_q_eta(inp_0)
             logsigma_0 = self.logsigma_q_eta(inp_0)
             
-            etas[s, 0] = self.reparameterize(mu_0, logsigma_0)
+            etas[src, 0] = self.reparameterize(mu_0, logsigma_0)
 
             p_mu_0 = torch.zeros(self.num_topics,).to(device)
             logsigma_p_0 = torch.zeros(self.num_topics,).to(device)
@@ -168,19 +169,19 @@ class MSDETM(nn.Module):
             kl_eta.append(kl_0)
 
             for t in range(1, self.num_times):
-                inp_t = torch.cat([output[t], etas[s, t-1]], dim=0)
+                inp_t = torch.cat([output[t], etas[src, t-1]], dim=0)
                 mu_t = self.mu_q_eta(inp_t)
 
-                logsigma_t = self.logsigma_q_eta(inp_t)        
+                logsigma_t = self.logsigma_q_eta(inp_t)
 
                 if any(logsigma_t > self.max_logsigma_t):
                     logsigma_t[logsigma_t > self.max_logsigma_t] = self.max_logsigma_t
                 elif any(logsigma_t < self.min_logsigma_t):
                     logsigma_t[logsigma_t < self.min_logsigma_t] = self.min_logsigma_t
 
-                etas[s, t] = self.reparameterize(mu_t, logsigma_t)
+                etas[src, t] = self.reparameterize(mu_t, logsigma_t)
 
-                p_mu_t = etas[s, t-1]
+                p_mu_t = etas[src, t-1]
                 logsigma_p_t = torch.log(self.delta * torch.ones(self.num_topics,).to(device))
                 kl_t = self.get_kl(mu_t, logsigma_t, p_mu_t, logsigma_p_t)
                 kl_eta.append(kl_t)
