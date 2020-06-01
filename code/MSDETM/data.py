@@ -102,7 +102,7 @@ def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temp
         times_batch = np.zeros((batch_size, ))
 
     sources_batch = np.zeros((batch_size, ))
-    labels_batch = np.zeros((batch_size, ))
+    labels_batch = np.zeros((batch_size, )) 
 
     for i, doc_id in enumerate(ind):        
         
