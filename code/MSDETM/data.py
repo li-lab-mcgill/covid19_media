@@ -154,11 +154,16 @@ def get_rnn_input(tokens, counts, times, sources, labels, num_times, num_sources
             get_batch(tokens, counts, ind, sources, labels, vocab_size, temporal=True, times=times)
 
         for t in range(num_times):
-            for s in range(num_sources):                
-                tmp = ( (times_batch == t) * (sources_batch == s) ).nonzero()
-                docs = data_batch[tmp].squeeze().sum(0)
-                rnn_input[s,t] += docs
-                cnt[s,t] += len(tmp)
+            for src in range(num_sources):
+                tmp = ( (times_batch.type('torch.LongTensor') == t) * (sources_batch.type('torch.LongTensor') == src) ).nonzero()
+                
+                if tmp.size(0) == 1:
+                    docs = data_batch[tmp].squeeze()
+                else:
+                    docs = data_batch[tmp].squeeze().sum(0)
+
+                rnn_input[src,t] += docs
+                cnt[src,t] += len(tmp)
 
         if idx % 10 == 0:
             print('idx: {}/{}'.format(idx, len(indices)))
