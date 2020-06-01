@@ -31,12 +31,11 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-# parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
-
+parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
