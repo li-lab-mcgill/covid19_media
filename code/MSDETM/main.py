@@ -94,7 +94,7 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
-parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
+parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 
 args = parser.parse_args()
 
@@ -491,7 +491,7 @@ def get_completion_ppl(source):
                 loss = loss.mean().item()
                 acc_loss += loss
 
-                pred_loss = 0
+                pred_loss = torch.tensor(0)
                 
                 if args.predict_labels:
                     pred_loss = model.get_prediction(theta, sources_batch)
@@ -557,11 +557,11 @@ def get_completion_ppl(source):
                 loss = loss.mean().item()
                 acc_loss += loss
 
-                pred_loss = 0
+                pred_loss = torch.tensor(0)
 
                 if args.predict_labels:
                     pred_loss = model.get_prediction(theta, sources_batch_2)
-                    
+
                 acc_pred_loss += pred_loss / data_batch_1.size(0)
 
                 cnt += 1
