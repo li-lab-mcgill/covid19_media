@@ -570,9 +570,9 @@ def get_completion_ppl(source):
 
             if args.predict_labels:
                 cur_pred_loss = acc_pred_loss / cnt
-                pdl_all = round(cur_pred_loss.item(), 2)
+                pdl_dc = round(cur_pred_loss.item(), 2)
             else:
-                pdl_all = 0            
+                pdl_dc = 0            
 
             print('*'*100)
             print('{} Doc Completion PPL: {} .. Doc Classification PDL: {}'.format(source.upper(), ppl_dc, pdl_dc))
