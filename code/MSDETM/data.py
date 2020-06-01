@@ -1,9 +1,11 @@
 import os
-import random
+# import random
 import pickle
 import numpy as np
 import torch 
 import scipy.io
+
+from pdb import set_trace
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -56,7 +58,7 @@ def _fetch_temporal(path, name):
     counts = scipy.io.loadmat(count_file)['counts'].squeeze()
     times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
     sources = np.array(pickle.load(open(source_file, 'rb')))
-    labels = np.array(pickle.load(open(source_file, 'rb')))
+    labels = np.array(pickle.load(open(label_file, 'rb')))
 
     if name == 'test':
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
@@ -99,6 +101,7 @@ def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temp
         times_batch = np.zeros((batch_size, ))
 
     sources_batch = np.zeros((batch_size, ))
+    labels_batch = np.zeros((batch_size, ))
 
     for i, doc_id in enumerate(ind):
         
@@ -136,14 +139,14 @@ def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temp
 
 
 ## get source-specific word frequencies at each time point t
-def get_rnn_input(tokens, counts, times, sources, num_times, num_sources, vocab_size, num_docs):
+def get_rnn_input(tokens, counts, times, sources, labels, num_times, num_sources, vocab_size, num_docs):
 
     indices = torch.randperm(num_docs)
     indices = torch.split(indices, 1000)
     
     rnn_input = torch.zeros(num_sources, num_times, vocab_size).to(device)
 
-    cnt = torch.zeros(num_sources, num_times).to(device)
+    cnt = torch.zeros(num_sources, num_times, vocab_size).to(device)
 
     for idx, ind in enumerate(indices):
         
@@ -151,16 +154,17 @@ def get_rnn_input(tokens, counts, times, sources, num_times, num_sources, vocab_
             get_batch(tokens, counts, ind, sources, labels, vocab_size, temporal=True, times=times)
 
         for t in range(num_times):
-            for s in range(num_sources):
-                tmp = (times_batch == t and sources_batch == s).nonzero()
+            for s in range(num_sources):                
+                tmp = ( (times_batch == t) * (sources_batch == s) ).nonzero()
                 docs = data_batch[tmp].squeeze().sum(0)
                 rnn_input[s,t] += docs
                 cnt[s,t] += len(tmp)
 
-        if idx % 20 == 0:
+        if idx % 10 == 0:
             print('idx: {}/{}'.format(idx, len(indices)))
+    
+    rnn_input = (rnn_input + 1e-16) / (cnt + 1e-16)
 
-    rnn_input = (rnn_input + 1e-16) / (cnt.unsqueeze(1) + 1e-16)
     return rnn_input
 
 

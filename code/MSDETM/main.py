@@ -9,7 +9,6 @@ import numpy as np
 import os 
 import math 
 import random 
-import sys
 import matplotlib.pyplot as plt 
 import seaborn as sns
 import scipy.io
@@ -143,8 +142,9 @@ args.num_sources = len(sources_map)
 
 
 train_rnn_inp = data.get_rnn_input(
-    train_tokens, train_counts, train_times, train_sources, 
-    args.num_times, args.vocab_size, args.num_docs_train)
+    train_tokens, train_counts, train_times, train_sources, train_labels,
+    args.num_times, args.num_sources, 
+    args.vocab_size, args.num_docs_train)
 
 
 # 2. dev set
@@ -158,8 +158,9 @@ valid_labels = train['labels']
 
 args.num_docs_valid = len(valid_tokens)
 valid_rnn_inp = data.get_rnn_input(
-    valid_tokens, valid_counts, valid_times, valid_sources,
-    args.num_times, args.vocab_size, args.num_docs_valid)
+    valid_tokens, valid_counts, valid_times, valid_sources, valid_labels,
+    args.num_times, args.num_sources, 
+    args.vocab_size, args.num_docs_valid)
 
 # 3. test data
 print('Getting testing data ...')
@@ -171,8 +172,9 @@ test_labels = test['labels']
 
 args.num_docs_test = len(test_tokens)
 test_rnn_inp = data.get_rnn_input(
-    test_tokens, test_counts, test_times, test_sources,
-    args.num_times, args.vocab_size, args.num_docs_test)
+    test_tokens, test_counts, test_times, test_sources, test_labels,
+    args.num_times, args.num_sources, 
+    args.vocab_size, args.num_docs_test)
 
 
 test_1_tokens = test['tokens_1']
@@ -180,8 +182,9 @@ test_1_counts = test['counts_1']
 test_1_times = test_times
 args.num_docs_test_1 = len(test_1_tokens)
 test_1_rnn_inp = data.get_rnn_input(
-    test_1_tokens, test_1_counts, test_1_times, test_sources, 
-    args.num_times, args.vocab_size, args.num_docs_test)
+    test_1_tokens, test_1_counts, test_1_times, test_sources, test_labels,
+    args.num_times, args.num_sources, 
+    args.vocab_size, args.num_docs_test)
 
 
 test_2_tokens = test['tokens_2']
@@ -189,8 +192,9 @@ test_2_counts = test['counts_2']
 test_2_times = test_times
 args.num_docs_test_2 = len(test_2_tokens)
 test_2_rnn_inp = data.get_rnn_input(
-    test_2_tokens, test_2_counts, test_2_times, test_sources, 
-    args.num_times, args.vocab_size, args.num_docs_test)
+    test_2_tokens, test_2_counts, test_2_times, test_sources, test_labels,
+    args.num_times, args.num_sources, 
+    args.vocab_size, args.num_docs_test)
 
 
 ## get word embeddings 
@@ -644,7 +648,7 @@ if args.mode == 'train':
             if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
                 optimizer.param_groups[0]['lr'] /= args.lr_factor
         all_val_ppls.append(val_ppl)
-        
+
     # with open(ckpt, 'rb') as f:
     #     model = torch.load(f)
     model = model.to(device)
@@ -664,12 +668,10 @@ if args.mode == 'train':
         classifer_weights = model.classifier.weight.cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_classifer.mat', {'values': classifer_weights}, do_compression=True)
 
-
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
             rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
-
 
         print('computing validation perplexity...')
         val_ppl, val_pdl = get_completion_ppl('val')

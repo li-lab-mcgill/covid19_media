@@ -189,7 +189,6 @@ class MSDETM(nn.Module):
         return etas, kl_eta
 
 
-
     def get_theta(self, eta, bows, times, sources): ## amortized inference
         """Returns the topic proportions.
         """        
