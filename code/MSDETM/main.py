@@ -287,7 +287,7 @@ def train(epoch):
         model.zero_grad()        
 
         
-        data_batch, times_batch, sources_batch = data.get_batch(
+        data_batch, times_batch, sources_batch, labels_batch = data.get_batch(
             train_tokens, train_counts, ind, train_sources, train_labels, 
             args.vocab_size, args.emb_size, temporal=True, times=train_times)
 
@@ -461,7 +461,7 @@ def get_completion_ppl(source):
             cnt = 0
             for idx, ind in enumerate(indices):
                 
-                data_batch, times_batch, sources_batch = data.get_batch(
+                data_batch, times_batch, sources_batch, labels_batch = data.get_batch(
                     tokens, counts, ind, sources, labels, 
                     args.vocab_size, args.emb_size, temporal=True, times=times)
 

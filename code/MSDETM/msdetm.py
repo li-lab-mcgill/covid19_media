@@ -191,8 +191,8 @@ class MSDETM(nn.Module):
 
     def get_theta(self, eta, bows, times, sources): ## amortized inference
         """Returns the topic proportions.
-        """        
-        eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')]
+        """
+        eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
         inp = torch.cat([bows, eta_std], dim=1)
         q_theta = self.q_theta(inp)
 
@@ -249,7 +249,7 @@ class MSDETM(nn.Module):
         coeff = num_docs / bsz         
         alpha, kl_alpha = self.get_alpha()
         eta, kl_eta = self.get_eta(rnn_inp)        
-        theta, kl_theta = self.get_theta(eta, normalized_bows, times)
+        theta, kl_theta = self.get_theta(eta, normalized_bows, times, sources)
         kl_theta = kl_theta.sum() * coeff
         
         beta = self.get_beta(alpha)        
