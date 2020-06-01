@@ -59,6 +59,7 @@ def read_data(data_file):
     countries = data['COUNTRY /ORGANIZATION'].values
     labels = data['WHO_CATEGORY'].values
     countries_mod = []
+    labels_mod=[]
     for country in countries:
         if not pd.isna(country):
             country = country.strip()
@@ -94,14 +95,15 @@ def read_data(data_file):
     for label in labels:
         if not pd.isna(label):
             label = label.strip()
-        labels.append(label)
+        labels_mod.append(label)
 
     all_docs = []
     all_times = []
     all_countries = []
+    all_labels = []
 
-    for (doc, timestamp, country) in zip(docs, timestamps, countries_mod):
-        if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country):
+    for (doc, timestamp, country, label) in zip(docs, timestamps, countries_mod, labels_mod):
+        if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country) or pd.isna(label):
             continue
         doc = doc.encode('ascii',errors='ignore').decode()
         doc = doc.lower().replace('\n', ' ').replace("’", " ").replace("'", " ").translate(str.maketrans(string.punctuation + "0123456789", ' '*len(string.punctuation + "0123456789"))).split()
@@ -120,8 +122,10 @@ def read_data(data_file):
 
             all_times.append(d)
             c = country.strip()
+            l = label.strip()
             #print(c)
             all_countries.append(c)
+            all_labels.append(l)
 
     return all_docs, all_times, all_countries, all_labels
 
@@ -295,7 +299,7 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, la
     docs_va, timestamps_va, countries_va, labels_va = remove_empty(docs_va, timestamps_va, countries_va, labels_va)
 
     # Remove test documents with length=1
-    docs_ts, timestamps_ts, countries_ts, labels_ts = remove_by_threshold(docs_ts, timestamps_ts, countries_ts, 1, in_labels)
+    docs_ts, timestamps_ts, countries_ts, labels_ts = remove_by_threshold(docs_ts, timestamps_ts, countries_ts, 1, labels_ts)
 
     # Split test set in 2 halves
     print('splitting test documents in 2 halves...')
