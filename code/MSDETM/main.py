@@ -429,14 +429,15 @@ def get_eta(source):
             rnn_1_inp = test_1_rnn_inp
             return _eta_helper(rnn_1_inp)
 
-def get_theta(eta, bows):
+def get_theta(eta, bows, times, sources):
     model.eval()
     with torch.no_grad():
-        inp = torch.cat([bows, eta], dim=1)
-        q_theta = model.q_theta(inp)
+        eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
+        inp = torch.cat([bows, eta_std], dim=1)
+        q_theta = model.q_theta(inp)        
         mu_theta = model.mu_q_theta(q_theta)
-        theta = F.softmax(mu_theta, dim=-1)
-        return theta    
+        theta = F.softmax(mu_theta, dim=-1)        
+        return theta, kl_theta    
 
 def get_completion_ppl(source):
     """Returns document completion perplexity.
@@ -472,7 +473,7 @@ def get_completion_ppl(source):
                     normalized_data_batch = data_batch
 
                 eta_td = eta[times_batch.type('torch.LongTensor')]
-                theta = get_theta(eta_td, normalized_data_batch)
+                theta = get_theta(eta_td, normalized_data_batch, times_batch, sources_batch)
                 alpha_td = alpha[:, times_batch.type('torch.LongTensor'), :]                
                 
                 beta = model.get_beta(alpha_td).permute(1, 0, 2)
@@ -530,7 +531,7 @@ def get_completion_ppl(source):
                     normalized_data_batch_1 = data_batch_1
 
                 eta_td_1 = eta_1[times_batch_1.type('torch.LongTensor')]
-                theta = get_theta(eta_td_1, normalized_data_batch_1)
+                theta = get_theta(eta_td_1, normalized_data_batch_1, times_batch_1, sources_batch_1)
 
                 data_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
                     tokens_2, counts_2, ind, test_sources, test_labels,
