@@ -350,7 +350,34 @@ def get_theta(eta, bows):
         q_theta = model.q_theta(inp)
         mu_theta = model.mu_q_theta(q_theta)
         theta = F.softmax(mu_theta, dim=-1)
-        return theta    
+        return theta
+
+def get_theta_batch(source):
+    model.eval()
+
+    thetas = []
+
+    indices = torch.randperm(args.num_docs_train)
+    indices = torch.split(indices, args.batch_size) 
+    for idx, ind in enumerate(indices):
+        data_batch, times_batch = data.get_batch(
+            train_tokens, train_counts, ind, args.vocab_size, args.emb_size, temporal=True, times=train_times)
+        sums = data_batch.sum(1).unsqueeze(1)
+        if args.bow_norm:
+            normalized_data_batch = data_batch / sums
+        else:
+            normalized_data_batch = data_batch
+
+        if source in ['val', 'test']:
+            eta = get_eta('val')
+        else:
+            with torch.no_grad():
+                eta = _eta_helper(train_rnn_inp)
+        eta_td = eta[times_batch.type('torch.LongTensor')]
+        theta = get_theta(eta_td, normalized_data_batch)
+        thetas.append(theta)
+
+    return torch.cat(thetas)
 
 def get_completion_ppl(source):
     """Returns document completion perplexity.
@@ -553,6 +580,11 @@ else:
         # alpha = model.mu_q_alpha.cpu().numpy()
         alpha = model.mu_q_alpha.cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
+
+    for source in ['train', 'val', 'test']:
+        print(f'saving {source} thetas ...')
+        thetas = get_theta_batch(source).cpu().detach().numpy()
+        np.save(ckpt+f'_{source}_thetas.npy', thetas)
 
     print('computing validation perplexity...')
     val_ppl = get_completion_ppl('val')
