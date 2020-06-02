@@ -80,25 +80,25 @@ def read_data(data_file):
 
     #Get numpy arrays for each label in gphin_scraper.csv 
     df = pd.read_csv(data_file)
-    land_screenings = df['LAND_SCREENING'].values
-    border_closings = df['BORDER_CLOSING'].values
-    airport_screening_entries = df['AIRPORT_SCREENING_ENTRY'].values
-    airport_screening_exits = df['AIRPORT_SCREENING_EXIT'].values
-    testing_cases=df['TESTING_CASE_DETECTION'].values
-    quarantine_monitors=df['QUARANTINE/MONITORING'].values
-    travel_advisory=df['TRAVEL_ADVISORY'].values
-    travel_bans_cancellation=df['TRAVEL_BANS/CANCELLATION'].values
-    trade_bans=df['TRADE_BANS'].values
+    land_screenings = df['LAND SCREENING'].values
+    border_closings = df['BORDER CLOSING'].values
+    airport_screening_entries = df['AIRPORT SCREENING: ENTRY'].values
+    airport_screening_exits = df['AIRPORT SCREENING: EXIT'].values
+    testing_cases=df['TESTING & CASE DETECTION  '].values
+    quarantine_monitors=df['QUARANTINE / MONITORING'].values
+    travel_advisory=df['TRAVEL ADVISORY'].values
+    travel_bans_cancellation=df['TRAVEL BAN / CANCELLATION'].values
+    trade_bans=df['TRADE BANS'].values
 
-    education_campains=df['EDUCATION_CAMPAIGN'].values
-    testing_cases=df['TESTING_CASE_DETECTION'].values
-    mass_gatherings=df['MASS_GATHERING_CANCELLATION'].values
-    limit_gatherings=df['RESTRICTING_OR_LIMITING_GATHERINGS'].values
-    close_public_spaces=df['CLOSING_PUBLIC_PLACES'].values
-    lock_or_curfews=df['LOCKDOWN_OR_CURFEW'].values
+    education_campains=df['EDUCATION CAMPAIGN'].values
+    testing_cases=df['TESTING & CASE DETECTION  '].values
+    mass_gatherings=df['MASS GATHERING CANCELLATION'].values
+    limit_gatherings=df['RESTRICTING OR LIMITING GATHERINGS'].values
+    close_public_spaces=df['CLOSING PUBLIC PLACES'].values
+    lock_or_curfews=df['LOCKDOWN OR CURFEW'].values
 
-    ease_restrictions=df['EASING_RESTRICTION'].values
-    vaccines=df['VACCINE_MCM_DEPLOYED'].values
+    ease_restrictions=df['EASIND RESTRICTIONS'].values
+    vaccines=df['VACCINE/MCM DEPLOYED'].values
     ppes=df['PPE'].values
 
     nbre_labels = 17
@@ -115,7 +115,7 @@ def read_data(data_file):
     #0 - Land Screening
     i=0
     for isintervention in land_screenings:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][0] = '1'
         else:
             labels_mod[i][0] = '0'
@@ -125,7 +125,7 @@ def read_data(data_file):
     #1 - BorderClosing
     i=0
     for isintervention in border_closings:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][1] = '1'
         else:
             labels_mod[i][1] = '0'
@@ -134,7 +134,7 @@ def read_data(data_file):
     #2 - airport_screening_entries 
     i=0
     for isintervention in airport_screening_entries:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][2] = '1'
         else:
             labels_mod[i][2] = '0'
@@ -143,7 +143,7 @@ def read_data(data_file):
     #3 - airport_screening_exits  
     i=0
     for isintervention in airport_screening_exits:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][3] = '1'
         else:
             labels_mod[i][3] = '0'
@@ -152,7 +152,7 @@ def read_data(data_file):
     #4 - testing_cases  
     i=0
     for isintervention in testing_cases:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][4] = '1'
         else:
             labels_mod[i][4] = '0'
@@ -161,7 +161,7 @@ def read_data(data_file):
     #5 - quarantine_monitors   
     i=0
     for isintervention in quarantine_monitors:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][5] = '1'
         else:
             labels_mod[i][5] = '0'
@@ -170,7 +170,7 @@ def read_data(data_file):
     #6 - travel_advisory    
     i=0
     for isintervention in travel_advisory:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][6] = '1'
         else:
             labels_mod[i][6] = '0'
@@ -179,7 +179,7 @@ def read_data(data_file):
     #7 - travel_bans_cancellation     
     i=0
     for isintervention in travel_bans_cancellation:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][7] = '1'
         else:
             labels_mod[i][7] = '0'
@@ -188,7 +188,7 @@ def read_data(data_file):
     #8 - travel_bans_cancellation     
     i=0
     for isintervention in trade_bans:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][8] = '1'
         else:
             labels_mod[i][8] = '0'
@@ -197,7 +197,7 @@ def read_data(data_file):
     #9 - education_campains      
     i=0
     for isintervention in education_campains:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][9] = '1'
         else:
             labels_mod[i][9] = '0'
@@ -206,7 +206,7 @@ def read_data(data_file):
     #10 - mass_gatherings       
     i=0
     for isintervention in mass_gatherings:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][10] = '1'
         else:
             labels_mod[i][10] = '0'
@@ -215,7 +215,7 @@ def read_data(data_file):
     #11 - limit_gatherings        
     i=0
     for isintervention in limit_gatherings:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][11] = '1'
         else:
             labels_mod[i][11] = '0'
@@ -224,7 +224,7 @@ def read_data(data_file):
     #12 - close_public_spaces         
     i=0
     for isintervention in close_public_spaces:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][12] = '1'
         else:
             labels_mod[i][12] = '0'
@@ -233,7 +233,7 @@ def read_data(data_file):
     #13 - lock_or_curfews          
     i=0
     for isintervention in lock_or_curfews:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][13] = '1'
         else:
             labels_mod[i][13] = '0'
@@ -242,7 +242,7 @@ def read_data(data_file):
     #14 - ease_restrictions           
     i=0
     for isintervention in ease_restrictions:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][14] = '1'
         else:
             labels_mod[i][14] = '0'
@@ -251,7 +251,7 @@ def read_data(data_file):
     #15 - ease_restrictions           
     i=0
     for isintervention in vaccines:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][15] = '1'
         else:
             labels_mod[i][15] = '0'
@@ -260,7 +260,7 @@ def read_data(data_file):
     #16 - ppes            
     i=0
     for isintervention in ppes:
-        if isintervention == 'True':
+        if isintervention == 'x':
             labels_mod[i][16] = '1'
         else:
             labels_mod[i][16] = '0'
@@ -333,8 +333,8 @@ def read_data(data_file):
                 try:
                     d = datetime.strptime(timestamp, '%d/%m/%Y')
                 except:
-                    t = timestamp[0:3]+"0"+timestamp[3:]
-                    d = datetime.strptime(t, '%Y-%m-%d')
+                    t = timestamp[0:3]+timestamp[3:]
+                    d = datetime.strptime(t.replace(':','').replace('--','-'), '%Y-%m-%d')
 
             all_times.append(d)
             c = country.strip()
