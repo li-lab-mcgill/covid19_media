@@ -121,9 +121,7 @@ def read_data(data_file):
                 except:
                     t = timestamp[0:3]+timestamp[3:]
                     d = datetime.strptime(t, '%Y-%m-%d')
-            print('this is the current date :')
-            print(d)
-            d = d.isocalendar()
+            d = d.isocalendar()[1] #Added week instead of days
             print(d)
             all_times.append(d)
             c = country.strip()
