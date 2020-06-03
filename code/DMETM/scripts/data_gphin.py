@@ -92,19 +92,19 @@ def read_data(data_file):
             countries_mod.append("International Olympic Committee")
         else:
             countries_mod.append(country)
+            #print(countries_mod)
     #Labels
     for label in labels:
         if not pd.isna(label):
             label = label.strip()
         labels_mod.append(label)
+    labels_mod=[x for x in countries if str(x) != 'nan']
+    print(labels_mod)
 
     all_docs = []
     all_times = []
     all_countries = []
     all_labels = []
-
-    #Timestamp mapping file to future analysis
-    f= open("timestamp_map.txt","w+")
 
     #Important for preprocessing by weeks :
     for (doc, timestamp, country, label) in zip(docs, timestamps, countries_mod, labels_mod):
@@ -124,10 +124,7 @@ def read_data(data_file):
                 except:
                     t = timestamp[0:3]+timestamp[3:]
                     d = datetime.strptime(t, '%Y-%m-%d')
-            old_date = d
             d = d.isocalendar()[1] #Added week instead of days
-            f.write("Original Date : {} Timestamp week integers : {} \n".format(old_date,d))
-            print(d)
             all_times.append(d)
             c = country.strip()
             l = label.strip()
@@ -135,7 +132,6 @@ def read_data(data_file):
             all_countries.append(c)
             all_labels.append(l)
             #print(all_labels) This works, gives all the labels in an array all_labels
-    f.close()
 
     return all_docs, all_times, all_countries, all_labels
 
