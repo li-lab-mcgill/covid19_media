@@ -103,6 +103,7 @@ def read_data(data_file):
     all_countries = []
     all_labels = []
 
+    #Important for preprocessing by weeks :
     for (doc, timestamp, country, label) in zip(docs, timestamps, countries_mod, labels_mod):
         if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country) or pd.isna(label):
             continue
@@ -120,7 +121,10 @@ def read_data(data_file):
                 except:
                     t = timestamp[0:3]+timestamp[3:]
                     d = datetime.strptime(t, '%Y-%m-%d')
-
+            print('this is the current date :')
+            print(d)
+            d = d.isocalendar()[0] + d.isocalendar[1]
+            print(d)
             all_times.append(d)
             c = country.strip()
             l = label.strip()
