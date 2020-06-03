@@ -352,13 +352,23 @@ def get_theta(eta, bows):
         theta = F.softmax(mu_theta, dim=-1)
         return theta
 
-def get_theta_batch(source):
+def get_theta_eta_batch(source, outputs=['theta']):
+    if any([output not in ['theta', 'eta'] for output in outputs]):
+        raise Exception('only theta and eta are allowed')
+
     model.eval()
 
     thetas = []
 
     indices = torch.randperm(args.num_docs_train)
     indices = torch.split(indices, args.batch_size) 
+
+    if source in ['val', 'test']:
+        eta = get_eta('val')
+    else:
+        with torch.no_grad():
+            eta = _eta_helper(train_rnn_inp)
+
     for idx, ind in enumerate(indices):
         data_batch, times_batch = data.get_batch(
             train_tokens, train_counts, ind, args.vocab_size, args.emb_size, temporal=True, times=train_times)
@@ -368,16 +378,17 @@ def get_theta_batch(source):
         else:
             normalized_data_batch = data_batch
 
-        if source in ['val', 'test']:
-            eta = get_eta('val')
-        else:
-            with torch.no_grad():
-                eta = _eta_helper(train_rnn_inp)
         eta_td = eta[times_batch.type('torch.LongTensor')]
         theta = get_theta(eta_td, normalized_data_batch)
         thetas.append(theta)
 
-    return torch.cat(thetas)
+    results_dict = {}
+    if 'theta' in outputs:
+        results_dict['theta'] = torch.cat(thetas)
+    if 'eta' in outputs:
+        results_dict['eta'] = eta
+    
+    return results_dict
 
 def get_completion_ppl(source):
     """Returns document completion perplexity.
@@ -582,9 +593,10 @@ else:
         scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
 
     for source in ['train', 'val', 'test']:
-        print(f'saving {source} thetas ...')
-        thetas = get_theta_batch(source).cpu().detach().numpy()
-        np.save(ckpt+f'_{source}_thetas.npy', thetas)
+        print(f'saving {source} thetas and etas ...')
+        results_dict = get_theta_eta_batch(source, outputs=['theta', 'eta'])
+        np.save(ckpt+f'_{source}_thetas.npy', results_dict['theta'].cpu().detach().numpy())
+        np.save(ckpt+f'_{source}_etas.npy', results_dict['eta'].cpu().detach().numpy())
 
     print('computing validation perplexity...')
     val_ppl = get_completion_ppl('val')
