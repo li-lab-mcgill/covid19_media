@@ -38,12 +38,12 @@ parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid
 
 parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/detm', help='path to save results')
 
-parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
+parser.add_argument('--batch_size', type=int, default=200, help='number of documents in a batch for training')
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=20, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=10, help='number of topics')
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')

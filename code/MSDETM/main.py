@@ -55,7 +55,7 @@ parser.add_argument('--min_df', type=int, default=10, help='to get the right dat
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=20, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=10, help='number of topics')
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
@@ -98,8 +98,7 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
-parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
-
+parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
 args = parser.parse_args()
@@ -411,15 +410,10 @@ def visualize():
 def _eta_helper(rnn_inp):
 
     etas = torch.zeros(model.num_sources, model.num_times, model.num_topics).to(device)
-
     inp = model.q_eta_map(rnn_inp.view(rnn_inp.size(0)*rnn_inp.size(1), -1)).view(rnn_inp.size(0),rnn_inp.size(1),-1)
-
     hidden = model.init_hidden()
-
     output, _ = model.q_eta(inp, hidden)
-    
     inp_0 = torch.cat([output[:,0,:], torch.zeros(model.num_sources, model.num_topics).to(device)], dim=1)
-
     etas[:, 0, :] = model.mu_q_eta(inp_0)
 
     for t in range(1, model.num_times):
