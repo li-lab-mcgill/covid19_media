@@ -189,7 +189,7 @@ else:
 if args.load_from != '':
     print('Loading checkpoint from {}'.format(args.load_from))
     with open(args.load_from, 'rb') as f:
-        model = torch.load(f)
+        model = torch.load(f, map_location=device)
 else:
     model = DETM(args, embeddings)
 print('\nDETM architecture: {}'.format(model))
@@ -558,7 +558,7 @@ if args.mode == 'train':
                 optimizer.param_groups[0]['lr'] /= args.lr_factor
         all_val_ppls.append(val_ppl)
     with open(ckpt, 'rb') as f:
-        model = torch.load(f)
+        model = torch.load(f, map_location=device)
     model = model.to(device)
     model.eval()
     with torch.no_grad():
@@ -583,7 +583,7 @@ if args.mode == 'train':
         f.close()
 else: 
     with open(ckpt, 'rb') as f:
-        model = torch.load(f)
+        model = torch.load(f, map_location=device)
     model = model.to(device)
         
     print('saving alpha...')
