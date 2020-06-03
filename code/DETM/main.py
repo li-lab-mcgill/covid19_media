@@ -519,7 +519,7 @@ def get_topic_quality():
         print('Get topic coherence...')
         print('train_tokens: ', train_tokens[0])
         # TC_all = []
-        TC_all = np.zeros((args.num_times,))
+        TC_all = np.zeros((args.num_times, args.num_topics))
         cnt_all = []
         for tt in range(args.num_times):
             tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().detach().numpy(), train_tokens, vocab)
