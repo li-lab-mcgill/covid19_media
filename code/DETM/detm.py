@@ -199,7 +199,9 @@ class DETM(nn.Module):
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz 
         alpha, kl_alpha = self.get_alpha()
+        
         eta, kl_eta = self.get_eta(rnn_inp)
+
         theta, kl_theta = self.get_theta(eta, normalized_bows, times)
         kl_theta = kl_theta.sum() * coeff
 

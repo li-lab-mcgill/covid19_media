@@ -66,7 +66,9 @@ class MSDETM(nn.Module):
 
         ## define variational distribution for \eta via amortizartion... eta is K x T
         self.q_eta_map = nn.Linear(args.vocab_size, args.eta_hidden_size)
-        self.q_eta = nn.LSTM(args.eta_hidden_size, args.eta_hidden_size, args.eta_nlayers, dropout=args.eta_dropout)
+        
+        self.q_eta = nn.LSTM(args.eta_hidden_size, args.eta_hidden_size, args.eta_nlayers, dropout=args.eta_dropout, batch_first=True)
+
         self.mu_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
         self.logsigma_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
         
@@ -146,51 +148,54 @@ class MSDETM(nn.Module):
         return alphas, kl_alpha.sum() # T x K x L
 
 
-    ## get source-specific etas
+    # ## get source-specific etas
     def get_eta(self, rnn_inp): ## structured amortized inference
 
         etas = torch.zeros(self.num_sources, self.num_times, self.num_topics).to(device)
         kl_eta = []
+
+        inp = self.q_eta_map(rnn_inp.view(rnn_inp.size(0)*rnn_inp.size(1), -1)).view(rnn_inp.size(0),rnn_inp.size(1),-1)
         
+        hidden = self.init_hidden()
 
-        for src in range(self.num_sources):
-            
-            inp = self.q_eta_map(rnn_inp[src]).unsqueeze(1)
-            hidden = self.init_hidden()
-            output, _ = self.q_eta(inp, hidden)
-            output = output.squeeze()
+        output, _ = self.q_eta(inp, hidden)
 
-            inp_0 = torch.cat([output[0], torch.zeros(self.num_topics,).to(device)], dim=0)
-            mu_0 = self.mu_q_eta(inp_0)
-            logsigma_0 = self.logsigma_q_eta(inp_0)
-            
-            etas[src, 0] = self.reparameterize(mu_0, logsigma_0)
+        inp_0 = torch.cat([output[:,0,:], torch.zeros(self.num_sources,self.num_topics).to(device)], dim=1)
 
-            p_mu_0 = torch.zeros(self.num_topics,).to(device)
-            logsigma_p_0 = torch.zeros(self.num_topics,).to(device)
-            kl_0 = self.get_kl(mu_0, logsigma_0, p_mu_0, logsigma_p_0)
-            kl_eta.append(kl_0)
+        mu_0 = self.mu_q_eta(inp_0)
+        logsigma_0 = self.logsigma_q_eta(inp_0)
+        
+        etas[:, 0, :] = self.reparameterize(mu_0, logsigma_0)
 
-            for t in range(1, self.num_times):
-                inp_t = torch.cat([output[t], etas[src, t-1]], dim=0)
-                mu_t = self.mu_q_eta(inp_t)
+        p_mu_0 = torch.zeros(self.num_sources, self.num_topics).to(device)
+        logsigma_p_0 = torch.zeros(self.num_sources, self.num_topics).to(device)
 
-                logsigma_t = self.logsigma_q_eta(inp_t)
+        kl_0 = self.get_kl(mu_0, logsigma_0, p_mu_0, logsigma_p_0)
+        kl_eta.append(kl_0)
 
-                if any(logsigma_t > self.max_logsigma_t):
-                    logsigma_t[logsigma_t > self.max_logsigma_t] = self.max_logsigma_t
-                elif any(logsigma_t < self.min_logsigma_t):
-                    logsigma_t[logsigma_t < self.min_logsigma_t] = self.min_logsigma_t
+        for t in range(1, self.num_times):
 
-                etas[src, t] = self.reparameterize(mu_t, logsigma_t)
+            inp_t = torch.cat([output[:,t,:], etas[:, t-1, :]], dim=1)
 
-                p_mu_t = etas[src, t-1]
-                logsigma_p_t = torch.log(self.delta * torch.ones(self.num_topics,).to(device))
-                kl_t = self.get_kl(mu_t, logsigma_t, p_mu_t, logsigma_p_t)
-                kl_eta.append(kl_t)
+            mu_t = self.mu_q_eta(inp_t)
+            logsigma_t = self.logsigma_q_eta(inp_t)
+
+            if (logsigma_t > self.max_logsigma_t).sum() > 0:
+                logsigma_t[logsigma_t > self.max_logsigma_t] = self.max_logsigma_t
+            elif (logsigma_t < self.min_logsigma_t).sum() > 0:
+                logsigma_t[logsigma_t < self.min_logsigma_t] = self.min_logsigma_t
+
+            etas[:, t, :] = self.reparameterize(mu_t, logsigma_t)
+
+            p_mu_t = etas[:, t-1, :]
+            logsigma_p_t = torch.log(self.delta * torch.ones(self.num_sources, self.num_topics).to(device))
+
+            kl_t = self.get_kl(mu_t, logsigma_t, p_mu_t, logsigma_p_t)
+            kl_eta.append(kl_t)
 
         kl_eta = torch.stack(kl_eta).sum()
         return etas, kl_eta
+
 
 
     def get_theta(self, eta, bows, times, sources): ## amortized inference
@@ -260,16 +265,21 @@ class MSDETM(nn.Module):
         return pred_loss    
 
 
-    def forward(self, unique_tokens, bows, normalized_bows, times, sources, labels, rnn_inp, num_docs):        
+    def forward(self, bows, normalized_bows, times, sources, labels, rnn_inp, num_docs):        
 
         bsz = normalized_bows.size(0)
-        coeff = num_docs / bsz         
+        coeff = num_docs / bsz
         alpha, kl_alpha = self.get_alpha()
-        eta, kl_eta = self.get_eta(rnn_inp)        
+
+        # unique_sources = np.unique(sources.type('torch.LongTensor').tolist())
+        # eta, kl_eta = self.get_eta_ss(rnn_inp, unique_sources)
+        
+        eta, kl_eta = self.get_eta(rnn_inp)
+
         theta, kl_theta = self.get_theta(eta, normalized_bows, times, sources)
         kl_theta = kl_theta.sum() * coeff
         
-        beta = self.get_beta(alpha)        
+        beta = self.get_beta(alpha)
         beta = beta[times.type('torch.LongTensor')] # D' x K x V'        
         nll = self.get_nll(theta, beta, bows)        
         nll = nll.sum() * coeff        
@@ -291,7 +301,7 @@ class MSDETM(nn.Module):
         weight = next(self.parameters())
         nlayers = self.eta_nlayers
         nhid = self.eta_hidden_size
-        return (weight.new_zeros(nlayers, 1, nhid), weight.new_zeros(nlayers, 1, nhid))
+        return (weight.new_zeros(nlayers, self.num_sources, nhid), weight.new_zeros(nlayers, self.num_sources, nhid))
 
 
 

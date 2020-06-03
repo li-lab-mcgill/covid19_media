@@ -40,12 +40,16 @@ parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directo
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
+# parser.add_argument('--dataset', type=str, default='GPHIN_parse', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='../../data/GPHIN_parse/2d_labels', help='directory containing data')
+
+
 # parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
 parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/msdetm', help='path to save results')
 
-parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
+parser.add_argument('--batch_size', type=int, default=200, help='number of documents in a batch for training')
 
 parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
@@ -59,16 +63,17 @@ parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
 parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
-
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
+
+
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
-parser.add_argument('--epochs', type=int, default=5, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
 
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
@@ -86,7 +91,7 @@ parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows 
 ### evaluation, visualization, and logging-related arguments
 parser.add_argument('--num_words', type=int, default=20, help='number of words for topic viz')
 
-parser.add_argument('--log_interval', type=int, default=1, help='when to log training')
+parser.add_argument('--log_interval', type=int, default=10, help='when to log training')
 
 parser.add_argument('--visualize_every', type=int, default=1, help='when to visualize results')
 parser.add_argument('--eval_batch_size', type=int, default=1000, help='input batch size for evaluation')
@@ -292,9 +297,8 @@ def train(epoch):
     cnt = 0
 
     indices = torch.randperm(args.num_docs_train)
-    indices = torch.split(indices, args.batch_size)     
+    indices = torch.split(indices, args.batch_size)
     
-
     for idx, ind in enumerate(indices):
 
         optimizer.zero_grad()
@@ -302,9 +306,7 @@ def train(epoch):
         
         data_batch, times_batch, sources_batch, labels_batch = data.get_batch(
             train_tokens, train_counts, ind, train_sources, train_labels, 
-            args.vocab_size, args.emb_size, temporal=True, times=train_times)
-
-        tokens_batch = train_tokens[ind]
+            args.vocab_size, args.emb_size, temporal=True, times=train_times)        
 
         sums = data_batch.sum(1).unsqueeze(1)
 
@@ -313,15 +315,9 @@ def train(epoch):
         else:
             normalized_data_batch = data_batch        
 
-        if tokens_batch.shape[0] == 1:
-            unique_tokens = np.unique(tokens_batch[0].tolist())
-        else:
-            unique_tokens = torch.tensor(np.unique(sum([sum(tokens_batch[i].tolist(),[]) 
-                for i in range(tokens_batch.shape[0])],[])))
-
         # print("forward passing ...")
 
-        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(unique_tokens, data_batch, normalized_data_batch, 
+        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, 
             times_batch, sources_batch, labels_batch, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
@@ -415,18 +411,20 @@ def visualize():
 def _eta_helper(rnn_inp):
 
     etas = torch.zeros(model.num_sources, model.num_times, model.num_topics).to(device)
-    for s in range(model.num_sources):
 
-        inp = model.q_eta_map(rnn_inp[s]).unsqueeze(1)        
-        hidden = model.init_hidden()
-        output, _ = model.q_eta(inp, hidden)
-        output = output.squeeze()
-        inp_0 = torch.cat([output[0], torch.zeros(model.num_topics,).to(device)], dim=0)
-        etas[s, 0] = model.mu_q_eta(inp_0)
+    inp = model.q_eta_map(rnn_inp.view(rnn_inp.size(0)*rnn_inp.size(1), -1)).view(rnn_inp.size(0),rnn_inp.size(1),-1)
 
-        for t in range(1, model.num_times):
-            inp_t = torch.cat([output[t], etas[s, t-1]], dim=0)
-            etas[s, t] = model.mu_q_eta(inp_t)
+    hidden = model.init_hidden()
+
+    output, _ = model.q_eta(inp, hidden)
+    
+    inp_0 = torch.cat([output[:,0,:], torch.zeros(model.num_sources, model.num_topics).to(device)], dim=1)
+
+    etas[:, 0, :] = model.mu_q_eta(inp_0)
+
+    for t in range(1, model.num_times):
+        inp_t = torch.cat([output[:,t,:], etas[:, t-1, :]], dim=1)
+        etas[:, t, :] = model.mu_q_eta(inp_t)
     
     return etas
 
@@ -614,11 +612,10 @@ def get_topic_quality():
         print('#'*100)
         print('Get topic diversity...')
         num_tops = 25
-        TD_all = np.zeros((args.num_sources, args.num_times))
-
-        for ss in range(args.num_sources):
-            for tt in range(args.num_times):
-                TD_all[ss,tt] = _diversity_helper(beta[ss, :, tt, :], num_tops)
+        TD_all = np.zeros((args.num_times))
+        
+        for tt in range(args.num_times):
+            TD_all[tt] = _diversity_helper(beta[:, tt, :], num_tops)
 
         TD = np.mean(TD_all)
         print('Topic Diversity is: {}'.format(TD))
@@ -626,13 +623,12 @@ def get_topic_quality():
         print('\n')
         print('Get topic coherence...')
         print('train_tokens: ', train_tokens[0])
-        TC_all = np.zeros((args.num_sources, args.num_times))
-        cnt_all = np.zeros((args.num_sources, args.num_times))
-        for ss in range(args.num_sources):
-            for tt in range(args.num_times):
-                tc, cnt = get_topic_coherence(beta[ss, :, tt, :].cpu().detach().numpy(), train_tokens, vocab)
-                TC_all[ss,tt] = tc
-                cnt_all[ss,tt] = cnt
+        TC_all = np.zeros((args.num_times))
+        cnt_all = np.zeros((args.num_times))        
+        for tt in range(args.num_times):
+            tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().detach().numpy(), train_tokens, vocab)
+            TC_all[tt] = tc
+            cnt_all[tt] = cnt
         print('TC_all: ', TC_all)
         TC_all = torch.tensor(TC_all)
         TC = np.mean(TC_all)
