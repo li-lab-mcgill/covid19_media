@@ -123,7 +123,7 @@ def read_data(data_file):
                     d = datetime.strptime(t, '%Y-%m-%d')
             print('this is the current date :')
             print(d)
-            d = d.isocalendar()[0] + d.isocalendar[1]
+            d = d.isocalendar()
             print(d)
             all_times.append(d)
             c = country.strip()
