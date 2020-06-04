@@ -184,7 +184,7 @@ def get_rnn_input(tokens, counts, times, sources, labels, num_times, num_sources
         if idx % 10 == 0:
             print('idx: {}/{}'.format(idx, len(indices)))
 
-    set_trace()
+    # set_trace()
     
     # rnn_input = (rnn_input + 1e-16) / (cnt + 1e-16)
     rnn_input = rnn_input / cnt
