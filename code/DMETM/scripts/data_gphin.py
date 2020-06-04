@@ -98,7 +98,7 @@ def read_data(data_file):
         if not pd.isna(label):
             label = label.strip()
         labels_mod.append(label)
-    labels_mod=[x for x in countries if str(x) != 'nan']
+    labels_mod=[x for x in labels if str(x) != 'nan']
     print(labels_mod)
 
     all_docs = []
