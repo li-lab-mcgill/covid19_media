@@ -31,17 +31,15 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-# parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_media_sources', help='directory containing data')
+# parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_all_sources', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
-
-# parser.add_argument('--dataset', type=str, default='GPHIN_parse', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='../../data/GPHIN_parse/2d_labels', help='directory containing data')
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
@@ -55,7 +53,7 @@ parser.add_argument('--min_df', type=int, default=10, help='to get the right dat
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=20, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=3, help='number of topics')
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
@@ -73,7 +71,7 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
-parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
 
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
@@ -85,6 +83,7 @@ parser.add_argument('--eta_dropout', type=float, default=0.1, help='dropout rate
 parser.add_argument('--clip', type=float, default=2.0, help='gradient clipping')
 parser.add_argument('--nonmono', type=int, default=10, help='number of bad hits allowed')
 parser.add_argument('--wdecay', type=float, default=1.2e-6, help='some l2 regularization')
+
 parser.add_argument('--anneal_lr', type=int, default=1, help='whether to anneal the learning rate or not')
 parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows or not')
 
@@ -98,8 +97,7 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
-parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
-
+parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
 args = parser.parse_args()
@@ -253,9 +251,10 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'msdetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}'.format(
+        'msdetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
-            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, args.train_embeddings))
+            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
+            args.train_embeddings, args.predict_labels))
 
 ## define model and optimizer
 if args.load_from != '':
@@ -411,15 +410,10 @@ def visualize():
 def _eta_helper(rnn_inp):
 
     etas = torch.zeros(model.num_sources, model.num_times, model.num_topics).to(device)
-
     inp = model.q_eta_map(rnn_inp.view(rnn_inp.size(0)*rnn_inp.size(1), -1)).view(rnn_inp.size(0),rnn_inp.size(1),-1)
-
     hidden = model.init_hidden()
-
     output, _ = model.q_eta(inp, hidden)
-    
     inp_0 = torch.cat([output[:,0,:], torch.zeros(model.num_sources, model.num_topics).to(device)], dim=1)
-
     etas[:, 0, :] = model.mu_q_eta(inp_0)
 
     for t in range(1, model.num_times):
@@ -500,7 +494,7 @@ def get_completion_ppl(source):
                 acc_loss += loss                
                 
                 if args.predict_labels:
-                    pred_loss = model.get_prediction_loss(theta, sources_batch)
+                    pred_loss = model.get_prediction_loss(theta, labels_batch)
                     acc_pred_loss += pred_loss / data_batch.size(0)
 
                 cnt += 1
@@ -568,7 +562,7 @@ def get_completion_ppl(source):
                 pred_loss = torch.tensor(0)
 
                 if args.predict_labels:
-                    pred_loss = model.get_prediction_loss(theta, sources_batch_2)
+                    pred_loss = model.get_prediction_loss(theta, labels_batch_2)
                     acc_pred_loss += pred_loss / data_batch_1.size(0)
 
                 cnt += 1
@@ -606,39 +600,39 @@ def get_topic_quality():
     with torch.no_grad():
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha) 
-        print('beta: ', beta.size()) # SxKxTxV
+        print('beta: ', beta.size())
 
         print('\n')
         print('#'*100)
         print('Get topic diversity...')
         num_tops = 25
-        TD_all = np.zeros((args.num_times))
-        
+        TD_all = np.zeros((args.num_times,))
         for tt in range(args.num_times):
             TD_all[tt] = _diversity_helper(beta[:, tt, :], num_tops)
-
         TD = np.mean(TD_all)
         print('Topic Diversity is: {}'.format(TD))
 
         print('\n')
         print('Get topic coherence...')
         print('train_tokens: ', train_tokens[0])
-        TC_all = np.zeros((args.num_times))
-        cnt_all = np.zeros((args.num_times))        
+        TC_all = []
+        cnt_all = []
         for tt in range(args.num_times):
             tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().detach().numpy(), train_tokens, vocab)
-            TC_all[tt] = tc
-            cnt_all[tt] = cnt
+            TC_all.append(tc)
+            cnt_all.append(cnt)
         print('TC_all: ', TC_all)
         TC_all = torch.tensor(TC_all)
-        TC = np.mean(TC_all)
         print('TC_all: ', TC_all.size())
         print('\n')
-        print('Get topic quality...')
-        TQ = TC * TD
-        print('Topic Quality is: {}'.format(TQ))
+        print('Get topic quality...')        
+
+        quality = np.array(tc) * float(TD)
+
+        print('Topic Quality is: {}'.format(quality))
         print('#'*100)
-        return {"TD":TD, "TC":TC, "TQ":TQ}
+
+        return quality, tc, TD
 
 
 if args.mode == 'train':
@@ -691,7 +685,6 @@ if args.mode == 'train':
         classifer_weights = model.classifier.weight.cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_classifer.mat', {'values': classifer_weights}, do_compression=True)
 
-
         print('saving eta ...')
         eta = get_eta('train').cpu().detach().numpy()
         scipy.io.savemat(ckpt+'_eta.mat', {'values': eta}, do_compression=True)
@@ -701,41 +694,41 @@ if args.mode == 'train':
             rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
 
-        print('computing validation perplexity...')
-        val_ppl, val_pdl = get_completion_ppl('val')
-        print('computing test perplexity...')
-        test_ppl, test_pdl = get_completion_ppl('test')
-
-        f=open(ckpt+'_ppl.txt','w')
-        s1='\n'.join([str(i) for i in all_val_ppls])
-        s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
-        f.write(s1)
-        f.close()
-
-        f=open(ckpt+'_pdl.txt','w')
-        s1='\n'.join([str(i) for i in all_val_pdls])
-        s1=s1+'\nlast val_pdl: '+str(val_pdl)+'\nlast test_pdl: '+str(test_pdl)
-        f.write(s1)
-        f.close()        
 else: 
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
 
-    print('computing validation perplexity...')
-    val_ppl = get_completion_ppl('val')
-    print('computing test perplexity...')
-    test_ppl = get_completion_ppl('test')
-    print('computing topic coherence and topic diversity...')
-    tq = get_topic_quality()
 
-    f=open(ckpt+'_tq.txt','w')
-    s1='\n'.join([k+': '+str(v) for k,v in tq.items()])
-    f.write(s1)
-    f.close()
+print('computing validation perplexity...')
+val_ppl, val_pdl = get_completion_ppl('val')
 
-    print('visualizing topics and embeddings...')
-    visualize()
+print('computing test perplexity...')
+test_ppl, test_pdl = get_completion_ppl('test')
+
+f=open(ckpt+'_ppl.txt','w')
+s1='\n'.join([str(i) for i in all_val_ppls])
+s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
+f.write(s1)
+f.close()
+
+f=open(ckpt+'_pdl.txt','w')
+s1='\n'.join([str(i) for i in all_val_pdls])
+s1=s1+'\nlast val_pdl: '+str(val_pdl)+'\nlast test_pdl: '+str(test_pdl)
+f.write(s1)
+f.close()    
+
+tq, tc, td = get_topic_quality()        
+
+f=open(ckpt+'_tq.txt','w')
+s1='\n'.join(["Topic quality: topic " + str(k)+': '+str(v) for k,v in enumerate(tq.tolist())])
+s2='\n'.join(["Topic coherence: topic " + str(k)+': '+str(v) for k,v in enumerate(tc)])
+s3='\n'+"Topic diversity: all topics: "+str(td)
+f.write(s1+'\n'+s2+s3)
+f.close()
+
+print('visualizing topics and embeddings...')
+visualize()
 
 
 

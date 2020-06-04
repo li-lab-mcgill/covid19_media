@@ -182,9 +182,9 @@ def get_rnn_input(tokens, counts, times, sources, labels, num_times, num_sources
                 cnt[src,t] += len(tmp)
 
         if idx % 10 == 0:
-            print('idx: {}/{}'.format(idx, len(indices)))
+            print('idx: {}/{}'.format(idx, len(indices)))    
     
-    rnn_input = (rnn_input + 1e-16) / (cnt + 1e-16)
+    rnn_input = (rnn_input + 1e-16) / (cnt + 1e-16)    
 
     return rnn_input
 
