@@ -58,7 +58,7 @@ def read_data(data_file):
     docs = data.SUMMARY.values
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
-    labels = data['WHO_CATEGORY (NOT USED)'].values
+    labels = data['WHO_MEASURE'].values
     print(labels)
     countries_mod = []
     labels_mod=[]
