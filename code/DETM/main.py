@@ -28,11 +28,11 @@ from IPython.core.debugger import set_trace
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/gh/code/MSDETM/data/GPHIN', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/gh/code/MSDETM/data/GPHIN', help='directory containing data')
 
-# parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
 
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
@@ -67,7 +67,8 @@ parser.add_argument('--eta_dropout', type=float, default=0.1, help='dropout rate
 parser.add_argument('--clip', type=float, default=2.0, help='gradient clipping')
 parser.add_argument('--nonmono', type=int, default=10, help='number of bad hits allowed')
 parser.add_argument('--wdecay', type=float, default=1.2e-6, help='some l2 regularization')
-parser.add_argument('--anneal_lr', type=int, default=0, help='whether to anneal the learning rate or not')
+
+parser.add_argument('--anneal_lr', type=int, default=1, help='whether to anneal the learning rate or not')
 parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows or not')
 
 ### evaluation, visualization, and logging-related arguments
