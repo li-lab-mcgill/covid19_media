@@ -364,7 +364,7 @@ def get_theta_eta_batch(source, outputs=['theta']):
     indices = torch.split(indices, args.batch_size) 
 
     if source in ['val', 'test']:
-        eta = get_eta('val')
+        eta = get_eta(source)
     else:
         with torch.no_grad():
             eta = _eta_helper(train_rnn_inp)
