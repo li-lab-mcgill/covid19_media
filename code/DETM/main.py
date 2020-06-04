@@ -588,38 +588,39 @@ if args.mode == 'train':
             # rho = model.rho.weight.cpu().numpy()
             rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
-        print('computing validation perplexity...')
-        val_ppl = get_completion_ppl('val')
-        print('computing test perplexity...')
-        test_ppl = get_completion_ppl('test')
-
-        f=open(ckpt+'_ppl.txt','w')
-        s1='\n'.join([str(i) for i in all_val_ppls])
-        s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
-        f.write(s1)
-        f.close()
 else: 
     with open(ckpt, 'rb') as f:
         model = torch.load(f, map_location=device)
     model = model.to(device)
+
+print('computing validation perplexity...')
+val_ppl = get_completion_ppl('val')
+print('computing test perplexity...')
+test_ppl = get_completion_ppl('test')
+
+f=open(ckpt+'_ppl.txt','w')
+s1='\n'.join([str(i) for i in all_val_ppls])
+s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
+f.write(s1)
+f.close()
         
-    print('saving alpha...')
-    with torch.no_grad():
-        # alpha = model.mu_q_alpha.cpu().numpy()
-        alpha = model.mu_q_alpha.cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
+print('saving alpha...')
+with torch.no_grad():
+    # alpha = model.mu_q_alpha.cpu().numpy()
+    alpha = model.mu_q_alpha.cpu().detach().numpy()
+    scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
 
-    for source in ['train', 'val', 'test']:
-        print(f'saving {source} thetas and etas ...')
-        results_dict = get_theta_eta_batch(source, outputs=['theta', 'eta'])
-        np.save(ckpt+f'_{source}_thetas.npy', results_dict['theta'].cpu().detach().numpy())
-        np.save(ckpt+f'_{source}_etas.npy', results_dict['eta'].cpu().detach().numpy())
+for source in ['train', 'val', 'test']:
+    print(f'saving {source} thetas and etas ...')
+    results_dict = get_theta_eta_batch(source, outputs=['theta', 'eta'])
+    np.save(ckpt+f'_{source}_thetas.npy', results_dict['theta'].cpu().detach().numpy())
+    np.save(ckpt+f'_{source}_etas.npy', results_dict['eta'].cpu().detach().numpy())
 
-    print('computing validation perplexity...')
-    val_ppl = get_completion_ppl('val')
-    print('computing test perplexity...')
-    test_ppl = get_completion_ppl('test')
-    print('computing topic coherence and topic diversity...')
-    get_topic_quality()
-    print('visualizing topics and embeddings...')
-    visualize()
+print('computing validation perplexity...')
+val_ppl = get_completion_ppl('val')
+print('computing test perplexity...')
+test_ppl = get_completion_ppl('test')
+print('computing topic coherence and topic diversity...')
+get_topic_quality()
+print('visualizing topics and embeddings...')
+visualize()
