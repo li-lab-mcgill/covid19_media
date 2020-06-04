@@ -297,6 +297,7 @@ def visualize():
         # queries = ['economic', 'assembly', 'security', 'management', 'debt', 'rights',  'africa']
         # queries = ['economic', 'assembly', 'security', 'management', 'rights',  'africa']
         queries = ['border', 'vaccines', 'coronaviruses', 'masks']
+        queries = set(queries).intersection(vocab)
         try:
             embeddings = model.rho.weight  # Vocab_size x E
         except:
