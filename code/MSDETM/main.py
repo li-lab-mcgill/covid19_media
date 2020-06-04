@@ -722,15 +722,24 @@ f.close()
 tq, tc, td = get_topic_quality()        
 
 f=open(ckpt+'_tq.txt','w')
-
-s1="Topic Quality: all topics: "+str(tq)
-s2="Topic Coherence: all topics: "+str(tc)
-s3="Topic Diversity: all topics: "+str(td)
+s1="Topic Quality: "+str(tq)
+s2="Topic Coherence: "+str(tc)
+s3="Topic Diversity: "+str(td)
 f.write(s1+'\n'+s2+'\n'+s3+'\n')
+f.close()
+
+f=open(ckpt+'_tq.txt','r')
+[print(i,end='') for i in f.readlines()]
 f.close()
 
 print('visualizing topics and embeddings...')
 visualize()
+
+
+
+
+
+
 
 
 

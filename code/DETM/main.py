@@ -559,15 +559,28 @@ s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
 f.write(s1)
 f.close()
   
-tq, tc, td = get_topic_quality()        
+tq, tc, td = get_topic_quality()
 
 f=open(ckpt+'_tq.txt','w')
-s1='\n'.join(["Topic quality: topic " + str(k)+': '+str(v) for k,v in enumerate(tq.tolist())])
-s2='\n'.join(["Topic coherence: topic " + str(k)+': '+str(v) for k,v in enumerate(tc)])
-s3='\n'+"Topic diversity: all topics: "+str(td)
-f.write(s1+'\n'+s2+s3)
+s1="Topic Quality: "+str(tq)
+s2="Topic Coherence: "+str(tc)
+s3="Topic Diversity: "+str(td)
+f.write(s1+'\n'+s2+'\n'+s3+'\n')
 f.close()
+
+f=open(ckpt+'_tq.txt','r')
+[print(i,end='') for i in f.readlines()]
+f.close()
+
 
 print('visualizing topics and embeddings...')
 visualize()
+
+
+
+
+
+
+
+
 
