@@ -528,7 +528,7 @@ def get_topic_quality():
             cnt_all.append(cnt)
         print('TC_all: ', TC_all)
         # TC_all = torch.tensor(TC_all)
-        print('TC_all: ', TC_all.size())
+        print('TC_all: ', TC_all.size)
         print('\n')
         print('Get topic quality...')
         quality = np.mean(TC_all) * TD
