@@ -97,7 +97,7 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
-parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
+parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
 args = parser.parse_args()
@@ -609,6 +609,7 @@ def get_topic_quality():
         TD_all = np.zeros((args.num_times,))
         for tt in range(args.num_times):
             TD_all[tt] = _diversity_helper(beta[:, tt, :], num_tops)
+        
         TD = np.mean(TD_all)
         print('Topic Diversity is: {}'.format(TD))
 
@@ -621,18 +622,18 @@ def get_topic_quality():
             tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().detach().numpy(), train_tokens, vocab)
             TC_all.append(tc)
             cnt_all.append(cnt)
-        print('TC_all: ', TC_all)
+        
         TC_all = torch.tensor(TC_all)
-        print('TC_all: ', TC_all.size())
+        TC = TC_all.mean().item()
+        print('Topic Coherence is: ', TC)
         print('\n')
-        print('Get topic quality...')        
 
-        quality = np.array(tc) * float(TD)
-
-        print('Topic Quality is: {}'.format(quality))
+        print('Get topic quality...')
+        TQ = TC * TD
+        print('Topic Quality is: {}'.format(TQ))
         print('#'*100)
 
-        return quality, tc, TD
+        return TQ, TC, TD
 
 
 if args.mode == 'train':
@@ -721,10 +722,11 @@ f.close()
 tq, tc, td = get_topic_quality()        
 
 f=open(ckpt+'_tq.txt','w')
-s1='\n'.join(["Topic quality: topic " + str(k)+': '+str(v) for k,v in enumerate(tq.tolist())])
-s2='\n'.join(["Topic coherence: topic " + str(k)+': '+str(v) for k,v in enumerate(tc)])
-s3='\n'+"Topic diversity: all topics: "+str(td)
-f.write(s1+'\n'+s2+s3)
+
+s1="Topic Quality: all topics: "+str(tq)
+s2="Topic Coherence: all topics: "+str(tc)
+s3="Topic Diversity: all topics: "+str(td)
+f.write(s1+'\n'+s2+'\n'+s3+'\n')
 f.close()
 
 print('visualizing topics and embeddings...')

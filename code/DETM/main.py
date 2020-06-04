@@ -478,6 +478,7 @@ def get_topic_quality():
         TD_all = np.zeros((args.num_times,))
         for tt in range(args.num_times):
             TD_all[tt] = _diversity_helper(beta[:, tt, :], num_tops)
+        
         TD = np.mean(TD_all)
         print('Topic Diversity is: {}'.format(TD))
 
@@ -490,18 +491,19 @@ def get_topic_quality():
             tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().detach().numpy(), train_tokens, vocab)
             TC_all.append(tc)
             cnt_all.append(cnt)
-        print('TC_all: ', TC_all)
+        
         TC_all = torch.tensor(TC_all)
-        print('TC_all: ', TC_all.size())
+        TC = TC_all.mean().item()
+        print('Topic Coherence is: ', TC)
         print('\n')
-        print('Get topic quality...')        
 
-        quality = np.array(tc) * float(TD)
-
-        print('Topic Quality is: {}'.format(quality))
+        print('Get topic quality...')
+        TQ = TC * TD
+        print('Topic Quality is: {}'.format(TQ))
         print('#'*100)
 
-        return quality, tc, TD
+        return TQ, TC, TD
+
 
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
