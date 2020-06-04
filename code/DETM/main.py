@@ -370,8 +370,20 @@ def get_theta_eta_batch(source, outputs=['theta']):
             eta = _eta_helper(train_rnn_inp)
 
     for idx, ind in enumerate(indices):
+        if source == 'train':
+            tokens = train_tokens
+            counts = train_counts
+            times = train_times
+        elif source == 'val':
+            tokens = valid_tokens
+            counts = valid_counts
+            times = valid_times
+        else:
+            tokens = test_1_tokens
+            counts = test_1_counts
+            times = test_times
         data_batch, times_batch = data.get_batch(
-            train_tokens, train_counts, ind, args.vocab_size, args.emb_size, temporal=True, times=train_times)
+            tokens, counts, ind, args.vocab_size, args.emb_size, temporal=True, times=times)
         sums = data_batch.sum(1).unsqueeze(1)
         if args.bow_norm:
             normalized_data_batch = data_batch / sums
