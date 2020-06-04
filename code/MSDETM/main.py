@@ -35,7 +35,7 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
 parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
+parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_all_sources', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
@@ -98,7 +98,7 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
-parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
+parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
 args = parser.parse_args()
