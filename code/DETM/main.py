@@ -32,7 +32,8 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/gh/code/MSDETM/data/GPHIN', help='directory containing data')
 
 parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
+# parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
+parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_media_sources', help='directory containing data')
 
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
@@ -43,7 +44,7 @@ parser.add_argument('--batch_size', type=int, default=200, help='number of docum
 parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=10, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=3, help='number of topics')
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
@@ -58,7 +59,9 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
-parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
+
+parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
+
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
@@ -491,10 +494,14 @@ def get_topic_quality():
         TC_all = torch.tensor(TC_all)
         print('TC_all: ', TC_all.size())
         print('\n')
-        print('Get topic quality...')
-        quality = tc * TD
+        print('Get topic quality...')        
+
+        quality = np.array(tc) * float(TD)
+
         print('Topic Quality is: {}'.format(quality))
         print('#'*100)
+
+        return quality, tc, TD
 
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
@@ -532,32 +539,33 @@ if args.mode == 'train':
             # rho = model.rho.weight.cpu().numpy()
             rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
-        print('computing validation perplexity...')
-        val_ppl = get_completion_ppl('val')
-        print('computing test perplexity...')
-        test_ppl = get_completion_ppl('test')
-
-        f=open(ckpt+'_ppl.txt','w')
-        s1='\n'.join([str(i) for i in all_val_ppls])
-        s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
-        f.write(s1)
-        f.close()
-else: 
+        
+else:
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
         
-    print('saving alpha...')
-    with torch.no_grad():
-        # alpha = model.mu_q_alpha.cpu().numpy()
-        alpha = model.mu_q_alpha.cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
+print('computing validation perplexity...')
+val_ppl = get_completion_ppl('val')
 
-    print('computing validation perplexity...')
-    val_ppl = get_completion_ppl('val')
-    print('computing test perplexity...')
-    test_ppl = get_completion_ppl('test')
-    print('computing topic coherence and topic diversity...')
-    get_topic_quality()
-    print('visualizing topics and embeddings...')
-    visualize()
+print('computing test perplexity...')
+test_ppl = get_completion_ppl('test')
+
+f=open(ckpt+'_ppl.txt','w')
+s1='\n'.join([str(i) for i in all_val_ppls])
+s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
+f.write(s1)
+f.close()
+  
+tq, tc, td = get_topic_quality()        
+
+f=open(ckpt+'_tq.txt','w')
+s1='\n'.join(["Topic quality: topic " + str(k)+': '+str(v) for k,v in enumerate(tq.tolist())])
+s2='\n'.join(["Topic coherence: topic " + str(k)+': '+str(v) for k,v in enumerate(tc)])
+s3='\n'+"Topic diversity: all topics: "+str(td)
+f.write(s1+'\n'+s2+s3)
+f.close()
+
+print('visualizing topics and embeddings...')
+visualize()
+
