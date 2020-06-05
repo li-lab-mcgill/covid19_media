@@ -547,11 +547,6 @@ if args.mode == 'train':
         s1='\n'.join([str(i) for i in all_val_ppls])        
         f.write(s1)
         f.close()
-
-        f=open(ckpt+'_val_pdl.txt','w')
-        s1='\n'.join([str(i) for i in all_val_pdls])        
-        f.write(s1)
-        f.close()
         
 else:
     with open(ckpt, 'rb') as f:
@@ -560,18 +555,14 @@ else:
 
 
 print('computing validation perplexity...')
-val_ppl, val_pdl = get_completion_ppl('val')
+val_ppl = get_completion_ppl('val')
 
 print('computing test perplexity...')
-test_ppl, test_pdl = get_completion_ppl('test')
+test_ppl = get_completion_ppl('test')
 
 f=open(ckpt+'_test_ppl.txt','w')
 f.write(str(test_ppl))
 f.close()
-
-f=open(ckpt+'_test_pdl.txt','w')
-f.write(str(test_pdl))
-f.close()    
 
 tq, tc, td = get_topic_quality()        
 
