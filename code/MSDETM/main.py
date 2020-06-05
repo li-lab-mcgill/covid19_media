@@ -73,7 +73,9 @@ parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learnin
 
 parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
 
-parser.add_argument('--mode', type=str, default='train', help='train or eval model')
+# parser.add_argument('--mode', type=str, default='train', help='train or eval model')
+parser.add_argument('--mode', type=str, default='eval0', help='train or eval model')
+
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
 
@@ -696,6 +698,15 @@ if args.mode == 'train':
             rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
 
+        f=open(ckpt+'_val_ppl.txt','w')
+        s1='\n'.join([str(i) for i in all_val_ppls])        
+        f.write(s1)
+        f.close()
+
+        f=open(ckpt+'_val_pdl.txt','w')
+        s1='\n'.join([str(i) for i in all_val_pdls])        
+        f.write(s1)
+        f.close()
 else: 
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
@@ -708,16 +719,12 @@ val_ppl, val_pdl = get_completion_ppl('val')
 print('computing test perplexity...')
 test_ppl, test_pdl = get_completion_ppl('test')
 
-f=open(ckpt+'_ppl.txt','w')
-s1='\n'.join([str(i) for i in all_val_ppls])
-s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
-f.write(s1)
+f=open(ckpt+'_test_ppl.txt','w')
+f.write(str(test_ppl))
 f.close()
 
-f=open(ckpt+'_pdl.txt','w')
-s1='\n'.join([str(i) for i in all_val_pdls])
-s1=s1+'\nlast val_pdl: '+str(val_pdl)+'\nlast test_pdl: '+str(test_pdl)
-f.write(s1)
+f=open(ckpt+'_test_pdl.txt','w')
+f.write(str(test_pdl))
 f.close()    
 
 tq, tc, td = get_topic_quality()        
