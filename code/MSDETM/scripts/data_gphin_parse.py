@@ -356,7 +356,7 @@ def read_data(data_file):
             s = source.strip() #Source strip, remove leading and trailing spaces
             all_countries.append(c)
             all_sources.append(s) #Source appending
-            print(all_countries)
+            #print(all_sources)
             #print(all_labels) This works, gives all the labels in an array all_labels
 
     return all_docs, all_times, all_countries, twoD_array_labels, all_sources
@@ -687,7 +687,7 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
 
     # save the countries to id mapping
     print(country_map.values())
-    pickle.dump(country_map, open(path_save + "countries_map.pkl","wb"))
+    pickle.dump(country_map, open(path_save + "all_countries.pkl","wb"))
 
     # Also write the vocabulary and timestamps
     with open(path_save + 'vocab.txt', "w") as f:
