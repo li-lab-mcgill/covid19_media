@@ -361,11 +361,11 @@ def get_theta_eta_batch(source, outputs=['theta']):
     thetas = []
 
     if source == 'train':
-        indices = torch.randperm(args.num_docs_train)
+        indices = torch.arange(args.num_docs_train)
     elif source == 'val':
-        indices = torch.randperm(args.num_docs_valid)
+        indices = torch.arange(args.num_docs_valid)
     else:
-        indices = torch.randperm(args.num_docs_test)
+        indices = torch.arange(args.num_docs_test)
     indices = torch.split(indices, args.batch_size) 
 
     if source in ['val', 'test']:
