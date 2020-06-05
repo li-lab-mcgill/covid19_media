@@ -588,21 +588,21 @@ if args.mode == 'train':
             # rho = model.rho.weight.cpu().numpy()
             rho = model.rho.weight.cpu().detach().numpy()
             scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
+
+    print('computing validation perplexity...')
+    val_ppl = get_completion_ppl('val')
+    print('computing test perplexity...')
+    test_ppl = get_completion_ppl('test')
+    f=open(ckpt+'_ppl.txt','w')
+    s1='\n'.join([str(i) for i in all_val_ppls])
+    s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
+    f.write(s1)
+    f.close()
+
 else: 
     with open(ckpt, 'rb') as f:
         model = torch.load(f, map_location=device)
     model = model.to(device)
-
-print('computing validation perplexity...')
-val_ppl = get_completion_ppl('val')
-print('computing test perplexity...')
-test_ppl = get_completion_ppl('test')
-
-f=open(ckpt+'_ppl.txt','w')
-s1='\n'.join([str(i) for i in all_val_ppls])
-s1=s1+'\nlast val_ppl: '+str(val_ppl)+'\nlast test_ppl: '+str(test_ppl)
-f.write(s1)
-f.close()
         
 print('saving alpha...')
 with torch.no_grad():
