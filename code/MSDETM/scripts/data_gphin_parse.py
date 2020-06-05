@@ -53,11 +53,13 @@ def read_data(data_file):
     timestamps = []
     countries = []
     labels = [] # For WHO_Measures
+    sources = [] # For media vs official sources
 
     data = pd.read_csv(data_file)
     docs = data.SUMMARY.values
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
+    sources = data['SOURCE'].values
 
     # Array initialization for each label 
     land_screenings = [] #0
@@ -103,6 +105,7 @@ def read_data(data_file):
 
     nbre_labels = 17
     countries_mod = []
+    sources_mod = []
     labels_mod = [[ 0 for value in range(17)] for i in range(len(ppes))] #This initiates an array of 17 columns
                                                                          # with the number of rows equal to 17  
                                                                          # and the number of columns equal to the length
@@ -269,6 +272,11 @@ def read_data(data_file):
     # Now we have a labels_mod 2D array with the number of labels are columns 
     # and the number of docs as rows
     #print(labels_mod)
+    for source in sources:
+        if not pd.isna(source):
+            source = source.strip()
+        if source in ['media','Media','MEDIA']
+        countries_mod.append(country)
 
     for country in countries:
         if not pd.isna(country):
