@@ -368,11 +368,15 @@ def get_theta_eta_batch(source, outputs=['theta']):
         indices = torch.arange(args.num_docs_test)
     indices = torch.split(indices, args.batch_size) 
 
-    if source in ['val', 'test']:
-        eta = get_eta(source)
-    else:
+    if source == 'train':
         with torch.no_grad():
             eta = _eta_helper(train_rnn_inp)
+    elif source == 'val':
+        with torch.no_grad():
+            eta = _eta_helper(valid_rnn_inp)
+    else:
+        with torch.no_grad():
+            eta = _eta_helper(test_rnn_inp)
 
     for idx, ind in enumerate(indices):
         if source == 'train':
