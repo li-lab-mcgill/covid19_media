@@ -356,7 +356,7 @@ def read_data(data_file):
             s = source.strip() #Source strip, remove leading and trailing spaces
             all_countries.append(c)
             all_sources.append(s) #Source appending
-    #print(all_countries)
+            print(all_countries)
             #print(all_labels) This works, gives all the labels in an array all_labels
 
     return all_docs, all_times, all_countries, twoD_array_labels, all_sources
@@ -721,6 +721,12 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
     pickle.dump(labl_tr, open(path_save+"bow_tr_labels.pkl","wb"))
     pickle.dump(labl_ts, open(path_save+"bow_ts_labels.pkl","wb"))
     pickle.dump(labl_va, open(path_save+"bow_va_labels.pkl","wb"))
+
+    # save label information
+    print(c_va)
+    pickle.dump(c_tr, open(path_save+"bow_tr_countries.pkl","wb"))
+    pickle.dump(c_ts, open(path_save+"bow_ts_countries.pkl","wb"))
+    pickle.dump(c_va, open(path_save+"bow_va_countries.pkl","wb"))
 
     bow_tr_tokens, bow_tr_counts = split_bow(bow_tr, n_docs_tr)
     savemat(path_save + 'bow_tr_tokens.mat', {'tokens': bow_tr_tokens}, do_compression=True)
