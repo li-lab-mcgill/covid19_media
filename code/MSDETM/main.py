@@ -632,12 +632,9 @@ def get_topic_quality():
             TC_all.append(tc)
             cnt_all.append(cnt)
         
-        set_trace() 
-
         TC_all = torch.tensor(TC_all)
         cnt_all = torch.tensor(cnt_all)
         TC_all = TC_all / cnt_all[0].item()
-
         TC_all[TC_all<0] = 0
 
         TC = TC_all.mean().item()

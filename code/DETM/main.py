@@ -494,7 +494,11 @@ def get_topic_quality():
             cnt_all.append(cnt)
         
         TC_all = torch.tensor(TC_all)
-        TC = TC_all.mean().item()
+        cnt_all = torch.tensor(cnt_all)
+        TC_all = TC_all / cnt_all[0].item()
+        TC_all[TC_all<0] = 0
+
+        TC = TC_all.mean().item()        
         print('Topic Coherence is: ', TC)
         print('\n')
 
