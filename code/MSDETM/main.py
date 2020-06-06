@@ -34,12 +34,18 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_media_sources', help='directory containing data')
-# parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_all_sources', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_media_sources', help='directory containing data')
+
+# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_media_data', help='directory containing data')
+
 
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
+
+parser.add_argument('--dataset', type=str, default='gphin_all_sources', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_all_sources', help='directory containing data')
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
@@ -53,7 +59,7 @@ parser.add_argument('--min_df', type=int, default=10, help='to get the right dat
 # parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=3, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=10, help='number of topics')
 
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
@@ -74,7 +80,7 @@ parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learnin
 parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
 
 # parser.add_argument('--mode', type=str, default='train', help='train or eval model')
-parser.add_argument('--mode', type=str, default='eval0', help='train or eval model')
+parser.add_argument('--mode', type=str, default='eval_model', help='train or eval model')
 
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
@@ -99,7 +105,7 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
-parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
+parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
 args = parser.parse_args()
@@ -599,7 +605,7 @@ def _diversity_helper(beta, num_tops):
 def get_topic_quality():
     """Returns topic coherence and topic diversity.
     """
-    model.eval()
+    model.eval()    
     with torch.no_grad():
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha) 
@@ -621,12 +627,19 @@ def get_topic_quality():
         print('train_tokens: ', train_tokens[0])
         TC_all = []
         cnt_all = []
-        for tt in range(args.num_times):
+        for tt in range(args.num_times):            
             tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().detach().numpy(), train_tokens, vocab)
             TC_all.append(tc)
             cnt_all.append(cnt)
         
+        set_trace() 
+
         TC_all = torch.tensor(TC_all)
+        cnt_all = torch.tensor(cnt_all)
+        TC_all = TC_all / cnt_all[0].item()
+
+        TC_all[TC_all<0] = 0
+
         TC = TC_all.mean().item()
         print('Topic Coherence is: ', TC)
         print('\n')
@@ -727,7 +740,7 @@ f=open(ckpt+'_test_pdl.txt','w')
 f.write(str(test_pdl))
 f.close()    
 
-tq, tc, td = get_topic_quality()        
+tq, tc, td = get_topic_quality()
 
 f=open(ckpt+'_tq.txt','w')
 s1="Topic Quality: "+str(tq)
