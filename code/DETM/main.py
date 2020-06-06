@@ -31,9 +31,11 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/gh/code/MSDETM/data/GPHIN', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='../../data/WHO', help='directory containing data')
-parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_media_sources', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_media_sources', help='directory containing data')
+
+parser.add_argument('--dataset', type=str, default='gphin_all_sources', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_all_sources', help='directory containing data')
 
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
@@ -44,7 +46,8 @@ parser.add_argument('--batch_size', type=int, default=200, help='number of docum
 parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=3, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=10, help='number of topics')
+
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
@@ -62,7 +65,9 @@ parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learnin
 
 parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
 
-parser.add_argument('--mode', type=str, default='train', help='train or eval model')
+# parser.add_argument('--mode', type=str, default='train', help='train or eval model')
+parser.add_argument('--mode', type=str, default='eval_model', help='train or eval model')
+
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
 parser.add_argument('--enc_drop', type=float, default=0.1, help='dropout rate on encoder')
