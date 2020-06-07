@@ -59,7 +59,7 @@ def read_data(data_file):
     docs = data.SUMMARY.values
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
-    sources = data['SOURCE'].values
+    sources = data['COUNTRY /ORGANIZATION'].values
 
     # Array initialization for each label 
     land_screenings = [] #0
@@ -272,16 +272,38 @@ def read_data(data_file):
     # Now we have a labels_mod 2D array with the number of labels are columns 
     # and the number of docs as rows
     
-    #This is the preprocessing for media and official sources
+    #This is the preprocessing for sources as countries GPHIN
     for source in sources:
         if not pd.isna(source):
-            source = source.strip()
-        if source in ['media','Media','MEDIA']:
-            sources_mod.append('Media')
-        elif source in ['official','OFFICIAL','Official']:
-            sources_mod.append('Official')
+              source =  source.strip()
+        if  source in ['Unitsd States', 'Untisd States', 'Untied States', 'United States']:
+             sources_mod.append("United States")
+        elif  source in ['Untied Kingdom','United Kingdom','UK']:
+             sources_mod.append("United Kingdom")
+        elif  source in ['South Koreda','South Korea']:
+             sources_mod.append("South Korea")
+        elif  source in ['Inida','India']:
+             sources_mod.append("India")
+        elif  source in ['Caada','Canada']:
+             sources_mod.append("Canada")
+        elif  source in ['Indenesia',' Indonesia']:
+             sources_mod.append("Indonesia")
+        elif  source in ['Jodan','Jordan']:
+             sources_mod.append("Jordan")
+        elif  source in ['Demark', "Denmark"]:
+             sources_mod.append("Denmark")
+        elif  source in ['WHO','wHO']:
+             sources_mod.append("WHO")
+        elif  source in ['Gulf Cooperation Council', 'Gulf Cooperation Council (GCC)']:
+             sources_mod.append("Gulf Cooperation Council")
+        elif  source in ['BAHRAIN','Bahrain']:
+             sources_mod.append("Bahrain")
+        elif  source in ['Kyrgystan', 'Kyrgyzstan']:
+             sources_mod.append("Kyrgyzstan")
+        elif  source in ['International Olympic Committee', 'International Olympic Committee (IOC)']:
+             sources_mod.append("International Olympic Committee")
         else:
-            sources_mod.append(source)
+             sources_mod.append(source)
 
     for country in countries:
         if not pd.isna(country):
@@ -425,7 +447,7 @@ def get_features(docs, stops, timestamps, sources, labels, countries, min_df=min
     # Create mapping of sources
     source_map = {}
     i = 0
-    for s in np.unique(sources):
+    for s in np.unique(countries): #Changed this to countries
         source_map[s] = i
         i += 1
 
@@ -529,19 +551,19 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, la
     timestamps_tr = [time2id[timestamps[idx_permute[idx_d]]] for idx_d in range(trSize)]
     countries_tr = [country_map[countries[idx_permute[idx_d]]] for idx_d in range(trSize)]
     labels_tr = [labels[idx_permute[idx_d]] for idx_d in range(trSize)]
-    sources_tr = [source_map[sources[idx_permute[idx_d]]] for idx_d in range(trSize)]
+    sources_tr = [country_map[countries[idx_permute[idx_d]]] for idx_d in range(trSize)]
 
     docs_ts = [[word2id[w] for w in docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(tsSize)]
     timestamps_ts = [time2id[timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
     countries_ts = [country_map[countries[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
     labels_ts = [labels[idx_permute[idx_d+trSize]] for idx_d in range(tsSize)] 
-    sources_ts = [source_map[sources[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
+    sources_ts = [country_map[countries[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
 
     docs_va = [[word2id[w] for w in docs[idx_permute[idx_d+trSize+tsSize]].split() if w in word2id] for idx_d in range(vaSize)]
     timestamps_va = [time2id[timestamps[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
     countries_va = [country_map[countries[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
     labels_va = [labels[idx_permute[idx_d+trSize+tsSize]] for idx_d in range(vaSize)]
-    sources_va = [source_map[sources[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
+    sources_va = [country_map[countries[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
 
     print('  number of documents (train): {} [this should be equal to {} and {}]'.format(len(docs_tr), trSize, len(timestamps_tr)))
     print('  number of documents (test): {} [this should be equal to {} and {}]'.format(len(docs_ts), tsSize, len(timestamps_ts)))
