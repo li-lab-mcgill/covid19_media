@@ -178,7 +178,7 @@ if not os.path.exists(args.save_path):
     os.makedirs(args.save_path)
 
 if args.mode == 'eval':
-    ckpt = os.path.join(args.save_path, os.path.basename(args.load_from))
+    ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
         'detm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainWordEmbeddings_{}_epochs_{}'.format(
@@ -607,6 +607,8 @@ else:
     with open(ckpt, 'rb') as f:
         model = torch.load(f, map_location=device)
     model = model.to(device)
+
+ckpt = os.path.join(args.save_path, os.path.basename(args.load_from))
         
 print('saving alpha...')
 with torch.no_grad():
