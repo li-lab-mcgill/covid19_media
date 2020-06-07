@@ -53,15 +53,19 @@ def read_data(data_file):
     timestamps = []
     countries = []
     labels = [] # For WHO_Measures
+    sources = [] # For media vs official sources
+
 
     data = pd.read_csv(data_file)
     docs = data.SUMMARY.values
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
-    labels = data['WHO_MEASURE (TO BE USE)'].values
+    labels = data['WHO_MEASURE'].values
+    sources = data['SOURCE_TYPE'].values
     print(labels)
     countries_mod = []
     labels_mod=[]
+    sources_mod=[]
     for country in countries:
         if not pd.isna(country):
             country = country.strip()
@@ -101,10 +105,18 @@ def read_data(data_file):
         labels_mod.append(label)
     print(labels_mod)
 
+     #SOURCES
+    for source in sources:
+        if not pd.isna(source):
+            source = source.strip()
+        sources_mod.append(source)
+    print(sources_mod)
+
     all_docs = []
     all_times = []
     all_countries = []
     all_labels = []
+    all_sources = []
 
     #Function to find week from first day as a Sunday: 
     import calendar
@@ -117,7 +129,7 @@ def read_data(data_file):
         return(week_of_month)
 
     #Important for preprocessing by weeks :
-    for (doc, timestamp, country, label) in zip(docs, timestamps, countries_mod, labels_mod):
+    for (doc, timestamp, country, label, source) in zip(docs, timestamps, countries_mod, labels_mod, sources_mod):
         if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country) or pd.isna(label):
             continue
         doc = doc.encode('ascii',errors='ignore').decode()
@@ -150,12 +162,14 @@ def read_data(data_file):
             all_times.append(d)
             c = country.strip()
             l = label.strip()
+            s = source.strip()
             #print(c)
             all_countries.append(c)
             all_labels.append(l)
+            all_countries.append(s)
             #print(all_labels) This works, gives all the labels in an array all_labels
     print(all_times)
-    return all_docs, all_times, all_countries, all_labels
+    return all_docs, all_times, all_countries, all_labels, all_countries
 
     # for (pid, tt) in zip(all_pids, all_timestamps):
     #     path_read = 'raw/acl_abstracts/acl_data-combined/all_papers'
@@ -180,7 +194,7 @@ def read_data(data_file):
     #     for line in docs:
     #         f.write(line + '\n')
 
-def get_features(docs, stops, timestamps, sources, labels, min_df=min_df, max_df=max_df):
+def get_features(docs, stops, timestamps, sources, labels, countries, min_df=min_df, max_df=max_df):
     # Create count vectorizer
     print('counting document frequency of words...')
     cvectorizer = CountVectorizer(min_df=min_df, max_df=max_df, stop_words=None)
@@ -221,8 +235,15 @@ def get_features(docs, stops, timestamps, sources, labels, min_df=min_df, max_df
     # Create mapping of sources
     source_map = {}
     i = 0
-    for c in np.unique(sources):
-        source_map[c] = i
+    for s in np.unique(sources):
+        source_map[s] = i
+        i += 1
+
+    # Create mapping of countries
+    countries_map = {}
+    i = 0
+    for c in np.unique(countries):
+        countries_map[c] = i
         i += 1
 	
 	# Create mapping of timestamps
@@ -239,7 +260,7 @@ def get_features(docs, stops, timestamps, sources, labels, min_df=min_df, max_df
         label_map[lab] = i
         i += 1
 
-    return vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map, time_map
+    return vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map, time_map, countries_map
 
 def create_list_words(in_docs):
     # Getting lists of words and doc_indices
