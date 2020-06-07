@@ -58,7 +58,7 @@ def read_data(data_file):
     docs = data.SUMMARY.values
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
-    labels = data['WHO_MEASURE'].values
+    labels = data['WHO_MEASURE (TO BE USE)'].values
     print(labels)
     countries_mod = []
     labels_mod=[]
@@ -106,6 +106,16 @@ def read_data(data_file):
     all_countries = []
     all_labels = []
 
+    #Function to find week from first day as a Sunday: 
+    import calendar
+    import numpy as np
+    calendar.setfirstweekday(6) #First weekday is Sunday
+
+    def get_week_of_month(year, month, day):
+        x = np.array(calendar.monthcalendar(year, month))
+        week_of_month = np.where(x==day)[0][0] + 1
+        return(week_of_month)
+
     #Important for preprocessing by weeks :
     for (doc, timestamp, country, label) in zip(docs, timestamps, countries_mod, labels_mod):
         if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country) or pd.isna(label):
@@ -124,7 +134,19 @@ def read_data(data_file):
                 except:
                     t = timestamp[0:3]+timestamp[3:]
                     d = datetime.strptime(t, '%Y-%m-%d')
-            d = d.isocalendar()[1] #Week number instead of days
+            
+            week_month = get_week_of_month(d.year,d.month,d.day)
+            
+            #Original date
+            original_date = '{}-{}-{}'.format(d.year,d.month,d.day)
+            #Test file with original dates for gphin week data
+            date_test = "Original Date (Y,M,D) -> {}, Week Date (Y,M,W) -> {}-0{}-{}    \n".format(original_date, d.isocalendar()[0], d.month, week_month) #Week number instead of days
+            f = open("original_date_week_comparison.txt", "a")
+            f.write(date_test)
+            f.close()
+
+            #Print month and date with week format (1-4)
+            d = "{}-0{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
             all_times.append(d)
             c = country.strip()
             l = label.strip()
