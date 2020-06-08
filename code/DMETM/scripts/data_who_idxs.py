@@ -333,7 +333,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     del vocab
     
     # all countries
-    #pkl.dump(countries_to_idx, open(path_save + 'all_countries.pkl',"wb"))
+    pkl.dump(countries_to_idx, open(path_save + 'all_countries.pkl',"wb"))
     del countries_to_idx
 
     # Split bow intro token/value pairs

@@ -13,6 +13,10 @@ import pandas as pd
 from datetime import datetime
 import time
 import math
+from tqdm import tqdm
+import numpy as np
+from sklearn.datasets.base import Bunch
+
 
 # Maximum / minimum document frequency
 max_df = 0.7
@@ -45,7 +49,7 @@ def get_stopwords(stopwords_file=None):
 
 
 def read_data(data_file):
-
+    import numpy as np
     # Read raw data
     print('reading raw data...')
     docs = []
@@ -66,6 +70,51 @@ def read_data(data_file):
     countries_mod = []
     labels_mod=[]
     sources_mod=[]
+
+    #Added read data
+    gphin_data = pd.read_csv(data_file)
+    gphin_data = gphin_data.rename(columns={"COUNTRY /ORGANIZATION":"country"})
+
+    # processing the country names by removing leading and trailing spaces and newlines
+    gphin_data.country = gphin_data['country'].apply(lambda x: x.strip(" "))
+    gphin_data.country = gphin_data['country'].apply(lambda x: x.strip("\n"))
+
+    #Remove null values
+    gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
+    gphin_data = gphin_data[gphin_data['country'].notna()]
+
+    # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country']
+    # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
+    g_data = {'data':[], 'country':[], 'index':[]}
+    countries_gphin = gphin_data.country.unique()
+    countries_to_idx = {country: str(idx) for idx, country in enumerate(gphin_data.country.unique())}
+
+    print('this is countries to ids')
+    print(countries_to_idx)
+    for country in tqdm(countries_to_idx):
+        summary = gphin_data[gphin_data.country == country].SUMMARY.values
+        ind = gphin_data[gphin_data.country == country].index.values
+        g_data['data'].extend(summary)
+        g_data['country'].extend([country]*len(summary))
+        g_data['index'].extend(ind)
+
+    # randomly split data into train and test
+        # 20% for testing
+        test_num = int(np.ceil(0.2*len(g_data['data'])))
+    test_ids = np.random.choice(range(len(g_data['data'])),test_num,replace=False)
+    train_ids = np.array([i for i in range(len(g_data['data'])) if i not in test_ids])
+
+    train_data_x = np.array(g_data['data'])[train_ids]
+    train_country = np.array(g_data['country'])[train_ids]
+    train_ids = np.array(g_data['index'])[train_ids]
+
+    test_data_x = np.array(g_data['data'])[test_ids]
+    test_country = np.array(g_data['country'])[test_ids]
+    test_ids = np.array(g_data['index'])[test_ids]
+
+    # convert the train and test data into Bunch format because rest of the code is designed for that
+    train_data = Bunch(data=train_data_x, country=train_country, index=train_ids) 
+    test_data = Bunch(data=test_data_x, country=test_country, index=test_ids)
 
     #Sources
     for source in sources:
@@ -205,7 +254,7 @@ def read_data(data_file):
             all_sources.append(s)
             #print(all_labels) This works, gives all the labels in an array all_labels
     print(all_times)
-    return all_docs, all_times, all_countries, all_labels, all_sources
+    return all_docs, all_times, all_countries, all_labels, all_sources, train_data, test_data
 
     # for (pid, tt) in zip(all_pids, all_timestamps):
     #     path_read = 'raw/acl_abstracts/acl_data-combined/all_papers'
@@ -229,6 +278,14 @@ def read_data(data_file):
     # with open(out_filename, 'w') as f:
     #     for line in docs:
     #         f.write(line + '\n')
+
+#Preprocess for data from summary ids only
+def preprocess(train_data, test_data):
+
+    # remove all special characters from the text data
+    data_id = np.append(train_data.index, test_data.index)
+
+    return data_id
 
 def get_features(docs, stops, timestamps, sources, labels, countries, min_df=min_df, max_df=max_df):
     # Create count vectorizer
@@ -356,7 +413,7 @@ def create_bow(doc_indices, words, n_docs, vocab_size):
     return sparse.coo_matrix(([1]*len(doc_indices),(doc_indices, words)), shape=(n_docs, vocab_size)).tocsr()
 
 
-def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, label_map, time_map, sources, countries_map,docs_map ):
+def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, label_map, time_map, sources, countries_map,docs_map, data_ids):
 
     # Split in train/test/valid
     print('tokenizing documents and splitting into train/test/valid...')
@@ -391,7 +448,7 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, la
     countries_ts = [countries_map[countries[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
     labels_ts = [label_map[labels[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)] 
     sources_ts = [source_map[sources[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)] 
-    ids_ts = [data_ids[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    ids_ts = [data_ids[idx_d+num_docs] for idx_d in range(tsSize)]
 
     docs_va = [[word2id[w] for w in docs[idx_permute[idx_d+trSize+tsSize]].split() if w in word2id] for idx_d in range(vaSize)]
     timestamps_va = [time_map[timestamps[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
@@ -490,7 +547,7 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, la
     del doc_indices_ts_h2
     del doc_indices_va
 
-    return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, sources_tr, sources_ts, sources_ts_h1, sources_ts_h2, sources_va
+    return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, sources_tr, sources_ts, sources_ts_h1, sources_ts_h2, sources_va,  ids_tr, ids_ts, ids_va, ids_ts_h1, ids_ts_h2
 
 
 # Write files for LDA C++ code
@@ -521,7 +578,7 @@ def split_bow(bow_in, n_docs):
     counts = [[c for c in bow_in[doc,:].data] for doc in range(n_docs)]
     return indices, counts
 
-def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map, time_map, sources_tr, sources_ts, sources_ts_h1, sources_ts_h2, sources_va, countries_map,docs_map, min_df=min_df):
+def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map, time_map, sources_tr, sources_ts, sources_ts_h1, sources_ts_h2, sources_va, countries_map,docs_map,ids_tr, ids_ts, ids_ts_h1, ids_ts_h2, ids_va, min_df=min_df):
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
     if not os.path.isdir(path_save):
         os.system('mkdir -p ' + path_save)
@@ -636,11 +693,13 @@ if __name__ == '__main__':
     args = get_args()
 
     # read in the data file
-    all_docs, all_times, all_countries, all_labels, all_sources = read_data(args.data_file_path)
+    all_docs, all_times, all_countries, all_labels, all_sources, train_data, test_data = read_data(args.data_file_path)
+
+    data_ids = preprocess(train_data, test_data)
 
     # preprocess the news articles
     #all_docs, train_docs, test_docs, init_countries = preprocess(train, test)
-
+    #data_ids = preprocess(train, test)
     # get a list of stopwords
     stopwords = get_stopwords(args.stopwords_path)
 
@@ -652,8 +711,8 @@ if __name__ == '__main__':
     print(country_map)
 
     # split data into train, test and validation and corresponding countries in BOW format
-    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, source_tr, source_ts, source_ts_h1, source_ts_h2, source_va = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, all_labels, label_map, time_map, all_sources, country_map, docs_map)
+    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, source_tr, source_ts, source_ts_h1, source_ts_h2, source_va, ids_tr, ids_ts, ids_va, ids_ts_h1, ids_ts_h2 = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, all_labels, label_map, time_map, all_sources, country_map, docs_map, data_ids)
 
-    save_data(args.save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map, time_map, source_tr, source_ts, source_ts_h1, source_ts_h2, source_va, country_map, docs_map)
+    save_data(args.save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map, time_map, source_tr, source_ts, source_ts_h1, source_ts_h2, source_va, country_map, docs_map, ids_tr, ids_ts, ids_ts_h1, ids_ts_h2, ids_va)
     print('Data ready !!')
     print('*************')
