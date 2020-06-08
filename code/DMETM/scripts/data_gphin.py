@@ -269,8 +269,15 @@ def get_features(docs, stops, timestamps, sources, labels, countries, min_df=min
     for lab in np.unique(labels):
         label_map[lab] = i
         i += 1
+    
+    # Create mapping of docs
+    docs_map = {}
+    i = 0
+    for document in np.unique(docs):
+        docs_map[document] = i
+        i += 1
 
-    return vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map, time_map, countries_map
+    return vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map, time_map, countries_map, docs_map
 
 def create_list_words(in_docs):
     # Getting lists of words and doc_indices
@@ -323,7 +330,7 @@ def create_bow(doc_indices, words, n_docs, vocab_size):
     return sparse.coo_matrix(([1]*len(doc_indices),(doc_indices, words)), shape=(n_docs, vocab_size)).tocsr()
 
 
-def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, label_map, time_map, sources, countries_map, ):
+def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, label_map, time_map, sources, countries_map,docs_map ):
 
     # Split in train/test/valid
     print('tokenizing documents and splitting into train/test/valid...')
@@ -481,7 +488,7 @@ def split_bow(bow_in, n_docs):
     counts = [[c for c in bow_in[doc,:].data] for doc in range(n_docs)]
     return indices, counts
 
-def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map, time_map, sources_tr, sources_ts, sources_ts_h1, sources_ts_h2, sources_va, countries_map, min_df=min_df):
+def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map, time_map, sources_tr, sources_ts, sources_ts_h1, sources_ts_h2, sources_va, countries_map,docs_map, min_df=min_df):
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
     if not os.path.isdir(path_save):
         os.system('mkdir -p ' + path_save)
@@ -509,6 +516,10 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
     # save the countries to id mapping
     print(countries_map.values())
     pickle.dump(countries_map, open(path_save + "all_countries.pkl","wb"))
+
+    # save the docs to id mapping
+    print(docs_map.values())
+    pickle.dump(docs_map, open(path_save + "docs_map.pkl","wb"))
 
 
     # Also write the vocabulary and timestamps
@@ -594,15 +605,15 @@ if __name__ == '__main__':
     stopwords = get_stopwords(args.stopwords_path)
 
     # get the vocabulary of words, word2id map and id2word map and time2id and id2time maps
-    vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map, time_map, country_map = get_features(all_docs, stopwords, all_times, all_sources, all_labels, all_countries)
+    vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map, time_map, country_map, docs_map = get_features(all_docs, stopwords, all_times, all_sources, all_labels, all_countries)
     print(source_map)
     print(label_map)
     print(time_map)
     print(country_map)
 
     # split data into train, test and validation and corresponding countries in BOW format
-    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, source_tr, source_ts, source_ts_h1, source_ts_h2, source_va = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, all_labels, label_map, time_map, all_sources, country_map)
+    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, source_tr, source_ts, source_ts_h1, source_ts_h2, source_va = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, all_labels, label_map, time_map, all_sources, country_map, docs_map)
 
-    save_data(args.save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map, time_map, source_tr, source_ts, source_ts_h1, source_ts_h2, source_va, country_map)
+    save_data(args.save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, bow_tr, bow_ts, bow_ts_h1, bow_ts_h2, bow_va, vocab, n_docs_tr, n_docs_ts, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, source_map, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, label_map, time_map, source_tr, source_ts, source_ts_h1, source_ts_h2, source_va, country_map, docs_map)
     print('Data ready !!')
     print('*************')
