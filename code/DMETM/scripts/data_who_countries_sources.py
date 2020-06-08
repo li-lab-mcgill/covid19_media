@@ -383,18 +383,22 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, la
     countries_tr = [countries_map[countries[idx_permute[idx_d]]] for idx_d in range(trSize)]
     labels_tr = [label_map[labels[idx_permute[idx_d]]] for idx_d in range(trSize)]
     sources_tr = [source_map[sources[idx_permute[idx_d]]] for idx_d in range(trSize)]
+    ids_tr = [data_ids[idx_permute[idx_d]] for idx_d in range(trSize)]
+
 
     docs_ts = [[word2id[w] for w in docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(tsSize)]
     timestamps_ts = [time_map[timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
     countries_ts = [countries_map[countries[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
     labels_ts = [label_map[labels[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)] 
     sources_ts = [source_map[sources[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)] 
+    ids_ts = [data_ids[idx_d+num_docs_tr] for idx_d in range(tsSize)]
 
     docs_va = [[word2id[w] for w in docs[idx_permute[idx_d+trSize+tsSize]].split() if w in word2id] for idx_d in range(vaSize)]
     timestamps_va = [time_map[timestamps[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
     countries_va = [countries_map[countries[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
     labels_va = [label_map[labels[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
     sources_va = [source_map[sources[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
+    ids_va = [data_ids[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
 
     print('  number of documents (train): {} [this should be equal to {} and {}]'.format(len(docs_tr), trSize, len(timestamps_tr)))
     print('  number of documents (test): {} [this should be equal to {} and {}]'.format(len(docs_ts), tsSize, len(timestamps_ts)))
@@ -424,6 +428,9 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, la
 
     sources_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for (doc,c) in zip(docs_ts,sources_ts)]
     sources_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for (doc,c) in zip(docs_ts,sources_ts)]
+
+    ids_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc,c in zip(docs_ts, ids_ts)]
+    ids_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc,c in zip(docs_ts, ids_ts)]
 
 
     words_tr = create_list_words(docs_tr)
