@@ -581,6 +581,13 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
     pickle.dump(labl_ts, open(path_save+"bow_ts_labels.pkl","wb"))
     pickle.dump(labl_va, open(path_save+"bow_va_labels.pkl","wb"))
 
+    # save id information
+    pickle.dump(ids_tr, open(path_save + 'bow_tr_ids.pkl','wb'))
+    pickle.dump(ids_ts, open(path_save + 'bow_ts_ids.pkl','wb'))
+    pickle.dump(ids_ts_h1, open(path_save + 'bow_ts_h1_ids.pkl','wb'))
+    pickle.dump(ids_ts_h2, open(path_save + 'bow_ts_h2_ids.pkl','wb'))
+    pickle.dump(ids_va, open(path_save + 'bow_va_ids.pkl','wb'))
+
     bow_tr_tokens, bow_tr_counts = split_bow(bow_tr, n_docs_tr)
     savemat(path_save + 'bow_tr_tokens.mat', {'tokens': bow_tr_tokens}, do_compression=True)
     savemat(path_save + 'bow_tr_counts.mat', {'counts': bow_tr_counts}, do_compression=True)

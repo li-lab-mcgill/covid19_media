@@ -333,7 +333,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     del vocab
     
     # all countries
-    pkl.dump(countries_to_idx, open(path_save + 'all_countries.pkl',"wb"))
+    #pkl.dump(countries_to_idx, open(path_save + 'all_countries.pkl',"wb"))
     del countries_to_idx
 
     # Split bow intro token/value pairs
@@ -343,7 +343,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
     savemat(path_save + 'bow_tr_tokens.mat', {'tokens': bow_tr_tokens}, do_compression=True)
     savemat(path_save + 'bow_tr_counts.mat', {'counts': bow_tr_counts}, do_compression=True)
-    pkl.dump(countries_tr, open(path_save + 'bow_tr_countries.pkl',"wb"))
+    #pkl.dump(countries_tr, open(path_save + 'bow_tr_countries.pkl',"wb"))
     pkl.dump(ids_tr, open(path_save + 'bow_tr_ids.pkl','wb'))
 
     del bow_tr
@@ -354,7 +354,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     savemat(path_save + 'bow_ts_tokens.mat', {'tokens': bow_ts_tokens}, do_compression=True)
     savemat(path_save + 'bow_ts_counts.mat', {'counts': bow_ts_counts}, do_compression=True)
     #savemat(path_save + 'bow_ts_countries.mat', {'countries': countries_ts}, do_compression=True)
-    pkl.dump(countries_ts, open(path_save + 'bow_ts_countries.pkl',"wb"))
+    #pkl.dump(countries_ts, open(path_save + 'bow_ts_countries.pkl',"wb"))
     pkl.dump(ids_ts, open(path_save + 'bow_ts_ids.pkl','wb'))
 
     del bow_ts
@@ -366,7 +366,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     savemat(path_save + 'bow_ts_h1_tokens.mat', {'tokens': bow_ts_h1_tokens}, do_compression=True)
     savemat(path_save + 'bow_ts_h1_counts.mat', {'counts': bow_ts_h1_counts}, do_compression=True)
     #savemat(path_save + 'bow_ts_h1_countries.mat', {'countries': countries_ts_h1}, do_compression=True)
-    pkl.dump(countries_ts_h1, open(path_save + 'bow_ts_h1_countries.pkl',"wb"))
+    #pkl.dump(countries_ts_h1, open(path_save + 'bow_ts_h1_countries.pkl',"wb"))
     pkl.dump(ids_ts_h1, open(path_save + 'bow_ts_h1_ids.pkl','wb'))
 
     del bow_ts_h1
@@ -377,7 +377,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     savemat(path_save + 'bow_ts_h2_tokens.mat', {'tokens': bow_ts_h2_tokens}, do_compression=True)
     savemat(path_save + 'bow_ts_h2_counts.mat', {'counts': bow_ts_h2_counts}, do_compression=True)
     #savemat(path_save + 'bow_ts_h2_countries.mat', {'countries': countries_ts_h2}, do_compression=True)
-    pkl.dump(countries_ts_h2, open(path_save + 'bow_ts_h2_countries.pkl',"wb"))
+    #pkl.dump(countries_ts_h2, open(path_save + 'bow_ts_h2_countries.pkl',"wb"))
     pkl.dump(ids_ts_h2, open(path_save + 'bow_ts_h2_ids.pkl','wb'))
 
     del bow_ts_h2
@@ -389,7 +389,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     savemat(path_save + 'bow_va_tokens.mat', {'tokens': bow_va_tokens}, do_compression=True)
     savemat(path_save + 'bow_va_counts.mat', {'counts': bow_va_counts}, do_compression=True)
     #savemat(path_save + 'bow_va_countries.mat', {'countries': countries_va}, do_compression=True)
-    pkl.dump(countries_va, open(path_save + 'bow_va_countries.pkl',"wb"))
+    #pkl.dump(countries_va, open(path_save + 'bow_va_countries.pkl',"wb"))
     pkl.dump(ids_va, open(path_save + 'bow_va_ids.pkl','wb'))
 
     del bow_va
