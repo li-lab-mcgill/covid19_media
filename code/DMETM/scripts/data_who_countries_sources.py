@@ -644,6 +644,11 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
     with open(path_save + 'vocab.txt', "w") as f:
         for v in vocab:
             f.write(v + '\n')
+    
+    # Also write the vocabulary and timestamps
+    with open(path_save + 'ids.txt', "w") as f:
+        for v in ids_map:
+            f.write(v + '\n')
 
     with open(path_save + 'timestamps.txt', "w") as f:
         for t in time_list:
