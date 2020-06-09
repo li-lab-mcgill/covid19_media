@@ -300,7 +300,7 @@ if args.mode == 'train':
     all_val_ppls = []
     print('\n')
     print('Visualizing model quality before training...')
-    visualize(model)
+    visualize(model, show_emb=False)
     print('\n')
     for epoch in range(1, args.epochs):
         train(epoch)
@@ -316,7 +316,7 @@ if args.mode == 'train':
             if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
                 optimizer.param_groups[0]['lr'] /= args.lr_factor
         if epoch % args.visualize_every == 0:
-            visualize(model)
+            visualize(model, show_emb=False)
         all_val_ppls.append(val_ppl)
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
@@ -326,55 +326,56 @@ else:
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
-    model.eval()
 
-    with torch.no_grad():
-        ## get document completion perplexities
-        test_ppl = evaluate(model, 'test', tc=args.tc, td=args.td)
+model.eval()
 
-        ## get most used topics
-        indices = torch.tensor(range(args.num_docs_train))
-        indices = torch.split(indices, args.batch_size)
-        thetaAvg = torch.zeros(1, args.num_topics).to(device)
-        thetaWeightedAvg = torch.zeros(1, args.num_topics).to(device)
-        cnt = 0
-        for idx, ind in enumerate(indices):
-            data_batch = data.get_batch(train_tokens, train_counts, ind, args.vocab_size, device)
-            sums = data_batch.sum(1).unsqueeze(1)
-            cnt += sums.sum(0).squeeze().cpu().numpy()
-            if args.bow_norm:
-                normalized_data_batch = data_batch / sums
-            else:
-                normalized_data_batch = data_batch
-            theta, _ = model.get_theta(normalized_data_batch)
-            thetaAvg += theta.sum(0).unsqueeze(0) / args.num_docs_train
-            weighed_theta = sums * theta
-            thetaWeightedAvg += weighed_theta.sum(0).unsqueeze(0)
-            if idx % 100 == 0 and idx > 0:
-                print('batch: {}/{}'.format(idx, len(indices)))
-        thetaWeightedAvg = thetaWeightedAvg.squeeze().cpu().numpy() / cnt
-        print('\nThe 10 most used topics are {}'.format(thetaWeightedAvg.argsort()[::-1][:10]))
+with torch.no_grad():
+    ## get document completion perplexities
+    test_ppl = evaluate(model, 'test', tc=args.tc, td=args.td)
 
-        ## show topics
-        beta = model.get_beta()
-        topic_indices = list(np.random.choice(args.num_topics, 10)) # 10 random topics
-        print('\n')
-        for k in range(args.num_topics):#topic_indices:
-            gamma = beta[k]
-            top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])
-            topic_words = [vocab[a] for a in top_words]
-            print('Topic {}: {}'.format(k, topic_words))
+    ## get most used topics
+    indices = torch.tensor(range(args.num_docs_train))
+    indices = torch.split(indices, args.batch_size)
+    thetaAvg = torch.zeros(1, args.num_topics).to(device)
+    thetaWeightedAvg = torch.zeros(1, args.num_topics).to(device)
+    cnt = 0
+    for idx, ind in enumerate(indices):
+        data_batch = data.get_batch(train_tokens, train_counts, ind, args.vocab_size, device)
+        sums = data_batch.sum(1).unsqueeze(1)
+        cnt += sums.sum(0).squeeze().cpu().numpy()
+        if args.bow_norm:
+            normalized_data_batch = data_batch / sums
+        else:
+            normalized_data_batch = data_batch
+        theta, _ = model.get_theta(normalized_data_batch)
+        thetaAvg += theta.sum(0).unsqueeze(0) / args.num_docs_train
+        weighed_theta = sums * theta
+        thetaWeightedAvg += weighed_theta.sum(0).unsqueeze(0)
+        if idx % 100 == 0 and idx > 0:
+            print('batch: {}/{}'.format(idx, len(indices)))
+    thetaWeightedAvg = thetaWeightedAvg.squeeze().cpu().numpy() / cnt
+    print('\nThe 10 most used topics are {}'.format(thetaWeightedAvg.argsort()[::-1][:10]))
 
-        if args.train_embeddings:
-            ## show etm embeddings 
-            try:
-                rho_etm = model.rho.weight.cpu()
-            except:
-                rho_etm = model.rho.cpu()
-            queries = ['andrew', 'woman', 'computer', 'sports', 'religion', 'man', 'love', 
-                            'intelligence', 'money', 'politics', 'health', 'people', 'family']
-            print('\n')
-            print('ETM embeddings...')
-            for word in queries:
-                print('word: {} .. etm neighbors: {}'.format(word, nearest_neighbors(word, rho_etm, vocab)))
-            print('\n')
+    ## show topics
+    beta = model.get_beta()
+    topic_indices = list(np.random.choice(args.num_topics, 10)) # 10 random topics
+    print('\n')
+    for k in range(args.num_topics):#topic_indices:
+        gamma = beta[k]
+        top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])
+        topic_words = [vocab[a] for a in top_words]
+        print('Topic {}: {}'.format(k, topic_words))
+
+    # if args.train_embeddings:
+    #     ## show etm embeddings 
+    #     try:
+    #         rho_etm = model.rho.weight.cpu()
+    #     except:
+    #         rho_etm = model.rho.cpu()
+    #     queries = ['andrew', 'woman', 'computer', 'sports', 'religion', 'man', 'love', 
+    #                     'intelligence', 'money', 'politics', 'health', 'people', 'family']
+    #     print('\n')
+    #     print('ETM embeddings...')
+    #     for word in queries:
+    #         print('word: {} .. etm neighbors: {}'.format(word, nearest_neighbors(word, rho_etm, vocab)))
+    #     print('\n')
