@@ -67,7 +67,7 @@ def read_data(data_file):
     labels = data['WHO_MEASURE'].values
     sources = data['COUNTRY /ORGANIZATION'].values
     who_id = data['WHO_ID'].values
-    print(labels)
+    #print(labels)
     countries_mod = []
     labels_mod=[]
     sources_mod=[]
@@ -91,8 +91,8 @@ def read_data(data_file):
     countries_gphin = gphin_data.country.unique()
     countries_to_idx = {country: str(idx) for idx, country in enumerate(gphin_data.country.unique())}
 
-    print('this is countries to ids')
-    print(countries_to_idx)
+    #print('this is countries to ids')
+    #print(countries_to_idx)
     for country in tqdm(countries_to_idx):
         summary = gphin_data[gphin_data.country == country].SUMMARY.values
         ind = gphin_data[gphin_data.country == country].index.values
@@ -190,14 +190,14 @@ def read_data(data_file):
         if not pd.isna(label):
             label = label.strip()
         labels_mod.append(label)
-    print(labels_mod)
+    #print(labels_mod)
 
     #id
     for idt in who_id:
         if not pd.isna(idt):
             idt = idt.strip()
         id_mod.append(idt)
-    print(id_mod)
+    #print(id_mod)
 
      #SOURCES
     #for source in sources:
@@ -265,7 +265,7 @@ def read_data(data_file):
             all_sources.append(s)
             all_ids.append(i)
             #print(all_labels) This works, gives all the labels in an array all_labels
-    print(all_times)
+    #print(all_times)
     return all_docs, all_times, all_countries, all_labels, all_sources, train_data, test_data, all_ids
 
     # for (pid, tt) in zip(all_pids, all_timestamps):
@@ -314,6 +314,8 @@ def get_features(docs, stops, timestamps, sources, labels, countries, ids, min_d
         sum_counts_np[v] = sum_counts[0,v]
     word2id = dict([(w, cvectorizer.vocabulary_.get(w)) for w in cvectorizer.vocabulary_])
     id2word = dict([(cvectorizer.vocabulary_.get(w), w) for w in cvectorizer.vocabulary_])
+    print('THIS IS IDS2WORD')
+    print(id2word)
     del cvectorizer
     print('  initial vocabulary size: {}'.format(v_size))
 
@@ -616,27 +618,27 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
     write_lda_file(path_save + 'dtm_va-mult.mat', timestamps_va, time_list, bow_va)
 
     # save the source to id mapping
-    print(source_map.values())
+    #print(source_map.values())
     pickle.dump(source_map, open(path_save + "sources_map.pkl","wb"))
 
     # save the label to id mapping
-    print(label_map.values())
+    #print(label_map.values())
     pickle.dump(label_map, open(path_save + "labels_map.pkl","wb"))
 
 	# save the timestamps to id mapping
-    print(time_map.values())
+    #print(time_map.values())
     pickle.dump(time_map, open(path_save + "times_map.pkl","wb"))
 
     # save the countries to id mapping
-    print(countries_map.values())
+    #print(countries_map.values())
     pickle.dump(countries_map, open(path_save + "all_countries.pkl","wb"))
 
     # save the docs to id mapping
-    print(docs_map.values())
+    #print(docs_map.values())
     pickle.dump(docs_map, open(path_save + "docs_map.pkl","wb"))
 
     # save the ids mapping
-    print(ids_map.values())
+    #print(ids_map.values())
     pickle.dump(ids_map, open(path_save + "ids_map.pkl","wb"))
 
 
@@ -667,13 +669,13 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
     savemat(path_save + 'bow_va_timestamps.mat', {'timestamps': timestamps_va}, do_compression=True)
 
     # save source information
-    print(c_va)
+    #print(c_va)
     pickle.dump(sources_tr, open(path_save+"bow_tr_sources.pkl","wb"))
     pickle.dump(sources_ts, open(path_save+"bow_ts_sources.pkl","wb"))
     pickle.dump(sources_va, open(path_save+"bow_va_sources.pkl","wb"))
 
     # save label information
-    print(labl_va)
+    #print(labl_va)
     pickle.dump(labl_tr, open(path_save+"bow_tr_labels.pkl","wb"))
     pickle.dump(labl_ts, open(path_save+"bow_ts_labels.pkl","wb"))
     pickle.dump(labl_va, open(path_save+"bow_va_labels.pkl","wb"))
@@ -736,11 +738,11 @@ if __name__ == '__main__':
 
     # get the vocabulary of words, word2id map and id2word map and time2id and id2time maps
     vocab, word2id, id2word, time2id, id2time, time_list, cvz, source_map, label_map, time_map, country_map, docs_map, id_map = get_features(all_docs, stopwords, all_times, all_sources, all_labels, all_countries, all_ids)
-    print(source_map)
-    print(label_map)
-    print(time_map)
-    print(country_map)
-    print(id_map)
+    #print(source_map)
+    #print(label_map)
+    #print(time_map)
+    #print(country_map)
+    #print(id_map)
 
     # split data into train, test and validation and corresponding countries in BOW format
     bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, timestamps_tr, timestamps_ts, time_ts_h1, time_ts_h2, timestamps_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, labl_tr, labl_ts, labl_ts_h1, labl_ts_h2, labl_va, source_tr, source_ts, source_ts_h1, source_ts_h2, source_va, ids_tr, ids_ts, ids_va, ids_ts_h1, ids_ts_h2 = split_data(cvz, all_docs, all_times, word2id, all_countries, source_map, all_labels, label_map, time_map, all_sources, country_map, docs_map, data_ids, id_map, all_ids)
