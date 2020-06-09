@@ -67,41 +67,27 @@ def read_data(data_file):
     #labels = data['WHO_MEASURE'].values
     sources = data['COUNTRY /ORGANIZATION'].values
 
-    # Array initialization for each label 
-    active_case = [] #0
-    adapting = [] #1
-    public_gathering = [] #2
-    mass_gatherings = [] #3
-    private_gatherings = [] #4
-    disinfect = [] #5
-    closing = [] #6
-    internal_land_borders = [] #7
-    international_land_borders = [] #8
-    coding_required = [] #9
-    contact_tracing = [] #10
-    entry_screening = [] #11
-    exit_screening = [] #12
-    financial = [] #13
-    general_public = [] #14
-    isolation = [] #15
-    legal = [] #16
-    face_touch = [] #17
-    Not_interest = [] #18
-    Other = [] #19
-    Passive = [] #20
-    hand =[] #21
-    respiratory = [] #22
-    physical_distance = [] #23
-    Protecting = [] #24
-    closed_settings = [] #25
-    travel_advice = [] #26
-    quarantine = [] #27
-    restrict_entry = [] #28
-    restrict_exit = [] #29
-    restrict_private = [] #30
-    visa = [] #31
-    scaling = [] #32
-    shielding = [] #33
+    #HOW TO MAKE THE 2D ARRAY FOR WHO
+    #1. Make a list of unique summaries : 
+    seen = set()
+    uniq = [] #This is the list of unique summaries
+    for value in docs:
+        if value not in seen:
+            uniq.append(value)
+            seen.add(value)
+    
+    #2. Make 2D array for WHO_measure
+
+    # calling head() method to get row index
+    # storing in new variable  
+    list_rows = data.head()  #Data top is the array with all the row indexes.
+                            # To iterate, just do list_rows.index
+    
+    
+
+
+        
+
     
 
     print(labels)
