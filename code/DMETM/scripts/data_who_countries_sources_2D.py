@@ -111,13 +111,23 @@ def read_data(data_file):
     set_of_elements = set()
 
     for elem in list_elements:
-        
+        i=0
+        index = 0
+        Measure = list_measures[index]
+        Measure_id = 0
+        for measure in array_measures:
+            if measure is Measure:
+                Measure_id = i
+                break
+            else:
+                i = i+1
+
         if elem in set_of_elements:
-            labels_mod[]
+            labels_mod[list_elements.index(elem)][Measure_id] = '1'
+        else:
+            set_of_elements.add(elem)
+            labels_mod[list_elements.index(elem)][Measure_id] = '1'
 
-        
-
-    
 
     print(labels)
     countries_mod = []
