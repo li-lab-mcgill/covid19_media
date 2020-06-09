@@ -67,6 +67,12 @@ def read_data(data_file):
     #labels = data['WHO_MEASURE'].values
     sources = data['COUNTRY /ORGANIZATION'].values
 
+    labels_mod = [[ 0 for value in range(42)] for i in range(len(ppes))] #This initiates an array of 17 columns
+                                                                         # with the number of rows equal to to the length
+                                                                         # of one of the arrays (ex.ppe) 
+                                                                         # and the number of columns equal to 41 (number of labels), which is equal to 
+                                                                         # the number of docs in the document 
+
     #HOW TO MAKE THE 2D ARRAY FOR WHO
     #1. Make a list of unique summaries : 
     seen = set()
@@ -108,6 +114,7 @@ def read_data(data_file):
 
     print('this is length of measure array : {}').format(array_measures)
 
+    #Check for set element to get all the unique values and add 1 to the column of the 2D array if the measure is right
     set_of_elements = set()
 
     for elem in list_elements:
@@ -127,15 +134,10 @@ def read_data(data_file):
         else:
             set_of_elements.add(elem)
             labels_mod[list_elements.index(elem)][Measure_id] = '1'
+    
+    print('This is labels_mod : {}').format(labels_mod)
 
-
-    print(labels)
     countries_mod = []
-    labels_mod = [[ 0 for value in range(42)] for i in range(len(ppes))] #This initiates an array of 17 columns
-                                                                         # with the number of rows equal to to the length
-                                                                         # of one of the arrays (ex.ppe) 
-                                                                         # and the number of columns equal to 41 (number of labels), which is equal to 
-                                                                         # the number of docs in the document 
     sources_mod=[]
 
     #Added read data
@@ -251,11 +253,11 @@ def read_data(data_file):
             countries_mod.append(country)
             #print(countries_mod)
     #Labels
-    for label in labels:
-        if not pd.isna(label):
-            label = label.strip()
-        labels_mod.append(label)
-    print(labels_mod)
+    #for label in labels:
+     #   if not pd.isna(label):
+      #      label = label.strip()
+       # labels_mod.append(label)
+    #print(labels_mod)
 
      #SOURCES
     #for source in sources:
