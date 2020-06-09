@@ -28,6 +28,7 @@ parser.add_argument('--data_path', type=str, default='data/20ng', help='director
 parser.add_argument('--emb_path', type=str, default='data/20ng_embeddings.txt', help='directory containing word embeddings')
 parser.add_argument('--save_path', type=str, default='./results', help='path to save results')
 parser.add_argument('--batch_size', type=int, default=1000, help='input batch size for training')
+parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
@@ -72,7 +73,7 @@ if torch.cuda.is_available():
 
 ## get data
 # 1. vocabulary
-vocab, train, valid, test = data.get_data(os.path.join(args.data_path))
+vocab, train, valid, test = data.get_data(os.path.join(args.data_path, 'min_df_{}'.format(args.min_df)))
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
 
