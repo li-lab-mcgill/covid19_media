@@ -10,7 +10,7 @@ import os
 import math 
 import random 
 import sys
-import matplotlib.pyplot as plt 
+# import matplotlib.pyplot as plt 
 import data
 import scipy.io
 
