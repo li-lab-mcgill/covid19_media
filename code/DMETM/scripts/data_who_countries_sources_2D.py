@@ -82,9 +82,38 @@ def read_data(data_file):
     # storing in new variable  
     list_rows = data.head()  #Data top is the array with all the row indexes.
                             # To iterate, just do list_rows.index
-    
-    
+    list_elements = docs #List of summaries
+    list_measures = data['WHO_MEASURE'].values #list of measures for each row in csv
+    array_measures = ['Active case detection','Adapting',
+    'Cancelling, closing, restricting or adapting public gatherings outside the home',
+    'Cancelling, restricting or adapting mass gatherings', 
+    'Cancelling, restricting or adapting private gatherings outside the home', 
+    'Cleaning and disinfecting surfaces and objects', 'Closing', 'Closing internal land borders', 
+    'Closing international land borders','Coding required', 
+    'Contact tracing', 'Entry screening and isolation or quarantine', 
+    'Exit screening and isolation or quarantine','Financial packages'
+    'General public awareness campaigns', 'Isolation',  'Legal and policy regulations', 
+    'Limiting face touching', 'Not of interest', 'Other',  'Passive case detection', 
+    'Performing hand hygiene', 'Performing respiratory etiquette', 
+    'Physical distancing', 'Protecting displaced populations', 
+    'Protecting populations in closed settings',  'Providing travel advice or warning', 
+    'Quarantine', 'Restricting entry',  'Restricting exit', 
+    'Restricting private gatherings at home',  'Restricting visas', 
+    'Scaling up', 'Shielding vulnerable groups', 'Stay-at-home order', 
+    'Suspending or restricting international ferries or ships', 
+    'Suspending or restricting international flights', 
+    'Suspending or restricting movement','Using antibodies for prevention', 
+    'Using medications for treatment',  'Using other personal protective equipment', 
+    'Wearing a mask']
 
+    print('this is length of measure array : {}').format(array_measures)
+
+    set_of_elements = set()
+
+    for elem in list_elements:
+        
+        if elem in set_of_elements:
+            labels_mod[]
 
         
 
@@ -92,7 +121,7 @@ def read_data(data_file):
 
     print(labels)
     countries_mod = []
-    labels_mod = [[ 0 for value in range(41)] for i in range(len(ppes))] #This initiates an array of 17 columns
+    labels_mod = [[ 0 for value in range(42)] for i in range(len(ppes))] #This initiates an array of 17 columns
                                                                          # with the number of rows equal to to the length
                                                                          # of one of the arrays (ex.ppe) 
                                                                          # and the number of columns equal to 41 (number of labels), which is equal to 
