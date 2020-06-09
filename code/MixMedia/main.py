@@ -19,7 +19,7 @@ from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
-from msdetm import MSDETM
+from mixmedia import MixMedia
 from utils import nearest_neighbors, get_topic_coherence
 
 from IPython.core.debugger import set_trace
@@ -51,7 +51,7 @@ parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure
 # parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt', help='directory containing embeddings')
 
-parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/msdetm', help='path to save results')
+parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/mixmedia', help='path to save results')
 
 parser.add_argument('--batch_size', type=int, default=200, help='number of documents in a batch for training')
 
@@ -104,8 +104,6 @@ parser.add_argument('--visualize_every', type=int, default=1, help='when to visu
 parser.add_argument('--eval_batch_size', type=int, default=1000, help='input batch size for evaluation')
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
-
-parser.add_argument('--compute_tq', type=int, default=0, help='whether to compute topic quality or not')
 
 parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
@@ -261,7 +259,7 @@ if args.mode == 'eval':
     ckpt = args.load_from
 else:
     ckpt = os.path.join(args.save_path, 
-        'msdetm_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}'.format(
+        'mixmedia_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
             args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
             args.train_embeddings, args.predict_labels))
@@ -272,7 +270,7 @@ if args.load_from != '':
     with open(args.load_from, 'rb') as f:
         model = torch.load(f)
 else:
-    model = MSDETM(args, word_embeddings)
+    model = MixMedia(args, word_embeddings)
 print('\nMS-DETM architecture: {}'.format(model))
 model.to(device)
 
@@ -739,19 +737,18 @@ f=open(ckpt+'_test_pdl.txt','w')
 f.write(str(test_pdl))
 f.close()    
 
-if args.compute_tq:
-    tq, tc, td = get_topic_quality()
+tq, tc, td = get_topic_quality()
 
-    f=open(ckpt+'_tq.txt','w')
-    s1="Topic Quality: "+str(tq)
-    s2="Topic Coherence: "+str(tc)
-    s3="Topic Diversity: "+str(td)
-    f.write(s1+'\n'+s2+'\n'+s3+'\n')
-    f.close()
+f=open(ckpt+'_tq.txt','w')
+s1="Topic Quality: "+str(tq)
+s2="Topic Coherence: "+str(tc)
+s3="Topic Diversity: "+str(td)
+f.write(s1+'\n'+s2+'\n'+s3+'\n')
+f.close()
 
-    f=open(ckpt+'_tq.txt','r')
-    [print(i,end='') for i in f.readlines()]
-    f.close()
+f=open(ckpt+'_tq.txt','r')
+[print(i,end='') for i in f.readlines()]
+f.close()
 
 print('visualizing topics and embeddings...')
 visualize()

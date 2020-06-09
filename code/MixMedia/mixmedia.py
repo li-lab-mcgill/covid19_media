@@ -14,9 +14,9 @@ from pdb import set_trace
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-class MSDETM(nn.Module):
+class MixMedia(nn.Module):
     def __init__(self, args, word_embeddings):
-        super(MSDETM, self).__init__()
+        super(MixMedia, self).__init__()
 
         ## define hyperparameters
         self.num_topics = args.num_topics
@@ -50,9 +50,9 @@ class MSDETM(nn.Module):
             self.rho = rho.weight.data.clone().float().to(device)
     
 
-        ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x T x L
-        self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
-        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.num_times, args.rho_size))
+        ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x L
+        self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size))
+        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size))
     
     
         ## define variational distribution for \theta_{1:D} via amortizartion... theta is K x D
@@ -128,25 +128,18 @@ class MSDETM(nn.Module):
         return kl
 
     def get_alpha(self): ## mean field
-        alphas = torch.zeros(self.num_times, self.num_topics, self.rho_size).to(device)
+
+        alphas = torch.zeros(self.num_topics, self.rho_size).to(device)
         kl_alpha = []
 
-        alphas[0] = self.reparameterize(self.mu_q_alpha[:, 0, :], self.logsigma_q_alpha[:, 0, :])
+        alphas = self.reparameterize(self.mu_q_alpha, self.logsigma_q_alpha)
 
         p_mu_0 = torch.zeros(self.num_topics, self.rho_size).to(device)
         logsigma_p_0 = torch.zeros(self.num_topics, self.rho_size).to(device)
-        kl_0 = self.get_kl(self.mu_q_alpha[:, 0, :], self.logsigma_q_alpha[:, 0, :], p_mu_0, logsigma_p_0)
-        kl_alpha.append(kl_0)
-        for t in range(1, self.num_times):
-            alphas[t] = self.reparameterize(self.mu_q_alpha[:, t, :], self.logsigma_q_alpha[:, t, :]) 
-            
-            p_mu_t = alphas[t-1]
-            logsigma_p_t = torch.log(self.delta * torch.ones(self.num_topics, self.rho_size).to(device))
-            kl_t = self.get_kl(self.mu_q_alpha[:, t, :], self.logsigma_q_alpha[:, t, :], p_mu_t, logsigma_p_t)
-            kl_alpha.append(kl_t)
-        kl_alpha = torch.stack(kl_alpha).sum()        
 
-        return alphas, kl_alpha.sum() # T x K x L
+        kl_alpha = self.get_kl(self.mu_q_alpha, self.logsigma_q_alpha, p_mu_0, logsigma_p_0)
+
+        return alphas, kl_alpha.sum() # K x L
 
 
     # ## get source-specific etas
@@ -224,14 +217,13 @@ class MSDETM(nn.Module):
 
 
     def get_beta(self, alpha):
-        """Returns the topic matrix beta of shape T x K x V
+        """Returns the topic matrix beta of shape K x V
         """
         if self.train_embeddings:            
-            logit = self.rho(alpha.view(alpha.size(0)*alpha.size(1), self.rho_size))
-        else:
-            tmp = alpha.view(alpha.size(0)*alpha.size(1), self.rho_size)
-            logit = torch.mm(tmp, self.rho.permute(1, 0)) 
-        logit = logit.view(alpha.size(0), alpha.size(1), -1)
+            logit = self.rho(alpha, self.rho_size)
+        else:            
+            logit = torch.mm(alpha, self.rho.permute(1, 0)) 
+        
         beta = F.softmax(logit, dim=-1)
         return beta 
 
@@ -271,9 +263,6 @@ class MSDETM(nn.Module):
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz
         alpha, kl_alpha = self.get_alpha()
-
-        # unique_sources = np.unique(sources.type('torch.LongTensor').tolist())
-        # eta, kl_eta = self.get_eta_ss(rnn_inp, unique_sources)
         
         eta, kl_eta = self.get_eta(rnn_inp)
 
@@ -281,8 +270,9 @@ class MSDETM(nn.Module):
         kl_theta = kl_theta.sum() * coeff
         
         beta = self.get_beta(alpha)
-        beta = beta[times.type('torch.LongTensor')] # D' x K x V'        
-        nll = self.get_nll(theta, beta, bows)        
+        
+        nll = self.get_nll(theta, beta, bows)
+
         nll = nll.sum() * coeff        
 
         pred_loss = torch.tensor(0.0)
