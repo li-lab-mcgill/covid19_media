@@ -64,11 +64,53 @@ def read_data(data_file):
     docs = data.SUMMARY.values
     timestamps = data['DATE ADDED'].values
     countries = data['COUNTRY /ORGANIZATION'].values
-    labels = data['WHO_MEASURE'].values
+    #labels = data['WHO_MEASURE'].values
     sources = data['COUNTRY /ORGANIZATION'].values
+
+    # Array initialization for each label 
+    active_case = [] #0
+    adapting = [] #1
+    public_gathering = [] #2
+    mass_gatherings = [] #3
+    private_gatherings = [] #4
+    disinfect = [] #5
+    closing = [] #6
+    internal_land_borders = [] #7
+    international_land_borders = [] #8
+    coding_required = [] #9
+    contact_tracing = [] #10
+    entry_screening = [] #11
+    exit_screening = [] #12
+    financial = [] #13
+    general_public = [] #14
+    isolation = [] #15
+    legal = [] #16
+    face_touch = [] #17
+    Not_interest = [] #18
+    Other = [] #19
+    Passive = [] #20
+    hand =[] #21
+    respiratory = [] #22
+    physical_distance = [] #23
+    Protecting = [] #24
+    closed_settings = [] #25
+    travel_advice = [] #26
+    quarantine = [] #27
+    restrict_entry = [] #28
+    restrict_exit = [] #29
+    restrict_private = [] #30
+    visa = [] #31
+    scaling = [] #32
+    shielding = [] #33
+    
+
     print(labels)
     countries_mod = []
-    labels_mod=[]
+    labels_mod = [[ 0 for value in range(41)] for i in range(len(ppes))] #This initiates an array of 17 columns
+                                                                         # with the number of rows equal to to the length
+                                                                         # of one of the arrays (ex.ppe) 
+                                                                         # and the number of columns equal to 41 (number of labels), which is equal to 
+                                                                         # the number of docs in the document 
     sources_mod=[]
 
     #Added read data
