@@ -151,16 +151,22 @@ if len(train_labels.shape) == 2 and args.multiclass_labels == 0:
 
 
 # args.num_times = len(np.unique(train_times))
-timestamps_file = os.path.join(data_file, 'timestamps.pkl')
-all_timestamps = pickle.load(open(timestamps_file, 'rb'))
-args.num_times = len(all_timestamps)
+if args.time_prior:
+    timestamps_file = os.path.join(data_file, 'timestamps.pkl')
+    all_timestamps = pickle.load(open(timestamps_file, 'rb'))
+    args.num_times = len(all_timestamps)
+else:
+    args.num_times = 1
 
 args.num_docs_train = len(train_tokens)
 
 # get all sources
-sources_map_file = os.path.join(data_file, 'sources_map.pkl')
-sources_map = pickle.load(open(sources_map_file, 'rb'))
-args.num_sources = len(sources_map)
+if args.source_prior:
+    sources_map_file = os.path.join(data_file, 'sources_map.pkl')
+    sources_map = pickle.load(open(sources_map_file, 'rb'))
+    args.num_sources = len(sources_map)
+else:
+    args.num_sources = 1
 
 
 # get all labels
