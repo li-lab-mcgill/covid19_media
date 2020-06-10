@@ -219,10 +219,11 @@ def visualize(m, show_emb=True):
 
     m.eval()
 
-    queries = ['andrew', 'computer', 'sports', 'religion', 'man', 'love', 
-                'intelligence', 'money', 'politics', 'health', 'people', 'family']
-
-    # queries = ['border', 'vaccines', 'coronaviruses', 'masks']
+    if args.dataset == "20ng":
+        queries = ['andrew', 'computer', 'sports', 'religion', 'man', 'love', 
+                    'intelligence', 'money', 'politics', 'health', 'people', 'family']
+    else:
+        queries = ['border', 'vaccines', 'coronaviruses', 'masks']
 
     ## visualize topics using monte carlo
     with torch.no_grad():
