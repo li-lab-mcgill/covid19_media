@@ -16,6 +16,7 @@ from tqdm import tqdm
 from sklearn.datasets.base import Bunch
 import pickle as pkl
 from argparse import ArgumentParser
+from datetime import datetime #Add import
 
 
 # Maximum / minimum document frequency
@@ -52,6 +53,7 @@ def read_data(data_file, full_data):
     gphin_data = pd.read_csv(data_file)
     #gphin_data = gphin_data.rename(columns={"COUNTRY /ORGANIZATION":"country"})
 
+    timestamps = [] #Add timestamps array
     # remove null values from data
     gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
     data_ids = gphin_data.index.values
