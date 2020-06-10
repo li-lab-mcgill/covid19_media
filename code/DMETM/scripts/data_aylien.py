@@ -53,14 +53,14 @@ def read_data(data_file, full_data):
     #gphin_data = gphin_data.rename(columns={"COUNTRY /ORGANIZATION":"country"})
 
     # remove null values from data
-    gphin_data = gphin_data[gphin_data['body'].notna()]
+    gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
     data_ids = gphin_data.index.values
     if not full_data:
-        gphin_data = gphin_data[gphin_data['country'].notna()]
+        gphin_data = gphin_data[gphin_data['COUNTRY /ORGANIZATION'].notna()]
 
         # processing the country names by removing leading and trailing spaces and newlines
-        gphin_data.country = gphin_data['country'].apply(lambda x: x.strip(" "))
-        gphin_data.country = gphin_data['country'].apply(lambda x: x.strip("\n"))
+        gphin_data.country = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip(" "))
+        gphin_data.country = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip("\n"))
 
         # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country']
         # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
