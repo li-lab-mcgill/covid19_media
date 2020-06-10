@@ -49,7 +49,7 @@ parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplu
 parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
 
 ### optimization-related arguments
-parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
+parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this...')
 
 parser.add_argument('--epochs', type=int, default=150, help='number of epochs to train...150 for 20ng 100 for others')
