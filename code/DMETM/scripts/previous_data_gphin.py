@@ -468,17 +468,17 @@ def split_data(cvz, docs, timestamps, word2id, countries, source_map, labels, la
     docs_tr = [[word2id[w] for w in docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
     timestamps_tr = [time2id[timestamps[idx_permute[idx_d]]] for idx_d in range(trSize)]
     countries_tr = [source_map[countries[idx_permute[idx_d]]] for idx_d in range(trSize)]
-    labels_tr = [labels_map[labels[idx_permute[idx_d]]] for idx_d in range(trSize)]
+    labels_tr = [labels[idx_permute[idx_d]] for idx_d in range(trSize)]
 
     docs_ts = [[word2id[w] for w in docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(tsSize)]
     timestamps_ts = [time2id[timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
     countries_ts = [source_map[countries[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
-    labels_ts = [labels_map[labels[idx_permute[idx_d+trSize]]] for idx_d in range(tsSize)]
+    labels_ts = [labels[idx_permute[idx_d+trSize]] for idx_d in range(tsSize)]
 
     docs_va = [[word2id[w] for w in docs[idx_permute[idx_d+trSize+tsSize]].split() if w in word2id] for idx_d in range(vaSize)]
     timestamps_va = [time2id[timestamps[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
     countries_va = [source_map[countries[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
-    labels_va = [labels_map[labels[idx_permute[idx_d+trSize+tsSize]]] for idx_d in range(vaSize)]
+    labels_va = [labels[idx_permute[idx_d+trSize+tsSize]] for idx_d in range(vaSize)]
 
     print('  number of documents (train): {} [this should be equal to {} and {}]'.format(len(docs_tr), trSize, len(timestamps_tr)))
     print('  number of documents (test): {} [this should be equal to {} and {}]'.format(len(docs_ts), tsSize, len(timestamps_ts)))
@@ -642,6 +642,11 @@ def save_data(save_dir, timestamps_tr, timestamps_ts, timestamps_va ,time_list, 
     pickle.dump(c_tr, open(path_save+"bow_tr_sources.pkl","wb"))
     pickle.dump(c_ts, open(path_save+"bow_ts_sources.pkl","wb"))
     pickle.dump(c_va, open(path_save+"bow_va_sources.pkl","wb"))
+
+    # save labels array information
+    pickle.dump(l_tr, open(path_save+"bow_tr_labels.pkl","wb"))
+    pickle.dump(l_ts, open(path_save+"bow_ts_labels.pkl","wb"))
+    pickle.dump(l_va, open(path_save+"bow_va_labels.pkl","wb"))
 
     bow_tr_tokens, bow_tr_counts = split_bow(bow_tr, n_docs_tr)
     savemat(path_save + 'bow_tr_tokens.mat', {'tokens': bow_tr_tokens}, do_compression=True)
