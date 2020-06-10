@@ -69,7 +69,6 @@ def read_data(data_file, full_data):
         gphin_data.timestamps = gphin_data['DATE ADDED'].apply(lambda x: x.strip(" "))
         gphin_data.timestamps = gphin_data['DATE ADDED'].apply(lambda x: x.strip("\n"))
 
-
         # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country', 'index', 'timestamps']
         # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
         g_data = {'data':[], 'country':[], 'index':[], 'timestamps':[]}
