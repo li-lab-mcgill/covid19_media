@@ -77,7 +77,7 @@ def read_data(data_file, full_data):
 
         for country in tqdm(countries):
             summary = gphin_data[gphin_data.country == country].SUMMARY.values
-            timestamp = gphin_data[gphin_data.country == country].timestamps.values #Check this in detail
+            timestamp = gphin_data[gphin_data.country == country]['DATE ADDED'].values #Check this in detail
             ind = gphin_data[gphin_data.country == country].index.values
             g_data['data'].extend(summary)
             g_data['country'].extend([country]*len(summary))
@@ -138,10 +138,14 @@ def preprocess(train_data, test_data, full_data):
     if not full_data:
         tr_countries = train_data.country
         ts_countries = test_data.country
+        tr_timestamps = train_data.timestamp
+        ts_timestamps = test_data.timestamp
         init_countries = np.append(tr_countries, ts_countries)
+        init_timestamps = np.append(tr_timestamps, ts_timestamps)
         data_ids = np.append(train_data.index, test_data.index)
     else:
         init_countries = []
+        init_timestamps = []
         data_ids = np.append(train_data.index, test_data.index)
 
     # remove punctuations
@@ -159,7 +163,7 @@ def preprocess(train_data, test_data, full_data):
     init_docs = [[w for w in init_docs[doc] if len(w)>1] for doc in range(len(init_docs))]
     init_docs = [" ".join(init_docs[doc]) for doc in range(len(init_docs))]
 
-    return init_docs, init_docs_tr, init_docs_ts, init_countries, data_ids
+    return init_docs, init_docs_tr, init_docs_ts, init_countries, data_ids, init_timestamps
 
 
 def get_features(init_docs, stops, min_df=min_df, max_df=max_df):
@@ -220,7 +224,7 @@ def split_bow(bow_in, n_docs):
     counts = [[c for c in bow_in[doc,:].data] for doc in range(n_docs)]
     return indices, counts
 
-def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, init_ids, full_data):
+def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, init_ids, full_data, init_timestamps):
 
     # Split in train/test/valid
     print('tokenizing documents and splitting into train/test/valid...')
@@ -242,18 +246,22 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_tr = [[word2id[w] for w in init_docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
     if not full_data:
         countries_tr = [init_countries[idx_permute[idx_d]] for idx_d in range(trSize)]
+        timestamps_tr = [init_timestamps[idx_permute[idx_d]] for idx_d in range(trSize)]
         #ids_tr = [init_ids[idx_permute[idx_d]] for id_x in range(trSize)]
     else:
         countries_tr = []
+        timestamps_tr = []
         #ids_tr = []
     ids_tr = [init_ids[idx_permute[idx_d]] for idx_d in range(trSize)]
 
     docs_va = [[word2id[w] for w in init_docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(vaSize)]
     if not full_data:
         countries_va = [init_countries[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+        timestamps_va = [init_timestamps[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
         #ids_va = [init_ids[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
     else:
         countries_va = []
+        timestamps_va = []
         #ids_va = []
     ids_va = [init_ids[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
 
@@ -261,9 +269,11 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_ts = [[word2id[w] for w in init_docs[idx_d+num_docs_tr].split() if w in word2id] for idx_d in range(tsSize)]
     if not full_data:
         countries_ts = [init_countries[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+        timestamps_ts = [init_timestamps[idx_d+num_docs_tr] for idx_d in range(tsSize)]
         #ids_ts = [init_ids[idx_d+num_docs_tr] for idx_d in range(tsSize)]
     else:
         countries_ts = []
+        timestamps_ts = []
         #ids_ts = []
     ids_ts = [init_ids[idx_d+num_docs_tr] for idx_d in range(tsSize)]
 
@@ -293,9 +303,13 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     if not full_data:
         countries_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
         countries_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
+        timestamps_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc,c in zip(docs_ts,timestamps_ts)]
+        timestamps_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc,c in zip(docs_ts,timestamps_ts)]
     else:
         countries_ts_h1 = []
         countries_ts_h2 = []
+        timestamps_ts_h1 = []
+        timestamps_ts_h2 = []
 
 
     # Getting lists of words and doc_indices
@@ -366,10 +380,10 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     del doc_indices_ts_h2
     del doc_indices_va
 
-    return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, ids_tr, ids_va, ids_ts
+    return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va
 
 
-def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_va, ids_ts, full_data):
+def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_va, ids_ts, full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va):
 
     # Write the vocabulary to a file
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
@@ -395,6 +409,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
     if not full_data:
         pkl.dump(countries_tr, open(path_save + 'bow_tr_countries.pkl',"wb"))
+        pkl.dump(timestamps_tr, open(path_save + 'bow_tr_timestamps.pkl',"wb"))
     pkl.dump(ids_tr, open(path_save + 'bow_tr_ids.pk',"wb"))
 
     del bow_tr
@@ -407,6 +422,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     #savemat(path_save + 'bow_ts_countries.mat', {'countries': countries_ts}, do_compression=True)
     if not full_data:
         pkl.dump(countries_ts, open(path_save + 'bow_ts_countries.pkl',"wb"))
+        pkl.dump(timestamps_ts, open(path_save + 'bow_ts_timestamps.pkl',"wb"))
     pkl.dump(ids_ts, open(path_save + 'bow_ts_ids.pkl',"wb"))
 
     del bow_ts
@@ -420,6 +436,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     #savemat(path_save + 'bow_ts_h1_countries.mat', {'countries': countries_ts_h1}, do_compression=True)
     if not full_data:
         pkl.dump(countries_ts_h1, open(path_save + 'bow_ts_h1_countries.pkl',"wb"))
+        pkl.dump(timestamps_ts_h1, open(path_save + 'bow_ts_h1_timestamps.pkl',"wb"))
 
     del bow_ts_h1
     del bow_ts_h1_tokens
@@ -431,6 +448,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     #savemat(path_save + 'bow_ts_h2_countries.mat', {'countries': countries_ts_h2}, do_compression=True)
     if not full_data:
         pkl.dump(countries_ts_h2, open(path_save + 'bow_ts_h2_countries.pkl',"wb"))
+        pkl.dump(timestamps_ts_h2, open(path_save + 'bow_ts_h2_timestamps.pkl',"wb"))
 
     del bow_ts_h2
     del bow_ts_h2_tokens
@@ -443,6 +461,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     #savemat(path_save + 'bow_va_countries.mat', {'countries': countries_va}, do_compression=True)
     if not full_data:
         pkl.dump(countries_va, open(path_save + 'bow_va_countries.pkl',"wb"))
+        pkl.dump(timestamps_va, open(path_save + 'bow_va_timestamps.pkl',"wb"))
     pkl.dump(ids_va, open(path_save + 'bow_va_ids.pkl','wb'))
 
     del bow_va
@@ -463,7 +482,7 @@ if __name__ == '__main__':
 
     # preprocess the news articles
     print("Preprocessing the articles")
-    all_docs, train_docs, test_docs, init_countries, init_ids = preprocess(train, test, args.full_data)
+    all_docs, train_docs, test_docs, init_countries, init_ids, init_timestamps = preprocess(train, test, args.full_data)
 
     # get a list of stopwords
     #stopwords_en, stopwords_fr = get_stopwords(args.stopwords_path)
@@ -475,7 +494,7 @@ if __name__ == '__main__':
 
     # split data into train, test and validation and corresponding countries in BOW format
     print("Splitting data..\n")
-    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, ids_tr, ids_va, ids_ts = split_data(all_docs, train_docs, test_docs, word2id, init_countries, init_ids, args.full_data)
+    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va = split_data(all_docs, train_docs, test_docs, word2id, init_countries, init_ids, args.full_data, init_timestamps)
 
     print("Saving data..\n")
-    save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, ids_tr, ids_va, ids_ts, args.full_data)
+    save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, ids_tr, ids_va, ids_ts, args.full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va)
