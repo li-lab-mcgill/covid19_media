@@ -108,8 +108,8 @@ def read_data(data_file):
                 try:
                     d = datetime.strptime(timestamp, '%d/%m/%Y')
                 except:
-                    t = timestamp[0:3]+"0"+timestamp[3:]
-                    d = datetime.strptime(t, '%Y-%m-%d')
+                    t = timestamp[0:3]+timestamp[3:]
+                    d = datetime.strptime(t.replace(':','').replace('--','-'), '%Y-%m-%d')
 
             all_times.append(d)
             c = country.strip()
