@@ -67,7 +67,7 @@ def read_data(data_file):
     #labels = data['WHO_MEASURE'].values
     sources = data['COUNTRY /ORGANIZATION'].values
 
-    labels_mod = [[ 0 for value in range(42)] for i in range(len(ppes))] #This initiates an array of 17 columns
+    labels_mod = [[ 0 for value in range(42)] for i in range(len(docs))] #This initiates an array of 17 columns
                                                                          # with the number of rows equal to to the length
                                                                          # of one of the arrays (ex.ppe) 
                                                                          # and the number of columns equal to 41 (number of labels), which is equal to 
@@ -112,7 +112,7 @@ def read_data(data_file):
     'Using medications for treatment',  'Using other personal protective equipment', 
     'Wearing a mask']
 
-    print('this is length of measure array : {}').format(array_measures)
+    print('this is length of measure array : {}'.format(array_measures))
 
     #Check for set element to get all the unique values and add 1 to the column of the 2D array if the measure is right
     set_of_elements = set()
@@ -135,7 +135,7 @@ def read_data(data_file):
             set_of_elements.add(elem)
             labels_mod[list_elements.index(elem)][Measure_id] = '1'
     
-    print('This is labels_mod : {}').format(labels_mod)
+    print('This is labels_mod : {}'.format(labels_mod))
 
     countries_mod = []
     sources_mod=[]
