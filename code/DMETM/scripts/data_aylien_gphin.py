@@ -114,7 +114,7 @@ def read_data(data_file, full_data):
         # converting list to array 
         gphin_data.timestamps = all_times 
             
-        print(gphin_data.timestamps) #Test
+        #print(gphin_data.timestamps) #Test
 
         # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country', 'index', 'timestamps']
         # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
