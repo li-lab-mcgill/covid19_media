@@ -57,7 +57,7 @@ def read_data(data_file, full_data):
 
     timestamps = [] #Add timestamps array, not sure if we need this right now
 
-    #Edit column of csv file to get all the timestamps in weeks:
+    #####Edit column of csv file to get all the timestamps in weeks#####
     import calendar
     import numpy as np
     calendar.setfirstweekday(6) #First weekday is Sunday
@@ -66,7 +66,7 @@ def read_data(data_file, full_data):
     def get_week_of_month(year, month, day):
         x = np.array(calendar.monthcalendar(year, month))
         week_of_month = np.where(x==day)[0][0] + 1
-        return(week_of_month) 
+        return(week_of_month)
 
     # remove null values from data
     gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
@@ -81,6 +81,40 @@ def read_data(data_file, full_data):
         # processing the timestamps by removing leading and trailing spaces and newlines
         gphin_data.timestamps = gphin_data['DATE ADDED'].apply(lambda x: x.strip(" "))
         gphin_data.timestamps = gphin_data['DATE ADDED'].apply(lambda x: x.strip("\n"))
+
+        all_times = []
+
+        #print('This is timestamps')
+        #print(gphin_data.timestamps)
+        #Updating gphin_data.timestamps to give weeks instead
+        for timestamp in gphin_data.timestamps:
+            try:
+                d = datetime.strptime(timestamp, '%m/%d/%Y')
+            except:
+                try:
+                    d = datetime.strptime(timestamp, '%d/%m/%Y')
+                except:
+                    t = timestamp[0:3]+timestamp[3:]
+                    d = datetime.strptime(t.replace(':','').replace('--','-'), '%Y-%m-%d')
+            #Get the week of the month
+            week_month = get_week_of_month(d.year,d.month,d.day)
+            
+            #Original date
+            original_date = '{}-{}-{}'.format(d.year,d.month,d.day)
+            #Test file with original dates for gphin week data
+            date_test = "Original Date (Y,M,D) -> {}, Week Date (Y,M,W) -> {}-0{}-{}    \n".format(original_date, d.isocalendar()[0], d.month, week_month) #Week number instead of days
+            f = open("original_date_week_comparison.txt", "a")
+            f.write(date_test)
+            f.close()
+
+            #Print month and date with week format (1-4)
+            d = "{}-0{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
+            all_times.append(d)
+        
+        # converting list to array 
+        gphin_data.timestamps = all_times 
+            
+        print(gphin_data.timestamps) #Test
 
         # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country', 'index', 'timestamps']
         # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
