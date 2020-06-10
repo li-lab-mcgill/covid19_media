@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--data_path', type=str, default='data/20ng', help='directory containing data')
 
 parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
+parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien/min_df_100', help='directory containing data')
 
 # parser.add_argument('--emb_path', type=str, default='data/20ng_embeddings.txt', help='directory containing word embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/trained_word_emb_aylien.txt', help='directory containing embeddings')
@@ -64,7 +64,7 @@ parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows 
 ### evaluation, visualization, and logging-related arguments
 parser.add_argument('--num_words', type=int, default=10, help='number of words for topic viz')
 parser.add_argument('--log_interval', type=int, default=2, help='when to log training')
-parser.add_argument('--visualize_every', type=int, default=10, help='when to visualize results')
+parser.add_argument('--visualize_every', type=int, default=1, help='when to visualize results')
 parser.add_argument('--eval_batch_size', type=int, default=1000, help='input batch size for evaluation')
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute topic coherence or not')
