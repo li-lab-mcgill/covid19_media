@@ -608,7 +608,7 @@ else:
         model = torch.load(f, map_location=device)
     model = model.to(device)
 
-ckpt = os.path.join(args.save_path, os.path.basename(args.load_from))
+    ckpt = os.path.join(args.save_path, os.path.basename(args.load_from))
         
 print('saving alpha...')
 with torch.no_grad():
