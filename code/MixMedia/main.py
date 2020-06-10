@@ -31,8 +31,8 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_all_sources', help='directory containing data')
@@ -40,8 +40,8 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_media_data', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='gphin_all_sources', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_all_sources', help='directory containing data')
@@ -52,10 +52,10 @@ parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid
 
 parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covid19_media/results/mixmedia', help='path to save results')
 
-parser.add_argument('--batch_size', type=int, default=200, help='number of documents in a batch for training')
+parser.add_argument('--batch_size', type=int, default=1000, help='number of documents in a batch for training')
 
-# parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
-parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
+parser.add_argument('--min_df', type=int, default=10, help='to get the right data..minimum document frequency')
+# parser.add_argument('--min_df', type=int, default=100, help='to get the right data..minimum document frequency')
 
 ### model-related arguments
 parser.add_argument('--num_topics', type=int, default=10, help='number of topics')
@@ -108,6 +108,10 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
+parser.add_argument('--time_prior', type=int, default=0, help='whether to use time-dependent topic prior')
+parser.add_argument('--source_prior', type=int, default=0, help='whether to use source-specific topic prior')
+
+
 args = parser.parse_args()
 
 
@@ -125,7 +129,7 @@ torch.manual_seed(args.seed)
 print('Getting vocabulary ...')
 data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
 
-vocab, train, valid, test = data.get_data(data_file, temporal=True, predict=args.predict_labels)
+vocab, train, valid, test = data.get_data(data_file, temporal=True, predict=args.predict_labels, use_time=args.time_prior, use_source=args.source_prior)
 
 vocab_size = len(vocab)
 args.vocab_size = vocab_size

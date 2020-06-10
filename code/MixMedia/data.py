@@ -34,7 +34,7 @@ def _fetch(path, name):
         'counts_1': counts_1, 'tokens_2': tokens_2, 'counts_2': counts_2}
     return {'tokens': tokens, 'counts': counts}
 
-def _fetch_temporal(path, name, predict=True):
+def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True):
     
     if name == 'train':
         token_file = os.path.join(path, 'bow_tr_tokens')
@@ -61,8 +61,17 @@ def _fetch_temporal(path, name, predict=True):
     
     tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
     counts = scipy.io.loadmat(count_file)['counts'].squeeze()
-    times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
-    sources = np.array(pickle.load(open(source_file, 'rb')))
+    
+    if use_time:
+        times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
+    else:
+        times = np.zeros(tokens.shape[0])
+
+
+    if use_source:
+        sources = np.array(pickle.load(open(source_file, 'rb')))
+    else:
+        sources = np.zeros(tokens.shape[0])
 
     if predict:
         labels = np.array(pickle.load(open(label_file, 'rb')))
@@ -85,7 +94,7 @@ def _fetch_temporal(path, name, predict=True):
 
     return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources, 'labels': labels}
 
-def get_data(path, temporal=False, predict=False):
+def get_data(path, temporal=False, predict=False, use_time=False, use_source=False):
     ### load vocabulary
     with open(os.path.join(path, 'vocab.pkl'), 'rb') as f:
         vocab = pickle.load(f)
@@ -95,9 +104,9 @@ def get_data(path, temporal=False, predict=False):
         valid = _fetch(path, 'valid')
         test = _fetch(path, 'test')
     else:
-        train = _fetch_temporal(path, 'train', predict)
-        valid = _fetch_temporal(path, 'valid', predict)
-        test = _fetch_temporal(path, 'test', predict)
+        train = _fetch_temporal(path, 'train', predict, use_time, use_source)
+        valid = _fetch_temporal(path, 'valid', predict, use_time, use_source)
+        test = _fetch_temporal(path, 'test', predict, use_time, use_source)
 
     return vocab, train, valid, test
 
