@@ -70,18 +70,20 @@ def read_data(data_file, full_data):
         gphin_data.timestamps = gphin_data['DATE ADDED'].apply(lambda x: x.strip("\n"))
 
 
-        # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country']
+        # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country', 'index', 'timestamps']
         # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
-        g_data = {'data':[], 'country':[], 'index':[]}
+        g_data = {'data':[], 'country':[], 'index':[], 'timestamps':[]}
         countries = gphin_data.country.unique()
         countries_to_idx = {country: str(idx) for idx, country in enumerate(gphin_data.country.unique())}
 
         for country in tqdm(countries):
             summary = gphin_data[gphin_data.country == country].SUMMARY.values
+            timestamp = gphin_data[gphin_data.country == country].timestamps.values #Check this in detail
             ind = gphin_data[gphin_data.country == country].index.values
             g_data['data'].extend(summary)
             g_data['country'].extend([country]*len(summary))
             g_data['index'].extend(ind)
+            g_data['timestamps'].extend(timestamp)
     else:
         g_data = {'data':gphin_data.body.values, 'index':data_ids}
         countries_to_idx = {}
