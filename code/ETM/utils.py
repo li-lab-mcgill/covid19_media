@@ -76,9 +76,9 @@ def get_topic_coherence(beta, data, vocab):
 def nearest_neighbors(word, embeddings, vocab):
     vectors = embeddings.data.cpu().numpy() 
     index = vocab.index(word)
-    print('vectors: ', vectors.shape)
+    # print('vectors: ', vectors.shape)
     query = vectors[index]
-    print('query: ', query.shape)
+    # print('query: ', query.shape)
     ranks = vectors.dot(query).squeeze()
     denom = query.T.dot(query).squeeze()
     denom = denom * np.sum(vectors**2, 1)

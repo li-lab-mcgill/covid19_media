@@ -23,11 +23,11 @@ from utils import nearest_neighbors, get_topic_coherence, get_topic_diversity
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-# parser.add_argument('--dataset', type=str, default='20ng', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='data/20ng', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='20ng', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='data/20ng', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien/min_df_100', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien/min_df_100', help='directory containing data')
 
 # parser.add_argument('--emb_path', type=str, default='data/20ng_embeddings.txt', help='directory containing word embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/trained_word_emb_aylien.txt', help='directory containing embeddings')
@@ -45,12 +45,15 @@ parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho'
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
-parser.add_argument('--train_embeddings', type=int, default=0, help='whether to fix rho or train it')
+
+parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
 
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.005, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this...')
-parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train...150 for 20ng 100 for others')
+
+parser.add_argument('--epochs', type=int, default=150, help='number of epochs to train...150 for 20ng 100 for others')
+
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2019, help='random seed (default: 1)')
@@ -216,10 +219,10 @@ def visualize(m, show_emb=True):
 
     m.eval()
 
-    # queries = ['andrew', 'computer', 'sports', 'religion', 'man', 'love', 
-    #             'intelligence', 'money', 'politics', 'health', 'people', 'family']
+    queries = ['andrew', 'computer', 'sports', 'religion', 'man', 'love', 
+                'intelligence', 'money', 'politics', 'health', 'people', 'family']
 
-    queries = ['border', 'vaccines', 'coronaviruses', 'masks']
+    # queries = ['border', 'vaccines', 'coronaviruses', 'masks']
 
     ## visualize topics using monte carlo
     with torch.no_grad():
