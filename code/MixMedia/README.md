@@ -1,12 +1,16 @@
-# SDETM
+# MixMedia
 
-The SDETM is an extension of the Dynamic Embedded Topic Model (Dieng et al., arXiv 2019)  to corpora to model the topic evolution with temporal dependencies and predict document label simultaneously. 
+The MixMedia models the source-specific dynamic topic prior evolution with temporal dependencies and predict document label simultaneously. 
 
 [TODO]
 
-Same as in DETM, the SDETM models each word with a categorical distribution whose parameter is given by the inner product between the word embedding and an embedding representation of its assigned topic at a particular time step. The word embeddings allow the SDETM to generalize to rare words. The SDETM learns smooth topic trajectories by defining a random walk prior over the embeddings of the topics. The SDETM is fit using structured amortized variational inference with LSTMs.
+Same as in DETM, the MixMedia models each word with a categorical distribution whose parameter is given by the inner product between the word embedding and an embedding representation of its assigned topic at a particular time step. The word embeddings allow the MixMedia to generalize to rare words. 
 
-In contrast to DETM, SDETM also trains a linear classifier to predict document labels using the topic mixture. Hence, the model updates the topic embeddings to learn better not only the representation of the documents but also the label prediction of the documents.
+The MixMedia learns smooth topic trajectories by defining a random walk prior. The MixMedia is fit using structured amortized variational inference with LSTMs.
+
+In contrast to DETM, MixMedia fix the topic embedding, which is a more efficient and is also more suitable for modeling temporal documents with short time gap. Empirically, the topic analysis is also much easier with a fixed set of topics.
+
+In contrast to DETM, MixMedia also trains a linear classifier to predict document labels using the topic mixture. Hence, the model updates the topic embeddings to learn better not only the representation of the documents but also the label prediction of the documents.
 
 ## Dependencies
 
