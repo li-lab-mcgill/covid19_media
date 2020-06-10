@@ -88,8 +88,10 @@ def read_data(data_file):
     # storing in new variable  
     list_rows = data.head()  #Data top is the array with all the row indexes.
                             # To iterate, just do list_rows.index
-    list_elements = docs #List of summaries
+    list_elements = docs.tolist() #List of summaries as array
     list_measures = data['WHO_MEASURE'].values #list of measures for each row in csv
+    
+    #Array list of measure names
     array_measures = ['Active case detection','Adapting',
     'Cancelling, closing, restricting or adapting public gatherings outside the home',
     'Cancelling, restricting or adapting mass gatherings', 
@@ -97,7 +99,7 @@ def read_data(data_file):
     'Cleaning and disinfecting surfaces and objects', 'Closing', 'Closing internal land borders', 
     'Closing international land borders','Coding required', 
     'Contact tracing', 'Entry screening and isolation or quarantine', 
-    'Exit screening and isolation or quarantine','Financial packages'
+    'Exit screening and isolation or quarantine','Financial packages',
     'General public awareness campaigns', 'Isolation',  'Legal and policy regulations', 
     'Limiting face touching', 'Not of interest', 'Other',  'Passive case detection', 
     'Performing hand hygiene', 'Performing respiratory etiquette', 
@@ -112,30 +114,32 @@ def read_data(data_file):
     'Using medications for treatment',  'Using other personal protective equipment', 
     'Wearing a mask']
 
-    print('this is length of measure array : {}'.format(array_measures))
+    print('this is length of measure array : {}'.format(len(array_measures)))
 
     #Check for set element to get all the unique values and add 1 to the column of the 2D array if the measure is right
     set_of_elements = set()
-
+    index = 0
     for elem in list_elements:
         i=0
-        index = 0
-        Measure = list_measures[index]
+        if index < 41:
+            Measure = list_measures[index] 
         Measure_id = 0
         for measure in array_measures:
-            if measure is Measure:
+            if measure in Measure:
                 Measure_id = i
-                break
             else:
                 i = i+1
+                index = index+1 
 
         if elem in set_of_elements:
-            labels_mod[list_elements.index(elem)][Measure_id] = '1'
+            labels_mod[uniq.index(elem)][Measure_id] = '1'
         else:
             set_of_elements.add(elem)
-            labels_mod[list_elements.index(elem)][Measure_id] = '1'
+            labels_mod[uniq.index(elem)][Measure_id] = '1'
     
     print('This is labels_mod : {}'.format(labels_mod))
+
+    twoDarray_label = labels_mod
 
     countries_mod = []
     sources_mod=[]
@@ -283,8 +287,8 @@ def read_data(data_file):
         return(week_of_month)
 
     #Important for preprocessing by weeks :
-    for (doc, timestamp, country, label, source) in zip(docs, timestamps, countries_mod, labels_mod, sources_mod):
-        if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country) or pd.isna(label) or pd.isna(source):
+    for (doc, timestamp, country, source) in zip(docs, timestamps, countries_mod, sources_mod):
+        if pd.isna(doc) or pd.isna(timestamp) or pd.isna(country) or pd.isna(source):
             continue
         doc = doc.encode('ascii',errors='ignore').decode()
         doc = doc.lower().replace('\n', ' ').replace("’", " ").replace("'", " ").translate(str.maketrans(string.punctuation + "0123456789", ' '*len(string.punctuation + "0123456789"))).split()
@@ -315,11 +319,9 @@ def read_data(data_file):
             d = "{}-0{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
             all_times.append(d)
             c = country.strip()
-            l = label.strip()
             s = source.strip()
             #print(c)
             all_countries.append(c)
-            all_labels.append(l)
             all_sources.append(s)
             #print(all_labels) This works, gives all the labels in an array all_labels
     print(all_times)
