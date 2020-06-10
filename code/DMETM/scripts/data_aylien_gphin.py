@@ -111,8 +111,15 @@ def read_data(data_file, full_data):
             d = "{}-0{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
             all_times.append(d)
         
-        # converting list to array 
-        gphin_data.timestamps = all_times 
+        #csv original date
+        date_original = gphin_data['DATE ADDED']
+        print(date_original)
+        
+        #Update column value with weeks array : 
+        gphin_data['DATE ADDED'] = all_times
+        
+        print('This is gphin data')
+        print(gphin_data)
             
         #print(gphin_data.timestamps) #Test
 
