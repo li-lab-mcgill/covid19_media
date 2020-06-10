@@ -35,17 +35,17 @@ All the scripts to pre-process a dataset can be found in the folder 'scripts'.
 To run the SDETM on the WHO dataset you can run the command below. You can specify different values for other arguments, peek at the arguments list in main.py.
 
 ```
-python main.py --dataset who --data_path PATH_TO_DATA --emb_path PATH_TO_EMBEDDINGS --min_df 10 --num_topics 50 --lr 0.0001 --epochs 1000 --mode train
+python main.py --dataset WHO --data_path PATH_TO_DATA --emb_path PATH_TO_EMBEDDINGS --min_df 10 --num_topics 50 --lr 0.0001 --epochs 1000 --mode train
 ```
 
 
 ## Citation
 ```
-@article{dieng2019dynamic,
-  title={The Dynamic Embedded Topic Model},
-  author={Dieng, Adji B and Ruiz, Francisco JR and Blei, David M},
-  journal={arXiv preprint arXiv:1907.05545},
-  year={2019}
+@article{li2020mixmedia,
+  title={MixMedia},
+  author={Li et al},
+  journal={arXiv preprint},
+  year={2020}
 }
 ```
 
