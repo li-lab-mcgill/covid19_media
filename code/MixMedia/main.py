@@ -70,14 +70,13 @@ parser.add_argument('--train_embeddings', type=int, default=0, help='whether to 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
 
-
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
-parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=150, help='number of epochs to train')
 
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 # parser.add_argument('--mode', type=str, default='eval_model', help='train or eval model')
@@ -97,7 +96,6 @@ parser.add_argument('--bow_norm', type=int, default=1, help='normalize the bows 
 
 ### evaluation, visualization, and logging-related arguments
 parser.add_argument('--num_words', type=int, default=20, help='number of words for topic viz')
-
 parser.add_argument('--log_interval', type=int, default=10, help='when to log training')
 
 parser.add_argument('--visualize_every', type=int, default=1, help='when to visualize results')
