@@ -53,7 +53,8 @@ def read_data(data_file, full_data):
     gphin_data = pd.read_csv(data_file)
     #gphin_data = gphin_data.rename(columns={"COUNTRY /ORGANIZATION":"country"})
 
-    timestamps = [] #Add timestamps array
+    timestamps = [] #Add timestamps array, not sure if we need this right now
+
     # remove null values from data
     gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
     data_ids = gphin_data.index.values
@@ -63,6 +64,11 @@ def read_data(data_file, full_data):
         # processing the country names by removing leading and trailing spaces and newlines
         gphin_data.country = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip(" "))
         gphin_data.country = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip("\n"))
+
+        # processing the timestamps by removing leading and trailing spaces and newlines
+        gphin_data.timestamps = gphin_data['DATE ADDED'].apply(lambda x: x.strip(" "))
+        gphin_data.timestamps = gphin_data['DATE ADDED'].apply(lambda x: x.strip("\n"))
+
 
         # from the dataframe, store the data in the form of a dictionary with keys = ['data', 'country']
         # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
