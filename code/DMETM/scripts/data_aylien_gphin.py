@@ -18,6 +18,8 @@ import pickle as pkl
 from argparse import ArgumentParser
 from datetime import datetime #Add import
 
+#Split is fixed
+np.random.seed(0)
 
 # Maximum / minimum document frequency
 max_df = 0.7
@@ -54,6 +56,17 @@ def read_data(data_file, full_data):
     #gphin_data = gphin_data.rename(columns={"COUNTRY /ORGANIZATION":"country"})
 
     timestamps = [] #Add timestamps array, not sure if we need this right now
+
+    #Edit column of csv file to get all the timestamps in weeks:
+    import calendar
+    import numpy as np
+    calendar.setfirstweekday(6) #First weekday is Sunday
+
+    #Method to get week from date
+    def get_week_of_month(year, month, day):
+        x = np.array(calendar.monthcalendar(year, month))
+        week_of_month = np.where(x==day)[0][0] + 1
+        return(week_of_month) 
 
     # remove null values from data
     gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
@@ -166,7 +179,7 @@ def preprocess(train_data, test_data, full_data):
     return init_docs, init_docs_tr, init_docs_ts, init_countries, data_ids, init_timestamps
 
 
-def get_features(init_docs, stops, min_df=min_df, max_df=max_df):
+def get_features(init_timestamps, init_docs, stops, min_df=min_df, max_df=max_df):
 
     # Create count vectorizer
     print('counting document frequency of words...')
@@ -204,7 +217,13 @@ def get_features(init_docs, stops, min_df=min_df, max_df=max_df):
     word2id = dict([(w, j) for j, w in enumerate(vocab)])
     id2word = dict([(j, w) for j, w in enumerate(vocab)])
 
-    return vocab, word2id, id2word
+    # Create mapping of timestamps
+    all_times = sorted(set(init_timestamps))
+    time2id = dict([(t, i) for i, t in enumerate(all_times)])
+    id2time = dict([(i, t) for i, t in enumerate(all_times)])
+    time_list = [id2time[i] for i in range(len(all_times))]
+
+    return vocab, word2id, id2word, time2id, id2time, time_list
 
 def remove_empty(in_docs):
     return [doc for doc in in_docs if doc!=[]]
@@ -223,6 +242,8 @@ def split_bow(bow_in, n_docs):
     indices = [[w for w in bow_in[doc,:].indices] for doc in range(n_docs)]
     counts = [[c for c in bow_in[doc,:].data] for doc in range(n_docs)]
     return indices, counts
+
+
 
 def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, init_ids, full_data, init_timestamps):
 
@@ -244,9 +265,9 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
     # Split in train/test/valid
     docs_tr = [[word2id[w] for w in init_docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
+    timestamps_tr = [time2id[init_timestamps[idx_permute[idx_d]]] for idx_d in range(trSize)]
     if not full_data:
         countries_tr = [init_countries[idx_permute[idx_d]] for idx_d in range(trSize)]
-        timestamps_tr = [init_timestamps[idx_permute[idx_d]] for idx_d in range(trSize)]
         #ids_tr = [init_ids[idx_permute[idx_d]] for id_x in range(trSize)]
     else:
         countries_tr = []
@@ -255,9 +276,9 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     ids_tr = [init_ids[idx_permute[idx_d]] for idx_d in range(trSize)]
 
     docs_va = [[word2id[w] for w in init_docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(vaSize)]
+    timestamps_va = [time2id[init_timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(vaSize)]
     if not full_data:
         countries_va = [init_countries[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
-        timestamps_va = [init_timestamps[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
         #ids_va = [init_ids[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
     else:
         countries_va = []
@@ -267,9 +288,9 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
 
     docs_ts = [[word2id[w] for w in init_docs[idx_d+num_docs_tr].split() if w in word2id] for idx_d in range(tsSize)]
+    timestamps_ts = [time2id[init_timestamps[idx_d+num_docs_tr]] for idx_d in range(tsSize)]
     if not full_data:
         countries_ts = [init_countries[idx_d+num_docs_tr] for idx_d in range(tsSize)]
-        timestamps_ts = [init_timestamps[idx_d+num_docs_tr] for idx_d in range(tsSize)]
         #ids_ts = [init_ids[idx_d+num_docs_tr] for idx_d in range(tsSize)]
     else:
         countries_ts = []
@@ -382,8 +403,28 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
     return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va
 
+# Write files for LDA C++ code
+def write_lda_file(filename, timestamps_in, time_list_in, bow_in):
+    idxSort = np.argsort(timestamps_in)
+    
+    with open(filename, "w") as f:
+        for row in idxSort:
+            x = bow_in.getrow(row)
+            n_elems = x.count_nonzero()
+            f.write(str(n_elems))
+            if(n_elems != len(x.indices) or n_elems != len(x.data)):
+                raise ValueError("[ERR] THIS SHOULD NOT HAPPEN")
+            for ii, dd in zip(x.indices, x.data):
+                f.write(' ' + str(ii) + ':' + str(dd))
+            f.write('\n')
+            
+    with open(filename.replace("-mult", "-seq"), "w") as f:
+        f.write(str(len(time_list_in)) + '\n')
+        for idx_t, _ in enumerate(time_list_in):
+            n_elem = len([t for t in timestamps_in if t==idx_t])
+            f.write(str(n_elem) + '\n')
 
-def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_va, ids_ts, full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va):
+def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_va, ids_ts, full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list):
 
     # Write the vocabulary to a file
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
@@ -393,6 +434,14 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     with open(path_save + 'vocab.pkl', 'wb') as f:
         pickle.dump(vocab, f)
     del vocab
+
+
+    with open(path_save + 'timestamps.txt', "w") as f:
+        for t in time_list:
+            f.write(str(t) + '\n')
+
+    with open(path_save + 'timestamps.pkl', 'wb') as f:
+        pickle.dump(time_list, f)
     
     # all countries
     if not full_data:
@@ -406,10 +455,11 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
     savemat(path_save + 'bow_tr_tokens.mat', {'tokens': bow_tr_tokens}, do_compression=True)
     savemat(path_save + 'bow_tr_counts.mat', {'counts': bow_tr_counts}, do_compression=True)
+   
 
     if not full_data:
         pkl.dump(countries_tr, open(path_save + 'bow_tr_countries.pkl',"wb"))
-        pkl.dump(timestamps_tr, open(path_save + 'bow_tr_timestamps.pkl',"wb"))
+        savemat(path_save + 'bow_tr_timestamps.mat', {'timestamps': timestamps_tr}, do_compression=True)
     pkl.dump(ids_tr, open(path_save + 'bow_tr_ids.pk',"wb"))
 
     del bow_tr
@@ -422,7 +472,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     #savemat(path_save + 'bow_ts_countries.mat', {'countries': countries_ts}, do_compression=True)
     if not full_data:
         pkl.dump(countries_ts, open(path_save + 'bow_ts_countries.pkl',"wb"))
-        pkl.dump(timestamps_ts, open(path_save + 'bow_ts_timestamps.pkl',"wb"))
+        savemat(path_save + 'bow_ts_timestamps.mat', {'timestamps': timestamps_ts}, do_compression=True)
     pkl.dump(ids_ts, open(path_save + 'bow_ts_ids.pkl',"wb"))
 
     del bow_ts
@@ -436,7 +486,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     #savemat(path_save + 'bow_ts_h1_countries.mat', {'countries': countries_ts_h1}, do_compression=True)
     if not full_data:
         pkl.dump(countries_ts_h1, open(path_save + 'bow_ts_h1_countries.pkl',"wb"))
-        pkl.dump(timestamps_ts_h1, open(path_save + 'bow_ts_h1_timestamps.pkl',"wb"))
+        savemat(path_save + 'bow_va_timestamps.mat', {'timestamps': timestamps_va}, do_compression=True)
 
     del bow_ts_h1
     del bow_ts_h1_tokens
@@ -490,11 +540,11 @@ if __name__ == '__main__':
 
     # get the vocabulary of words, word2id map and id2word map
     print("\nGetting features..\n")
-    vocab, word2id, id2word = get_features(all_docs, stopwords)
+    vocab, word2id, id2word, time2id, id2time, time_list = get_features(init_timestamps, all_docs, stopwords)
 
     # split data into train, test and validation and corresponding countries in BOW format
     print("Splitting data..\n")
     bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va = split_data(all_docs, train_docs, test_docs, word2id, init_countries, init_ids, args.full_data, init_timestamps)
 
     print("Saving data..\n")
-    save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, ids_tr, ids_va, ids_ts, args.full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va)
+    save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, ids_tr, ids_va, ids_ts, args.full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list)
