@@ -34,15 +34,14 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_all_sources', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_all_sources', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_media_data', help='directory containing data')
 
-
-# parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='gphin_all_sources', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_all_sources', help='directory containing data')
@@ -79,8 +78,8 @@ parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learnin
 
 parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
 
-# parser.add_argument('--mode', type=str, default='train', help='train or eval model')
-parser.add_argument('--mode', type=str, default='eval_model', help='train or eval model')
+parser.add_argument('--mode', type=str, default='train', help='train or eval model')
+# parser.add_argument('--mode', type=str, default='eval_model', help='train or eval model')
 
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
 parser.add_argument('--seed', type=int, default=2020, help='random seed (default: 1)')
@@ -125,7 +124,7 @@ torch.manual_seed(args.seed)
 print('Getting vocabulary ...')
 data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
 
-vocab, train, valid, test = data.get_data(data_file, temporal=True)
+vocab, train, valid, test = data.get_data(data_file, temporal=True, predict=args.predict_labels)
 
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
@@ -160,9 +159,10 @@ args.num_sources = len(sources_map)
 
 
 # get all labels
-labels_map_file = os.path.join(data_file, 'labels_map.pkl')
-labels_map = pickle.load(open(labels_map_file, 'rb'))
-args.num_labels = len(labels_map)
+if args.predict_labels:
+    labels_map_file = os.path.join(data_file, 'labels_map.pkl')
+    labels_map = pickle.load(open(labels_map_file, 'rb'))
+    args.num_labels = len(labels_map)
 
 
 train_rnn_inp = data.get_rnn_input(
@@ -383,20 +383,19 @@ def visualize():
     with torch.no_grad():
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha) 
-        print('beta: ', beta.size())
+        
         print('\n')
         print('#'*100)
         print('Visualize topics...')
         # times = [0, 10, 40]
         times = [0, int(beta.shape[1]/2), beta.shape[1]-1]
         topics_words = []
-        for k in range(args.num_topics):
-            for t in times:
-                gamma = beta[k, t, :]
-                top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])                
-                topic_words = [vocab[a] for a in top_words]
-                topics_words.append(' '.join(topic_words))
-                print('Topic {} .. Time: {} ===> {}'.format(k, t, topic_words)) 
+        for k in range(args.num_topics):            
+            gamma = beta[k, :]
+            top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])                
+            topic_words = [vocab[a] for a in top_words]
+            topics_words.append(' '.join(topic_words))
+            print('Topic {} .. ===> {}'.format(k, topic_words)) 
 
         print('\n')
         print('Visualize word embeddings ...')
@@ -490,13 +489,9 @@ def get_completion_ppl(source):
                     normalized_data_batch = data_batch
                 
                 theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
-                alpha_td = alpha[:, times_batch.type('torch.LongTensor'), :]                
-                
-                beta = model.get_beta(alpha_td).permute(1, 0, 2)
-                loglik = theta.unsqueeze(2) * beta
-                loglik = loglik.sum(1)                
-                loglik = torch.log(loglik)
-                nll = -loglik * data_batch
+                                
+                beta = model.get_beta(alpha)
+                nll = -torch.log(torch.mm(theta, beta)) * data_batch
                 nll = nll.sum(-1)
                 loss = nll / sums.squeeze()
                 loss = loss.mean().item()
@@ -556,12 +551,9 @@ def get_completion_ppl(source):
                     args.vocab_size, args.emb_size, temporal=True, times=test_times)
 
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
-
-                alpha_td = alpha[:, times_batch_2.type('torch.LongTensor'), :]
-                beta = model.get_beta(alpha_td).permute(1, 0, 2)
-                loglik = theta.unsqueeze(2) * beta
-                loglik = loglik.sum(1)
-                loglik = torch.log(loglik)                
+                
+                beta = model.get_beta(alpha)
+                loglik = torch.log(torch.mm(theta, beta))                 
                 nll = -loglik * data_batch_2
                 nll = nll.sum(-1)
                 loss = nll / sums_2.squeeze()
@@ -615,9 +607,8 @@ def get_topic_quality():
         print('#'*100)
         print('Get topic diversity...')
         num_tops = 25
-        TD_all = np.zeros((args.num_times,))
-        for tt in range(args.num_times):
-            TD_all[tt] = _diversity_helper(beta[:, tt, :], num_tops)
+
+        TD_all = _diversity_helper(beta, num_tops)            
         
         TD = np.mean(TD_all)
         print('Topic Diversity is: {}'.format(TD))
@@ -625,17 +616,12 @@ def get_topic_quality():
         print('\n')
         print('Get topic coherence...')
         print('train_tokens: ', train_tokens[0])
-        TC_all = []
-        cnt_all = []
-        for tt in range(args.num_times):            
-            tc, cnt = get_topic_coherence(beta[:, tt, :].cpu().detach().numpy(), train_tokens, vocab)
-            TC_all.append(tc)
-            cnt_all.append(cnt)
-        
+             
+        TC_all, cnt_all = get_topic_coherence(beta.cpu().detach().numpy(), train_tokens, vocab)
+
         TC_all = torch.tensor(TC_all)
         cnt_all = torch.tensor(cnt_all)
-        TC_all = TC_all / cnt_all[0].item()
-        TC_all[TC_all<0] = 0
+        TC_all = TC_all / cnt_all
 
         TC = TC_all.mean().item()
         print('Topic Coherence is: ', TC)
@@ -658,8 +644,9 @@ if args.mode == 'train':
     
     for epoch in range(1, args.epochs):
         train(epoch)
-        # if epoch % args.visualize_every == 0:
-        #     visualize()
+        
+        if epoch % args.visualize_every == 0:
+            visualize()
         
         # print(model.classifier.weight)
 

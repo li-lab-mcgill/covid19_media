@@ -34,41 +34,40 @@ def _fetch(path, name):
         'counts_1': counts_1, 'tokens_2': tokens_2, 'counts_2': counts_2}
     return {'tokens': tokens, 'counts': counts}
 
-def _fetch_temporal(path, name):
+def _fetch_temporal(path, name, predict=True):
     
     if name == 'train':
         token_file = os.path.join(path, 'bow_tr_tokens')
         count_file = os.path.join(path, 'bow_tr_counts')
         time_file = os.path.join(path, 'bow_tr_timestamps')
         source_file = os.path.join(path, 'bow_tr_sources.pkl')
-        label_file = os.path.join(path, 'bow_tr_labels.pkl')
+
+        if predict:
+            label_file = os.path.join(path, 'bow_tr_labels.pkl')
     elif name == 'valid':
         token_file = os.path.join(path, 'bow_va_tokens')
         count_file = os.path.join(path, 'bow_va_counts')
         time_file = os.path.join(path, 'bow_va_timestamps')
         source_file = os.path.join(path, 'bow_va_sources.pkl')
-        label_file = os.path.join(path, 'bow_va_labels.pkl')
+        if predict:
+            label_file = os.path.join(path, 'bow_va_labels.pkl')
     else:
         token_file = os.path.join(path, 'bow_ts_tokens')
         count_file = os.path.join(path, 'bow_ts_counts')
         time_file = os.path.join(path, 'bow_ts_timestamps')
         source_file = os.path.join(path, 'bow_ts_sources.pkl')
-        label_file = os.path.join(path, 'bow_ts_labels.pkl')    
+        if predict:
+            label_file = os.path.join(path, 'bow_ts_labels.pkl')    
     
     tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
     counts = scipy.io.loadmat(count_file)['counts'].squeeze()
     times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
     sources = np.array(pickle.load(open(source_file, 'rb')))
-    labels = np.array(pickle.load(open(label_file, 'rb')))
 
-
-    # DEMO MULTI-CLASS ONLY (START)
-    # targets = torch.zeros(len(tokens), 10)
-    # for i in range(len(tokens)):
-    #     targets[i,labels[i]] = 1
-    # labels = targets
-    # DEMO MULTI-CLASS ONLY (END)
-
+    if predict:
+        labels = np.array(pickle.load(open(label_file, 'rb')))
+    else:
+        labels = np.zeros(tokens.shape[0])
 
     if name == 'test':
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
@@ -79,13 +78,14 @@ def _fetch_temporal(path, name):
         counts_1 = scipy.io.loadmat(count_1_file)['counts'].squeeze()
         tokens_2 = scipy.io.loadmat(token_2_file)['tokens'].squeeze()
         counts_2 = scipy.io.loadmat(count_2_file)['counts'].squeeze()
+
         return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources, 'labels': labels,
                     'tokens_1': tokens_1, 'counts_1': counts_1, 
                         'tokens_2': tokens_2, 'counts_2': counts_2} 
 
     return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources, 'labels': labels}
 
-def get_data(path, temporal=False):
+def get_data(path, temporal=False, predict=False):
     ### load vocabulary
     with open(os.path.join(path, 'vocab.pkl'), 'rb') as f:
         vocab = pickle.load(f)
@@ -95,9 +95,9 @@ def get_data(path, temporal=False):
         valid = _fetch(path, 'valid')
         test = _fetch(path, 'test')
     else:
-        train = _fetch_temporal(path, 'train')
-        valid = _fetch_temporal(path, 'valid')
-        test = _fetch_temporal(path, 'test')
+        train = _fetch_temporal(path, 'train', predict)
+        valid = _fetch_temporal(path, 'valid', predict)
+        test = _fetch_temporal(path, 'test', predict)
 
     return vocab, train, valid, test
 
