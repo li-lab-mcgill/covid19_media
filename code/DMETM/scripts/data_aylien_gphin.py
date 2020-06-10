@@ -97,19 +97,24 @@ def read_data(data_file, full_data):
     train_data_ids = np.array(g_data['index'])[train_ids]
     if not full_data:
         train_country = np.array(g_data['country'])[train_ids]
+        train_timestamps = np.array(g_data['timestamps'])[train_ids]
     else:
         train_country = []
+        train_timestamps = []
 
     test_data_x = np.array(g_data['data'])[test_ids]
     test_data_ids = np.array(g_data['index'])[test_ids]
     if not full_data:
         test_country = np.array(g_data['country'])[test_ids]
+        test_timestamps = np.array(g_data['timestamps'])[test_ids]
     else:
         test_country = []
+        test_timestamps = []
+
 
     # convert the train and test data into Bunch format because rest of the code is designed for that
-    train_data = Bunch(data=train_data_x, country=train_country, index=train_data_ids) 
-    test_data = Bunch(data=test_data_x, country=test_country, index=test_data_ids)
+    train_data = Bunch(data=train_data_x, country=train_country, index=train_data_ids, timestamp=train_timestamps) 
+    test_data = Bunch(data=test_data_x, country=test_country, index=test_data_ids, timestamp=test_timestamps)
 
     return train_data, test_data, countries_to_idx
 
