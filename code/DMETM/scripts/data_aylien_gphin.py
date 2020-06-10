@@ -83,9 +83,9 @@ def read_data(data_file, full_data):
             g_data['data'].extend(summary)
             g_data['country'].extend([country]*len(summary))
             g_data['index'].extend(ind)
-            g_data['timestamps'].extend(timestamp)
+            g_data['timestamps'].extend(timestamp) #Added timestamps in the g_data dictionary with key timestamps
     else:
-        g_data = {'data':gphin_data.body.values, 'index':data_ids}
+        g_data = {'data':gphin_data.body.values, 'index':data_ids, 'timestamp':gphin_data.timestamps.values}
         countries_to_idx = {}
 
     # randomly split data into train and test
