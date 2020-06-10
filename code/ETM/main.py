@@ -359,7 +359,6 @@ with torch.no_grad():
 
     ## show topics
     beta = model.get_beta()
-    raise Exception(beta.shape)
     topic_indices = list(np.random.choice(args.num_topics, 10)) # 10 random topics
     print('\n')
     for k in range(args.num_topics):#topic_indices:
