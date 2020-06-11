@@ -468,6 +468,71 @@ def get_theta(eta, bows, times, sources):
         theta = F.softmax(mu_theta, dim=-1)        
         return theta
 
+def get_theta_eta_batch(source, outputs=['theta']):
+    if any([output not in ['theta', 'eta'] for output in outputs]):
+        raise Exception('only theta and eta are allowed')
+
+    model.eval()
+
+    thetas = []
+
+    if source == 'train':
+        indices = torch.arange(args.num_docs_train)
+    elif source == 'val':
+        indices = torch.arange(args.num_docs_valid)
+    else:
+        indices = torch.arange(args.num_docs_test)
+    indices = torch.split(indices, args.batch_size) 
+
+    if source == 'train':
+        with torch.no_grad():
+            eta = _eta_helper(train_rnn_inp)
+    elif source == 'val':
+        with torch.no_grad():
+            eta = _eta_helper(valid_rnn_inp)
+    else:
+        with torch.no_grad():
+            eta = _eta_helper(test_rnn_inp)
+
+    for idx, ind in enumerate(indices):
+        if source == 'train':
+            tokens = train_tokens
+            counts = train_counts
+            times = train_times
+            sources = train_sources
+            labels = train_labels
+        elif source == 'val':
+            tokens = valid_tokens
+            counts = valid_counts
+            times = valid_times
+            sources = valid_sources
+            labels = valid_labels
+        else:
+            tokens = test_tokens
+            counts = test_counts
+            times = test_times
+            sources = test_sources
+            labels = test_labels
+        data_batch, times_batch, sources_batch, labels_batch = data.get_batch(
+                    tokens, counts, ind, sources, labels, 
+                    args.vocab_size, args.emb_size, temporal=True, times=times)
+        sums = data_batch.sum(1).unsqueeze(1)
+        if args.bow_norm:
+            normalized_data_batch = data_batch / sums
+        else:
+            normalized_data_batch = data_batch
+
+        theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
+        thetas.append(theta)
+
+    results_dict = {}
+    if 'theta' in outputs:
+        results_dict['theta'] = torch.cat(thetas)
+    if 'eta' in outputs:
+        results_dict['eta'] = eta
+    
+    return results_dict
+
 def get_completion_ppl(source):
     """Returns document completion perplexity.
     """
@@ -725,6 +790,11 @@ else:
 
     ckpt = os.path.join(args.save_path, os.path.basename(args.load_from))
 
+for source in ['train', 'val', 'test']:
+    print(f'saving {source} thetas and etas ...')
+    results_dict = get_theta_eta_batch(source, outputs=['theta', 'eta'])
+    np.save(ckpt+f'_{source}_thetas.npy', results_dict['theta'].cpu().detach().numpy())
+    np.save(ckpt+f'_{source}_etas.npy', results_dict['eta'].cpu().detach().numpy())
 
 print('computing validation perplexity...')
 val_ppl, val_pdl = get_completion_ppl('val')
