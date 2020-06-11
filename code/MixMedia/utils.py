@@ -1,4 +1,4 @@
-from sklearn.manifold import TSNE
+# from sklearn.manifold import TSNE
 import torch 
 import numpy as np
 # import bokeh.plotting as bp
@@ -133,9 +133,9 @@ def nearest_neighbors(word, embeddings, vocab, num_words):
     return nearest_neighbors
 
 def visualize(docs, _lda_keys, topics, theta):
-    tsne_model = TSNE(n_components=2, verbose=1, random_state=0, angle=.99, init='pca')
+    # tsne_model = TSNE(n_components=2, verbose=1, random_state=0, angle=.99, init='pca')
     # project to 2D
-    tsne_lda = tsne_model.fit_transform(theta)
+    # tsne_lda = tsne_model.fit_transform(theta)
     colormap = []
     # for name, hex in matplotlib.colors.cnames.items():
     #     colormap.append(hex)
