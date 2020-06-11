@@ -108,7 +108,9 @@ def get_data(path, temporal=False, predict=False, use_time=False, use_source=Fal
         train = _fetch_temporal(path, 'train', predict, use_time, use_source)
         valid = _fetch_temporal(path, 'valid', predict, use_time, use_source)
         test = _fetch_temporal(path, 'test', predict, use_time, use_source)
-        
+
+    return vocab, train, valid, test
+
 
 def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temporal=False, times=None):
     
