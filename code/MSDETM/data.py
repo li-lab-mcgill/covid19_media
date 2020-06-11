@@ -95,7 +95,7 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True):
     return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources, 'labels': labels}
 
 
-def get_data(path, temporal=False):
+def get_data(path, temporal=False, predict=False, use_time=False, use_source=False):
     ### load vocabulary
     with open(os.path.join(path, 'vocab.pkl'), 'rb') as f:
         vocab = pickle.load(f)
@@ -105,11 +105,10 @@ def get_data(path, temporal=False):
         valid = _fetch(path, 'valid')
         test = _fetch(path, 'test')
     else:
-        train = _fetch_temporal(path, 'train')
-        valid = _fetch_temporal(path, 'valid')
-        test = _fetch_temporal(path, 'test')
-
-    return vocab, train, valid, test
+        train = _fetch_temporal(path, 'train', predict, use_time, use_source)
+        valid = _fetch_temporal(path, 'valid', predict, use_time, use_source)
+        test = _fetch_temporal(path, 'test', predict, use_time, use_source)
+        
 
 def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temporal=False, times=None):
     
