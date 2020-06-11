@@ -72,11 +72,11 @@ def read_data(data_file, full_data):
     gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
     data_ids = gphin_data.index.values
     if not full_data:
-        gphin_data = gphin_data[gphin_data['COUNTRY /ORGANIZATION'].notna()]
+        gphin_data = gphin_data[gphin_data['SOURCE'].notna()]
 
         # processing the country names by removing leading and trailing spaces and newlines
-        gphin_data.country = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip(" "))
-        gphin_data.country = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip("\n"))
+        gphin_data.country = gphin_data['SOURCE'].apply(lambda x: x.strip(" "))
+        gphin_data.country = gphin_data['SOURCE'].apply(lambda x: x.strip("\n"))
 
         # processing the timestamps by removing leading and trailing spaces and newlines
         gphin_data.timestamps = gphin_data['DATE ADDED'].apply(lambda x: x.strip(" "))
