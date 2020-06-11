@@ -1,0 +1,213 @@
+Brazil : 0
+Canada : 1
+Ukraine : 2
+New Zealand : 3
+Jordan : 4
+Argentina : 5
+Chile : 6
+Singapore : 7
+Japan : 8
+Philippines : 9
+Switzerland : 10
+Lithuania : 11
+France : 12
+Cyprus : 13
+Lesotho : 14
+Algeria : 15
+Australia : 16
+Myanmar : 17
+Botswana : 18
+Honduras : 19
+Marshall Islands : 20
+Sri Lanka : 21
+Russian Federation : 22
+Romania : 23
+China : 24
+Austria : 25
+Tunisia : 26
+Kazakhstan : 27
+Denmark : 28
+Mexico : 29
+Mauritius : 30
+Iceland : 31
+Kenya : 32
+Yemen : 33
+United States Of America : 34
+Iran, Islamic Republic Of : 35
+Latvia : 36
+Germany : 37
+Namibia : 38
+Portugal : 39
+Mozambique : 40
+Uganda : 41
+Malaysia : 42
+Hungary : 43
+Barbados : 44
+Spain : 45
+Italy : 46
+Zimbabwe : 47
+South Africa : 48
+Ethiopia : 49
+Belize : 50
+Greece : 51
+United Arab Emirates : 52
+Uruguay : 53
+Cameroon : 54
+Nigeria : 55
+Saudi Arabia : 56
+Cambodia : 57
+Liechtenstein : 58
+Sweden : 59
+Indonesia : 60
+Belgium : 61
+Solomon Islands : 62
+India : 63
+Nepal : 64
+Democratic People's Republic Of Korea : 65
+Cuba : 66
+El Salvador : 67
+Thailand : 68
+North Macedonia : 69
+Gambia : 70
+Turkey : 71
+Croatia : 72
+Malawi : 73
+Niger : 74
+Bhutan : 75
+Czech Republic : 76
+Israel : 77
+Ghana : 78
+Senegal : 79
+Democratic Republic Of The Congo : 80
+Kyrgyzstan : 81
+South Sudan : 82
+Guinea : 83
+Libya : 84
+Suriname : 85
+Finland : 86
+Qatar : 87
+Eswatini : 88
+Bahamas : 89
+Iraq : 90
+Seychelles : 91
+Netherlands : 92
+Cook Islands : 93
+Brunei Darussalam : 94
+Sudan : 95
+Colombia : 96
+Ecuador : 97
+Chad : 98
+Rwanda : 99
+Guatemala : 100
+Morocco : 101
+Mongolia : 102
+Papua New Guinea : 103
+Liberia : 104
+Serbia : 105
+Peru : 106
+Samoa : 107
+Grenada : 108
+Syrian Arab Republic : 109
+Poland : 110
+Slovenia : 111
+Egypt : 112
+Equatorial Guinea : 113
+Bolivia, Plurinational State Of : 114
+United Kingdom Of Great Britain And Northern Ireland : 115
+Bangladesh : 116
+Pakistan : 117
+Fiji : 118
+Republic Of Korea : 119
+Bahrain : 120
+Lebanon : 121
+Armenia : 122
+Estonia : 123
+Anguilla : 124
+Saint Lucia : 125
+Turkmenistan : 126
+Malta : 127
+Burundi : 128
+Afghanistan : 129
+Palau : 130
+Slovakia : 131
+Bosnia And Herzegovina : 132
+Panama : 133
+Lao People's Democratic Republic : 134
+Guyana : 135
+Cote D Ivoire : 136
+Albania : 137
+Kuwait : 138
+Gabon : 139
+Benin : 140
+Oman : 141
+Viet Nam : 142
+French Polynesia : 143
+Dominica : 144
+Antigua And Barbuda : 145
+Saint Kitts And Nevis : 146
+Jamaica : 147
+Bulgaria : 148
+Angola : 149
+Nauru : 150
+Cabo Verde : 151
+Venezuela, Bolivarian Republic Of : 152
+Republic Of Moldova : 153
+Mauritania : 154
+Micronesia, Federated States Of : 155
+Mali : 156
+Uzbekistan : 157
+Trinidad And Tobago : 158
+Belarus : 159
+Montenegro : 160
+Azerbaijan : 161
+Georgia : 162
+Dominican Republic : 163
+Guinea-Bissau : 164
+Northern Mariana Islands, Commonwealth Of The : 165
+Burkina Faso : 166
+Maldives : 167
+Vanuatu : 168
+Paraguay : 169
+Madagascar : 170
+United Republic Of Tanzania : 171
+New Caledonia : 172
+Ireland : 173
+Somalia : 174
+Djibouti : 175
+Luxembourg : 176
+Guam : 177
+Central African Republic : 178
+Costa Rica : 179
+Tonga : 180
+Kiribati : 181
+Comoros : 182
+Occupied Palestinian Territory, Including East Jerusalem : 183
+Norway : 184
+Timor-Leste : 185
+Sierra Leone : 186
+Togo : 187
+Eritrea : 188
+Nicaragua : 189
+Congo : 190
+Tajikistan : 191
+Zambia : 192
+Saint Vincent And The Grenadines : 193
+Haiti : 194
+Tokelau : 195
+San Marino : 196
+Holy See : 197
+Reunion : 198
+Aruba : 199
+Tuvalu : 200
+Bermuda : 201
+Monaco : 202
+Curacao : 203
+Niue : 204
+Sao Tome And Principe : 205
+Cayman Islands : 206
+Sint Maarten : 207
+Andorra : 208
+Guernsey : 209
+American Samoa : 210
+Guadeloupe : 211
+French Guiana : 212
