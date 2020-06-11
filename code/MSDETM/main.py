@@ -31,8 +31,8 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_all_sources', help='directory containing data')
@@ -46,6 +46,9 @@ parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directo
 
 # parser.add_argument('--dataset', type=str, default='gphin_all_sources', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_all_sources', help='directory containing data')
+
+parser.add_argument('--dataset', type=str, default='GPHIN_all', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/pnair6/new_data/GPHIN_all', help='directory containing data')
 
 
 # parser.add_argument('--emb_path', type=str, default='skipgram/trained_word_emb_aylien.txt', help='directory containing embeddings')
@@ -77,7 +80,7 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
-parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train')
 
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 # parser.add_argument('--mode', type=str, default='eval_model', help='train or eval model')

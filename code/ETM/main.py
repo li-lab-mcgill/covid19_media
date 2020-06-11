@@ -23,11 +23,14 @@ from utils import nearest_neighbors, get_topic_coherence, get_topic_diversity
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='20ng', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='data/20ng', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='20ng', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='data/20ng', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien/min_df_100', help='directory containing data')
+
+parser.add_argument('--dataset', type=str, default='GPHIN_all', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/pnair6/GPHIN_all', help='directory containing data')
 
 # parser.add_argument('--emb_path', type=str, default='data/20ng_embeddings.txt', help='directory containing word embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/trained_word_emb_aylien.txt', help='directory containing embeddings')
