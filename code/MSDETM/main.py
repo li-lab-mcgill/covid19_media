@@ -109,7 +109,6 @@ parser.add_argument('--compute_tq', type=int, default=0, help='whether to comput
 
 parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
-
 parser.add_argument('--time_prior', type=int, default=0, help='whether to use time-dependent topic prior')
 parser.add_argument('--source_prior', type=int, default=0, help='whether to use source-specific topic prior')
 
@@ -401,8 +400,12 @@ def visualize():
         print('\n')
         print('#'*100)
         print('Visualize topics...')
-        # times = [0, 10, 40]
-        times = [0, int(beta.shape[1]/2), beta.shape[1]-1]
+
+        if model.num_times > 3:
+            times = [0, int(beta.shape[1]/2), beta.shape[1]-1]
+        else:
+            times = [i for i in range(beta.shape[1])]
+
         topics_words = []
         for k in range(args.num_topics):
             for t in times:
@@ -672,8 +675,8 @@ if args.mode == 'train':
     
     for epoch in range(1, args.epochs):
         train(epoch)
-        # if epoch % args.visualize_every == 0:
-        #     visualize()
+        if epoch % args.visualize_every == 0:
+            visualize()
         
         # print(model.classifier.weight)
 

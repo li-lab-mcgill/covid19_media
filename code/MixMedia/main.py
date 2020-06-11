@@ -331,7 +331,7 @@ def train(epoch):
         if args.bow_norm:
             normalized_data_batch = data_batch / sums
         else:
-            normalized_data_batch = data_batch        
+            normalized_data_batch = data_batch
 
         # print("forward passing ...")
 
