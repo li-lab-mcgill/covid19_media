@@ -130,7 +130,7 @@ torch.manual_seed(args.seed)
 print('Getting vocabulary ...')
 data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
 
-vocab, train, valid, test = data.get_data(data_file, temporal=True)
+vocab, train, valid, test = data.get_data(data_file, temporal=True, predict=args.predict_labels, use_time=args.time_prior, use_source=args.source_prior)
 
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
