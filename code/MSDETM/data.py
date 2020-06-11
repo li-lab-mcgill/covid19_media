@@ -34,41 +34,49 @@ def _fetch(path, name):
         'counts_1': counts_1, 'tokens_2': tokens_2, 'counts_2': counts_2}
     return {'tokens': tokens, 'counts': counts}
 
-def _fetch_temporal(path, name):
+def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True):
     
     if name == 'train':
         token_file = os.path.join(path, 'bow_tr_tokens')
         count_file = os.path.join(path, 'bow_tr_counts')
         time_file = os.path.join(path, 'bow_tr_timestamps')
         source_file = os.path.join(path, 'bow_tr_sources.pkl')
-        label_file = os.path.join(path, 'bow_tr_labels.pkl')
+
+        if predict:
+            label_file = os.path.join(path, 'bow_tr_labels.pkl')
     elif name == 'valid':
         token_file = os.path.join(path, 'bow_va_tokens')
         count_file = os.path.join(path, 'bow_va_counts')
         time_file = os.path.join(path, 'bow_va_timestamps')
         source_file = os.path.join(path, 'bow_va_sources.pkl')
-        label_file = os.path.join(path, 'bow_va_labels.pkl')
+        if predict:
+            label_file = os.path.join(path, 'bow_va_labels.pkl')
     else:
         token_file = os.path.join(path, 'bow_ts_tokens')
         count_file = os.path.join(path, 'bow_ts_counts')
         time_file = os.path.join(path, 'bow_ts_timestamps')
         source_file = os.path.join(path, 'bow_ts_sources.pkl')
-        label_file = os.path.join(path, 'bow_ts_labels.pkl')    
+        if predict:
+            label_file = os.path.join(path, 'bow_ts_labels.pkl')    
     
     tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
     counts = scipy.io.loadmat(count_file)['counts'].squeeze()
-    times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
-    sources = np.array(pickle.load(open(source_file, 'rb')))
-    labels = np.array(pickle.load(open(label_file, 'rb')))
+    
+    if use_time:
+        times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
+    else:
+        times = np.zeros(tokens.shape[0])
 
 
-    # DEMO MULTI-CLASS ONLY (START)
-    # targets = torch.zeros(len(tokens), 10)
-    # for i in range(len(tokens)):
-    #     targets[i,labels[i]] = 1
-    # labels = targets
-    # DEMO MULTI-CLASS ONLY (END)
+    if use_source:
+        sources = np.array(pickle.load(open(source_file, 'rb')))
+    else:
+        sources = np.zeros(tokens.shape[0])
 
+    if predict:
+        labels = np.array(pickle.load(open(label_file, 'rb')))
+    else:
+        labels = np.zeros(tokens.shape[0])
 
     if name == 'test':
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
@@ -79,11 +87,13 @@ def _fetch_temporal(path, name):
         counts_1 = scipy.io.loadmat(count_1_file)['counts'].squeeze()
         tokens_2 = scipy.io.loadmat(token_2_file)['tokens'].squeeze()
         counts_2 = scipy.io.loadmat(count_2_file)['counts'].squeeze()
+
         return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources, 'labels': labels,
                     'tokens_1': tokens_1, 'counts_1': counts_1, 
                         'tokens_2': tokens_2, 'counts_2': counts_2} 
 
     return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources, 'labels': labels}
+
 
 def get_data(path, temporal=False):
     ### load vocabulary

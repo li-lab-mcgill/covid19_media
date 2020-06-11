@@ -110,6 +110,9 @@ parser.add_argument('--compute_tq', type=int, default=0, help='whether to comput
 parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
+parser.add_argument('--time_prior', type=int, default=0, help='whether to use time-dependent topic prior')
+parser.add_argument('--source_prior', type=int, default=0, help='whether to use source-specific topic prior')
+
 args = parser.parse_args()
 
 
@@ -149,22 +152,31 @@ if len(train_labels.shape) == 2 and args.multiclass_labels == 0:
 
 
 # args.num_times = len(np.unique(train_times))
-timestamps_file = os.path.join(data_file, 'timestamps.pkl')
-all_timestamps = pickle.load(open(timestamps_file, 'rb'))
-args.num_times = len(all_timestamps)
+if args.time_prior:
+    timestamps_file = os.path.join(data_file, 'timestamps.pkl')
+    all_timestamps = pickle.load(open(timestamps_file, 'rb'))
+    args.num_times = len(all_timestamps)
+else:
+    args.num_times = 1
 
 args.num_docs_train = len(train_tokens)
 
 # get all sources
-sources_map_file = os.path.join(data_file, 'sources_map.pkl')
-sources_map = pickle.load(open(sources_map_file, 'rb'))
-args.num_sources = len(sources_map)
+if args.source_prior:
+    sources_map_file = os.path.join(data_file, 'sources_map.pkl')
+    sources_map = pickle.load(open(sources_map_file, 'rb'))
+    args.num_sources = len(sources_map)
+else:
+    args.num_sources = 1
 
 
 # get all labels
-labels_map_file = os.path.join(data_file, 'labels_map.pkl')
-labels_map = pickle.load(open(labels_map_file, 'rb'))
-args.num_labels = len(labels_map)
+if args.predict_labels:
+    labels_map_file = os.path.join(data_file, 'labels_map.pkl')
+    labels_map = pickle.load(open(labels_map_file, 'rb'))
+    args.num_labels = len(labels_map)
+else:
+    args.num_labels = 0
 
 
 train_rnn_inp = data.get_rnn_input(
@@ -385,7 +397,7 @@ def visualize():
     with torch.no_grad():
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha) 
-        print('beta: ', beta.size())
+
         print('\n')
         print('#'*100)
         print('Visualize topics...')

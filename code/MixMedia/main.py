@@ -259,7 +259,7 @@ args.embeddings_dim = word_embeddings.size()
 
 print('\n')
 print('=*'*100)
-print('Training a Multi-Source Semi-Supervised Dynamic Embedded Topic Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
+print('Training a MixMedia Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
 print('=*'*100)
 
 ## define checkpoint
