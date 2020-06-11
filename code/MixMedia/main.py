@@ -9,13 +9,13 @@ import numpy as np
 import os 
 import math 
 import random 
-import matplotlib.pyplot as plt 
-import seaborn as sns
+# import matplotlib.pyplot as plt 
+# import seaborn as sns
 import scipy.io
 
 import data 
 
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
@@ -659,7 +659,8 @@ if args.mode == 'train':
         train(epoch)
         
         if epoch % args.visualize_every == 0:
-            visualize()
+            # visualize()
+            pass
         
         # print(model.classifier.weight)
 
@@ -721,6 +722,8 @@ else:
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
+
+    ckpt = os.path.join(args.save_path, os.path.basename(args.load_from))
 
 
 print('computing validation perplexity...')
