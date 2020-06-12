@@ -62,7 +62,7 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True):
     tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
     counts = scipy.io.loadmat(count_file)['counts'].squeeze()
     
-    if use_time:
+    if use_time:        
         times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
     else:
         times = np.zeros(tokens.shape[0])

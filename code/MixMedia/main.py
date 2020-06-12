@@ -31,11 +31,11 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
-# parser.add_argument('--dataset', type=str, default='WHO', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='../../data/WHO/who_measure_data/who_measure_all_sources', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='WHO_all', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='../../data/WHO_June10/WHO_all', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_media_data', help='directory containing data')
@@ -46,8 +46,8 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--dataset', type=str, default='gphin_all_sources', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_all_sources', help='directory containing data')
 
-parser.add_argument('--dataset', type=str, default='GPHIN_all', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/pnair6/new_data/GPHIN_all', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='GPHIN_all', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/pnair6/new_data/GPHIN_all', help='directory containing data')
 
 
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/trained_word_emb_aylien.txt', help='directory containing embeddings')

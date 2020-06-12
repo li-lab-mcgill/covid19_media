@@ -500,6 +500,9 @@ def get_topic_quality():
         
         TC_all = torch.tensor(TC_all)
         cnt_all = torch.tensor(cnt_all)
+
+        set_trace()
+        
         TC_all = TC_all / cnt_all[0].item()
         TC_all[TC_all<0] = 0
 
