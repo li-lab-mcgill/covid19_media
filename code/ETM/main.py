@@ -20,6 +20,8 @@ from torch.nn import functional as F
 from etm import ETM
 from utils import nearest_neighbors, get_topic_coherence, get_topic_diversity
 
+from IPython.core.debugger import set_trace
+
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
@@ -30,7 +32,7 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien/min_df_100', help='directory containing data')
 
 parser.add_argument('--dataset', type=str, default='GPHIN_all', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/pnair6/GPHIN_all', help='directory containing data')
+parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/pnair6/new_data/GPHIN_all/min_df_10', help='directory containing data')
 
 # parser.add_argument('--emb_path', type=str, default='data/20ng_embeddings.txt', help='directory containing word embeddings')
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/trained_word_emb_aylien.txt', help='directory containing embeddings')
@@ -43,7 +45,7 @@ parser.add_argument('--save_path', type=str, default='/Users/yueli/Projects/covi
 parser.add_argument('--batch_size', type=int, default=1000, help='input batch size for training')
 
 ### model-related arguments
-parser.add_argument('--num_topics', type=int, default=50, help='number of topics')
+parser.add_argument('--num_topics', type=int, default=5, help='number of topics')
 parser.add_argument('--rho_size', type=int, default=300, help='dimension of rho')
 parser.add_argument('--emb_size', type=int, default=300, help='dimension of embeddings')
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
@@ -55,7 +57,7 @@ parser.add_argument('--train_embeddings', type=int, default=1, help='whether to 
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this...')
 
-parser.add_argument('--epochs', type=int, default=150, help='number of epochs to train...150 for 20ng 100 for others')
+parser.add_argument('--epochs', type=int, default=3, help='number of epochs to train...150 for 20ng 100 for others')
 
 parser.add_argument('--mode', type=str, default='train', help='train or eval model')
 parser.add_argument('--optimizer', type=str, default='adam', help='choice of optimizer')
@@ -306,15 +308,36 @@ def evaluate(m, source, tc=False, td=False):
         print('*'*100)
         print('{} Doc Completion PPL: {}'.format(source.upper(), ppl_dc))
         print('*'*100)
+
+        TQ = TC = TD = 0
+        
         if tc or td:
             beta = beta.data.cpu().numpy()
-            if tc:
-                print('Computing topic coherence...')
-                get_topic_coherence(beta, train_tokens, vocab)
-            if td:
-                print('Computing topic diversity...')
-                get_topic_diversity(beta, 25)
-        return ppl_dc
+
+        if tc:
+            print('Computing topic coherence...')
+            TC_all, cnt_all = get_topic_coherence(beta, train_tokens, vocab)
+
+            TC_all = torch.tensor(TC_all)
+            cnt_all = torch.tensor(cnt_all)
+            TC_all = TC_all / cnt_all
+
+            TC = TC_all.mean().item()
+            print('Topic Coherence is: ', TC)
+            print('\n')
+
+        if td:
+            print('Computing topic diversity...')
+            TD_all = get_topic_diversity(beta, 25)        
+            TD = np.mean(TD_all)
+            print('Topic Diversity is: {}'.format(TD))
+                    
+            print('Get topic quality...')
+            TQ = TD * TC
+            print('Topic Quality is: {}'.format(TQ))
+            print('#'*100)
+
+        return ppl_dc, TQ, TC, TD
 
 if args.mode == 'train':
     ## train model on data 
@@ -327,7 +350,7 @@ if args.mode == 'train':
     print('\n')
     for epoch in range(1, args.epochs):
         train(epoch)
-        val_ppl = evaluate(model, 'val')
+        val_ppl, tq, tc, td = evaluate(model, 'val')
         if val_ppl < best_val_ppl:
             with open(ckpt, 'wb') as f:
                 torch.save(model, f)
@@ -349,55 +372,69 @@ else:
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
-    model.eval()
+    
+model.eval()
 
-    with torch.no_grad():
-        ## get document completion perplexities
-        test_ppl = evaluate(model, 'test', tc=args.tc, td=args.td)
+## get document completion perplexities and topic quality
+test_ppl, tq, tc, td = evaluate(model, 'test', tc=True, td=True)
 
-        ## get most used topics
-        indices = torch.tensor(range(args.num_docs_train))
-        indices = torch.split(indices, args.batch_size)
-        thetaAvg = torch.zeros(1, args.num_topics).to(device)
-        thetaWeightedAvg = torch.zeros(1, args.num_topics).to(device)
-        cnt = 0
-        for idx, ind in enumerate(indices):
-            data_batch = data.get_batch(train_tokens, train_counts, ind, args.vocab_size, device)
-            sums = data_batch.sum(1).unsqueeze(1)
-            cnt += sums.sum(0).squeeze().cpu().numpy()
-            if args.bow_norm:
-                normalized_data_batch = data_batch / sums
-            else:
-                normalized_data_batch = data_batch
-            theta, _ = model.get_theta(normalized_data_batch)
-            thetaAvg += theta.sum(0).unsqueeze(0) / args.num_docs_train
-            weighed_theta = sums * theta
-            thetaWeightedAvg += weighed_theta.sum(0).unsqueeze(0)
-            if idx % 100 == 0 and idx > 0:
-                print('batch: {}/{}'.format(idx, len(indices)))
-        thetaWeightedAvg = thetaWeightedAvg.squeeze().cpu().numpy() / cnt
-        print('\nThe 10 most used topics are {}'.format(thetaWeightedAvg.argsort()[::-1][:10]))
+f=open(ckpt+'_tq.txt','w')
+s1="Topic Quality: "+str(tq)
+s2="Topic Coherence: "+str(tc)
+s3="Topic Diversity: "+str(td)
+f.write(s1+'\n'+s2+'\n'+s3+'\n')
+f.close()
 
-        ## show topics
-        beta = model.get_beta()
-        topic_indices = list(np.random.choice(args.num_topics, 10)) # 10 random topics
+f=open(ckpt+'_tq.txt','r')
+[print(i,end='') for i in f.readlines()]
+f.close()
+
+## get most used topics
+indices = torch.tensor(range(args.num_docs_train))
+indices = torch.split(indices, args.batch_size)
+thetaAvg = torch.zeros(1, args.num_topics).to(device)
+thetaWeightedAvg = torch.zeros(1, args.num_topics).to(device)
+cnt = 0
+for idx, ind in enumerate(indices):
+    data_batch = data.get_batch(train_tokens, train_counts, ind, args.vocab_size, device)
+    sums = data_batch.sum(1).unsqueeze(1)
+    cnt += sums.sum(0).squeeze().cpu().numpy()
+    if args.bow_norm:
+        normalized_data_batch = data_batch / sums
+    else:
+        normalized_data_batch = data_batch
+    theta, _ = model.get_theta(normalized_data_batch)
+    thetaAvg += theta.sum(0).unsqueeze(0) / args.num_docs_train
+    weighed_theta = sums * theta
+    thetaWeightedAvg += weighed_theta.sum(0).unsqueeze(0)
+    if idx % 100 == 0 and idx > 0:
+        print('batch: {}/{}'.format(idx, len(indices)))
+thetaWeightedAvg = thetaWeightedAvg.squeeze().detach().cpu().numpy() / cnt
+print('\nThe 10 most used topics are {}'.format(thetaWeightedAvg.argsort()[::-1][:10]))
+
+## show topics
+beta = model.get_beta()
+topic_indices = list(np.random.choice(args.num_topics, 10)) # 10 random topics
+print('\n')
+for k in range(args.num_topics):#topic_indices:
+    gamma = beta[k]
+    top_words = list(gamma.detach().cpu().numpy().argsort()[-args.num_words+1:][::-1])
+    topic_words = [vocab[a] for a in top_words]
+    print('Topic {}: {}'.format(k, topic_words))
+
+if args.train_embeddings:
+    ## show etm embeddings 
+    try:
+        rho_etm = model.rho.weight.cpu()
+    except:
+        rho_etm = model.rho.cpu()
+    # queries = ['andrew', 'woman', 'computer', 'sports', 'religion', 'man', 'love', 
+    #                 'intelligence', 'money', 'politics', 'health', 'people', 'family']
+    queries = ['border', 'vaccines', 'coronaviruses', 'masks']
+    print('\n')
+    print('ETM embeddings...')
+    for word in queries:
+        print('word: {} .. etm neighbors: {}'.format(word, nearest_neighbors(word, rho_etm, vocab)))
         print('\n')
-        for k in range(args.num_topics):#topic_indices:
-            gamma = beta[k]
-            top_words = list(gamma.cpu().numpy().argsort()[-args.num_words+1:][::-1])
-            topic_words = [vocab[a] for a in top_words]
-            print('Topic {}: {}'.format(k, topic_words))
 
-        if args.train_embeddings:
-            ## show etm embeddings 
-            try:
-                rho_etm = model.rho.weight.cpu()
-            except:
-                rho_etm = model.rho.cpu()
-            queries = ['andrew', 'woman', 'computer', 'sports', 'religion', 'man', 'love', 
-                            'intelligence', 'money', 'politics', 'health', 'people', 'family']
-            print('\n')
-            print('ETM embeddings...')
-            for word in queries:
-                print('word: {} .. etm neighbors: {}'.format(word, nearest_neighbors(word, rho_etm, vocab)))
-            print('\n')
+

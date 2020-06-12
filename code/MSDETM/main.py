@@ -110,10 +110,10 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 parser.add_argument('--compute_tq', type=int, default=0, help='whether to compute topic quality or not')
 
-parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
-parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
-parser.add_argument('--time_prior', type=int, default=0, help='whether to use time-dependent topic prior')
-parser.add_argument('--source_prior', type=int, default=0, help='whether to use source-specific topic prior')
+parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
+parser.add_argument('--multiclass_labels', type=int, default=1, help='whether to predict labels')
+parser.add_argument('--time_prior', type=int, default=1, help='whether to use time-dependent topic prior')
+parser.add_argument('--source_prior', type=int, default=1, help='whether to use source-specific topic prior')
 
 args = parser.parse_args()
 

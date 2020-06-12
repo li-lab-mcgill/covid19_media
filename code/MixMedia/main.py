@@ -47,7 +47,7 @@ parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 # parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_all_sources', help='directory containing data')
 
 parser.add_argument('--dataset', type=str, default='GPHIN_all', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/pnair6/GPHIN_all', help='directory containing data')
+parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/pnair6/new_data/GPHIN_all', help='directory containing data')
 
 
 parser.add_argument('--emb_path', type=str, default='/Users/yueli/Projects/covid19_media/data/trained_word_emb_aylien.txt', help='directory containing embeddings')
@@ -68,7 +68,7 @@ parser.add_argument('--emb_size', type=int, default=300, help='dimension of embe
 parser.add_argument('--t_hidden_size', type=int, default=800, help='dimension of hidden space of q(theta)')
 parser.add_argument('--theta_act', type=str, default='relu', help='tanh, softplus, relu, rrelu, leakyrelu, elu, selu, glu)')
 
-parser.add_argument('--train_embeddings', type=int, default=0, help='whether to fix rho or train it')
+parser.add_argument('--train_embeddings', type=int, default=1, help='whether to fix rho or train it')
 
 parser.add_argument('--eta_nlayers', type=int, default=3, help='number of layers for eta')
 parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of hidden units for rnn')
@@ -109,8 +109,8 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
-parser.add_argument('--time_prior', type=int, default=0, help='whether to use time-dependent topic prior')
-parser.add_argument('--source_prior', type=int, default=0, help='whether to use source-specific topic prior')
+parser.add_argument('--time_prior', type=int, default=1, help='whether to use time-dependent topic prior')
+parser.add_argument('--source_prior', type=int, default=1, help='whether to use source-specific topic prior')
 
 
 args = parser.parse_args()
