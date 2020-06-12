@@ -321,6 +321,7 @@ def evaluate(m, source, tc=False, td=False):
             TC_all = torch.tensor(TC_all)
             cnt_all = torch.tensor(cnt_all)
             TC_all = TC_all / cnt_all
+            TC_all[TC_all<0] = 0
 
             TC = TC_all.mean().item()
             print('Topic Coherence is: ', TC)
