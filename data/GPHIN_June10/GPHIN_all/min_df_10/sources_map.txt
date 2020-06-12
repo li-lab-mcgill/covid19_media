@@ -1,0 +1,293 @@
+WHO : 0
+Cape Verde : 1
+Taiwan : 2
+United Kingdom : 3
+Airlines : 4
+Kazakhstan : 5
+United States : 6
+South Korea : 7
+Germany : 8
+Japan : 9
+International : 10
+Pakistan : 11
+Papua New Guinea : 12
+Indonesia : 13
+Nigeria : 14
+Brazil : 15
+Chile : 16
+Angola : 17
+Mozambique : 18
+Madeira Islands : 19
+East Timor : 20
+Turkey : 21
+UNICEF : 22
+Canada : 23
+World Athletics : 24
+Australia : 25
+China : 26
+European Union : 27
+France : 28
+Italy : 29
+Spain : 30
+India : 31
+New Zealand : 32
+Singapore : 33
+Trinidad and Tobago : 34
+Russia : 35
+Northern Mariana Islands : 36
+Marshall Islands : 37
+Paula : 38
+Malaysia : 39
+Liberia : 40
+Egypt : 41
+Tajikistan : 42
+Oman : 43
+Morocco : 44
+United Arab Emirates (UAE) : 45
+Lebanon : 46
+Cyprus : 47
+Kenya : 48
+Philippines : 49
+Israel : 50
+Jordan : 51
+Qatar : 52
+Hong Kong : 53
+Thailand : 54
+Mexico : 55
+Mauritius : 56
+Vietnam : 57
+Myanmar : 58
+Latvia : 59
+Cruise lines  : 60
+Macau : 61
+Algeria : 62
+Sri Lanka : 63
+São Tomé and Príncipe : 64
+Saudi Arabia : 65
+Nepal : 66
+North Korea : 67
+Maldives : 68
+Mongolia : 69
+Samoa : 70
+Guatemala : 71
+Iran : 72
+Bangladesh : 73
+Bahrain : 74
+Kuwait : 75
+Serbia : 76
+Belgium : 77
+Poland : 78
+Finland : 79
+Afghanistan : 80
+Ireland : 81
+Luxembourg : 82
+Eritrea : 83
+Rwanda : 84
+Netherlands : 85
+New Caledonia : 86
+French Polynesia : 87
+El Salvador : 88
+Argentina : 89
+Bolivia : 90
+Cuba : 91
+Dominican Republic : 92
+Colombia : 93
+Austria : 94
+Botswana : 95
+Portugal : 96
+Cambodia : 97
+Laos : 98
+Cook Islands : 99
+Iraq : 100
+Africa : 101
+Senegal : 102
+Syria : 103
+Bhutan : 104
+Kyrgyzstan : 105
+Bahamas : 106
+Paraguay : 107
+Denmark : 108
+Equatorial Guinea : 109
+Micronesia : 110
+Tonga : 111
+Uganda : 112
+Antigua and Barbuda : 113
+Armenia : 114
+Azerbaijan : 115
+Fiji : 116
+Jamaica : 117
+Kiribati : 118
+Kosovo : 119
+Seychelles : 120
+Solomon Islands : 121
+Vanuatu : 122
+Guam : 123
+Saint Kitts and Nevis : 124
+Niue : 125
+Grenada : 126
+Central America : 127
+Gambia : 128
+Belize : 129
+Brunei : 130
+Gabon : 131
+Asian Infrastructure Investment Bank (AIIB) : 132
+World Bank : 133
+Namibia : 134
+Comoro Islands : 135
+Madagascar : 136
+Sweden : 137
+Czech Republic : 138
+Uzbekistan : 139
+Ukraine : 140
+Mali : 141
+Saint Lucia : 142
+Ghana : 143
+BAHRAIN : 144
+Ethiopia : 145
+EMRO : 146
+Albania : 147
+Lithuania : 148
+Slovakia : 149
+Republic of Congo : 150
+PAHO : 151
+Switzerland : 152
+Bermuda : 153
+Sudan : 154
+Zimbabwe : 155
+Gulf Cooperation Council (GCC) : 156
+Asia-Pacific Economic Cooperation : 157
+South Africa : 158
+Ecuador : 159
+Peru : 160
+Venezuela : 161
+Panama : 162
+Greece : 163
+Georgia : 164
+Turkmenistan : 165
+Slovenia : 166
+American Samoa : 167
+Romania : 168
+Croatia : 169
+Hungary : 170
+United Nations : 171
+Saint Vincent and the Grenadines : 172
+Nauru : 173
+Tunisia : 174
+Libya : 175
+Palestine : 176
+International Olympic Committee (IOC) : 177
+Europe : 178
+Bulgaria : 179
+North Macedonia : 180
+Asian Development Bank (ADB) : 181
+Arab League : 182
+Norway : 183
+Jerusalem : 184
+Indenesia : 185
+Estonia : 186
+Somalia : 187
+Belarus : 188
+wHO : 189
+Andorra : 190
+International Air Transport Association (IATA) : 191
+Bosnia and Herzegovina : 192
+Moldova : 193
+Aruba : 194
+Cayman Islands : 195
+Yemen : 196
+Costa Rica : 197
+FIFA : 198
+Iceland : 199
+NATO : 200
+International Monetary Fund (IMF) : 201
+Cameroon : 202
+Vatican : 203
+Togo : 204
+World Tourism Organization : 205
+G20 : 206
+Tokelau : 207
+Democratic Republic of Congo (DRC) : 208
+Burkina Faso : 209
+Tanzania : 210
+Sierra Leone : 211
+World Trade Organization (WTO) : 212
+Guernsey : 213
+Malta : 214
+Honduras : 215
+Benin : 216
+Haiti : 217
+Montenegro : 218
+Chad : 219
+Guyana : 220
+Association of Tennis Professionals (ATP) : 221
+Curacao : 222
+Uruguay : 223
+Kynea : 224
+Macedonia : 225
+Sint Maarten : 226
+Nicaragua : 227
+Djibouti : 228
+French Guiana : 229
+OIE : 230
+Malawi : 231
+Dominica : 232
+Burundi : 233
+South Sudan : 234
+Ivory Coast : 235
+Indigenous Organizations of the Amazon Basin (COICA) : 236
+Lesotho : 237
+Guinea-Bissau : 238
+Zambia : 239
+Guinea : 240
+Suriname : 241
+Barbados : 242
+Anguilla : 243
+Monaco : 244
+Niger : 245
+Eswatini : 246
+Réunion : 247
+Guadeloupe : 248
+Doctors Without Borders (MSF) : 249
+Pacific islands : 250
+Asia : 251
+Central African Republic : 252
+Saint Martin : 253
+Grermany : 254
+OPEC : 255
+International Organization for Migration (IOM) : 256
+International Committee of the Red Cross (ICRC) : 257
+Countries : 258
+Turkey and Somalia : 259
+International Civil Aviation Organization (ICAO) : 260
+Airport Council International (ACI) : 261
+Maldive : 262
+World Intellectual Property Organisation : 263
+Comoros Islands : 264
+European Union (EU) : 265
+UAE : 266
+Virgin Island (USA) : 267
+Comoros : 268
+Multiple Countries : 269
+European Commission : 270
+Australia/New Zealand : 271
+Dijbouti : 272
+Vanatu : 273
+Mauritania : 274
+United states : 275
+Mexica : 276
+UN World Food Programme (WFP) : 277
+United Nation : 278
+Study : 279
+Study / Research : 280
+European Uninon (EU) : 281
+Canary Islands : 282
+Saint  Vincent and the Grenadines. : 283
+World : 284
+Unites States : 285
+Canada and United States : 286
+Dagestan : 287
+United Kingdom and Thailand : 288
+United States and Mexico : 289
+European union : 290
+Untied Kingdom : 291
+Austrlia : 292
