@@ -629,6 +629,17 @@ val_ppl = get_completion_ppl('val')
 print('computing test perplexity...')
 test_ppl = get_completion_ppl('test')
 print('computing topic coherence and topic diversity...')
-get_topic_quality()
+tq, tc, td = get_topic_quality()        
+
+f=open(ckpt+'_tq.txt','w')
+s1="Topic Quality: "+str(tq)
+s2="Topic Coherence: "+str(tc)
+s3="Topic Diversity: "+str(td)
+f.write(s1+'\n'+s2+'\n'+s3+'\n')
+f.close()
+
+f=open(ckpt+'_tq.txt','r')
+[print(i,end='') for i in f.readlines()]
+f.close()
 print('visualizing topics and embeddings...')
 visualize()
