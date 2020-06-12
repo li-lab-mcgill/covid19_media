@@ -547,7 +547,7 @@ def get_topic_quality():
             # TC_all.append(tc)
             TC_all[tt] = tc
             cnt_all.append(cnt)
-        TC_all /= cnt_all[0]
+        TC_all = TC_all / cnt_all[0].item()
         TC_all[TC_all<0] = 0
         print('TC_all: ', TC_all)
         # TC_all = torch.tensor(TC_all)
