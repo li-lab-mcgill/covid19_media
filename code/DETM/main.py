@@ -558,6 +558,8 @@ def get_topic_quality():
         print('Topic Quality is: {}'.format(quality))
         print('#'*100)
 
+        return quality, np.mean(TC_all), TD
+
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
     best_epoch = 0
