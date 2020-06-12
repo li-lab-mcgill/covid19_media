@@ -8,7 +8,7 @@ United States : 6
 South Korea : 7
 Germany : 8
 Japan : 9
-International  : 10
+International : 10
 Pakistan : 11
 Papua New Guinea : 12
 Indonesia : 13
@@ -17,12 +17,12 @@ Brazil : 15
 Chile : 16
 Angola : 17
 Mozambique : 18
-Madeira Islands  : 19
-East Timor  : 20
+Madeira Islands : 19
+East Timor : 20
 Turkey : 21
 UNICEF : 22
 Canada : 23
-World Athletics  : 24
+World Athletics : 24
 Australia : 25
 China : 26
 European Union : 27
@@ -42,8 +42,8 @@ Liberia : 40
 Egypt : 41
 Tajikistan : 42
 Oman : 43
-Morocco  : 44
-United Arab Emirates (UAE)  : 45
+Morocco : 44
+United Arab Emirates (UAE) : 45
 Lebanon : 46
 Cyprus : 47
 Kenya : 48
@@ -59,298 +59,235 @@ Vietnam : 57
 Myanmar : 58
 Latvia : 59
 Cruise lines  : 60
-Morocco : 61
-Macau : 62
-Algeria : 63
-Sri Lanka : 64
-São Tomé and Príncipe : 65
-International : 66
-Taiwan  : 67
-Saudi Arabia : 68
-Nepal : 69
-North Korea : 70
-Maldives : 71
-Mongolia : 72
-Samoa : 73
-Guatemala : 74
-Myanmar  : 75
-Iran : 76
-Bangladesh : 77
-Bahrain : 78
-Kuwait : 79
-Serbia : 80
-Belgium : 81
-Poland : 82
-Finland : 83
-Afghanistan  : 84
-Ireland : 85
-Luxembourg  : 86
-Eritrea : 87
-Rwanda : 88
-Trinidad and Tobago  : 89
-Netherlands : 90
-New Caledonia : 91
-French Polynesia  : 92
-El Salvador : 93
-Argentina : 94
-Bolivia : 95
-Cuba : 96
-Dominican Republic  : 97
-Colombia : 98
-Austria : 99
-Botswana : 100
-East Timor : 101
-Portugal : 102
-Cape Verde  : 103
-Cambodia : 104
-Laos : 105
-Cook Islands : 106
-Iraq : 107
-Africa : 108
-Senegal  : 109
-Syria : 110
-Bhutan : 111
-Afghanistan : 112
-Kyrgyzstan : 113
-Bahamas : 114
-Paraguay : 115
-Denmark : 116
-Equatorial Guinea  : 117
-Micronesia : 118
-Tonga : 119
-Uganda : 120
-Antigua and Barbuda : 121
-Armenia : 122
-Azerbaijan : 123
-Fiji : 124
-Jamaica : 125
-Kiribati  : 126
-Kosovo : 127
-Seychelles : 128
-Solomon Islands : 129
-Vanuatu : 130
-Guam : 131
-Northern Mariana Islands  : 132
-Saint Kitts and Nevis : 133
-Niue : 134
-Guatemala  : 135
-Grenada : 136
-Central America : 137
-Papua New Guinea  : 138
-Antigua and Barbuda  : 139
-Gambia : 140
-Belize : 141
-Brunei : 142
-Gabon : 143
-Asian Infrastructure Investment Bank (AIIB) : 144
-World Bank : 145
-Namibia : 146
-Comoro Islands : 147
-Madagascar : 148
-Sweden : 149
-Czech Republic : 150
-Uzbekistan  : 151
-Ukraine : 152
-Mali : 153
-Saint Lucia : 154
-Ghana : 155
-Dominican Republic : 156
-Portugal  : 157
-BAHRAIN : 158
-Uzbekistan : 159
-China  : 160
-Ethiopia : 161
-EMRO : 162
-Albania : 163
-Lithuania : 164
-Slovakia : 165
-Republic of Congo : 166
-PAHO : 167
-Switzerland : 168
-Bermuda : 169
-Sudan : 170
-Zimbabwe : 171
-Gulf Cooperation Council (GCC) : 172
-Asia-Pacific Economic Cooperation : 173
-South Africa : 174
-Chile  : 175
-Ecuador : 176
-Peru : 177
-Venezuela : 178
-Panama : 179
-Greece : 180
-Georgia : 181
-Turkmenistan : 182
-Slovenia : 183
-American Samoa : 184
-Kazakhstan  : 185
-Romania : 186
-Croatia : 187
-Hungary : 188
-United Nations : 189
-Saint Vincent and the Grenadines : 190
-Nauru : 191
-Tunisia : 192
-Libya : 193
-Palestine : 194
-International Olympic Committee (IOC) : 195
-Europe : 196
-Bulgaria : 197
-North Macedonia : 198
-Romania  : 199
-Asian Development Bank (ADB) : 200
-Arab League  : 201
-Norway : 202
-Jerusalem : 203
-Indenesia : 204
-Estonia : 205
-Somalia : 206
-Belarus : 207
-wHO : 208
-Andorra : 209
-International Air Transport Association (IATA) : 210
-Bosnia and Herzegovina : 211
-Moldova : 212
-Albania  : 213
-Luxembourg : 214
-Ecuador  : 215
-Aruba : 216
-Cayman Islands : 217
-French Polynesia : 218
- International Olympic Committee (IOC) : 219
-Yemen : 220
-Costa Rica : 221
-FIFA : 222
-Iceland : 223
-NATO : 224
-International Monetary Fund (IMF) : 225
-Cameroon : 226
-Vatican : 227
-Togo : 228
-World Tourism Organization : 229
-G20 : 230
-Tokelau : 231
-Democratic Republic of Congo (DRC) : 232
-Burkina Faso : 233
-Tanzania : 234
-Sierra Leone : 235
-World Trade Organization (WTO) : 236
-Guernsey : 237
-Malta : 238
-Honduras : 239
-Mozambique  : 240
-Austria  : 241
-Benin : 242
-Haiti : 243
-Hungary  : 244
-Montenegro : 245
-Chad : 246
-Guyana : 247
-Association of Tennis Professionals (ATP) : 248
-Kiribati : 249
-Curacao : 250
-Malta  : 251
-Uruguay : 252
-Kynea : 253
-Macedonia : 254
-Germany  : 255
-Sint Maarten : 256
-Nicaragua : 257
-Djibouti : 258
-French Guiana : 259
-OIE : 260
-Malawi : 261
- Azerbaijan : 262
-Dominica  : 263
-Burundi : 264
-South Sudan : 265
-Philippines  : 266
-Ivory Coast : 267
-European Union  : 268
-Indigenous Organizations of the Amazon Basin (COICA) : 269
-Lesotho : 270
-Guinea-Bissau : 271
-Zambia : 272
-Turkmenistan  : 273
-Guinea : 274
-Suriname : 275
-Barbados : 276
-Anguilla : 277
-Monaco : 278
-Niger : 279
-Eswatini : 280
-Senegal : 281
-Réunion : 282
-Equatorial Guinea : 283
-France  : 284
-Kuwait  : 285
-Guadeloupe : 286
-Doctors Without Borders (MSF) : 287
-Pacific islands : 288
-Asia : 289
-Central African Republic : 290
-United Nations  : 291
-El Salvador  : 292
-Slovenia  : 293
-World Athletics : 294
-Saint Martin : 295
-Ethiopia   : 296
-Colombia  : 297
-Zimbabwe  : 298
-Grermany : 299
-Tanzania  : 300
-Dominica : 301
-United Kingdom   : 302
-Eswatini  : 303
-Belgium  : 304
-Slovakia  : 305
-OPEC : 306
-International Organization for Migration (IOM) : 307
-International Committee of the Red Cross (ICRC)  : 308
-United States  : 309
-Somalia  : 310
-Countries : 311
-Turkey and Somalia : 312
- Zimbabwe : 313
-International Civil Aviation Organization (ICAO) : 314
-Airport Council International (ACI) : 315
-Maldive : 316
-World Intellectual Property Organisation : 317
-International Committee of the Red Cross (ICRC) : 318
-Italy  : 319
-Portugal   : 320
-Comoros Islands : 321
-Lebanon  : 322
-European Union (EU) : 323
-UAE : 324
-Virgin Island (USA) : 325
-Comoros : 326
-Multiple Countries : 327
-European Commission : 328
-Australia/New Zealand : 329
-Czech Republic  : 330
-Spain             : 331
-Eritrea  : 332
-Dijbouti : 333
-Vanatu : 334
-American Samoa  : 335
-Mauritania : 336
-United states : 337
-Mexica : 338
-UN World Food Programme (WFP)  : 339
-United Nation : 340
-Study : 341
-Study / Research : 342
-European Uninon (EU) : 343
-Canary Islands : 344
-Georgia  : 345
-Saint  Vincent and the Grenadines. : 346
-World : 347
-Unites States : 348
-Canada and United States : 349
-Dagestan : 350
-United Kingdom and Thailand : 351
-United States and Mexico : 352
-European union : 353
-Untied Kingdom : 354
-Austrlia : 355
+Macau : 61
+Algeria : 62
+Sri Lanka : 63
+São Tomé and Príncipe : 64
+Saudi Arabia : 65
+Nepal : 66
+North Korea : 67
+Maldives : 68
+Mongolia : 69
+Samoa : 70
+Guatemala : 71
+Iran : 72
+Bangladesh : 73
+Bahrain : 74
+Kuwait : 75
+Serbia : 76
+Belgium : 77
+Poland : 78
+Finland : 79
+Afghanistan : 80
+Ireland : 81
+Luxembourg : 82
+Eritrea : 83
+Rwanda : 84
+Netherlands : 85
+New Caledonia : 86
+French Polynesia : 87
+El Salvador : 88
+Argentina : 89
+Bolivia : 90
+Cuba : 91
+Dominican Republic : 92
+Colombia : 93
+Austria : 94
+Botswana : 95
+Portugal : 96
+Cambodia : 97
+Laos : 98
+Cook Islands : 99
+Iraq : 100
+Africa : 101
+Senegal : 102
+Syria : 103
+Bhutan : 104
+Kyrgyzstan : 105
+Bahamas : 106
+Paraguay : 107
+Denmark : 108
+Equatorial Guinea : 109
+Micronesia : 110
+Tonga : 111
+Uganda : 112
+Antigua and Barbuda : 113
+Armenia : 114
+Azerbaijan : 115
+Fiji : 116
+Jamaica : 117
+Kiribati : 118
+Kosovo : 119
+Seychelles : 120
+Solomon Islands : 121
+Vanuatu : 122
+Guam : 123
+Saint Kitts and Nevis : 124
+Niue : 125
+Grenada : 126
+Central America : 127
+Gambia : 128
+Belize : 129
+Brunei : 130
+Gabon : 131
+Asian Infrastructure Investment Bank (AIIB) : 132
+World Bank : 133
+Namibia : 134
+Comoro Islands : 135
+Madagascar : 136
+Sweden : 137
+Czech Republic : 138
+Uzbekistan : 139
+Ukraine : 140
+Mali : 141
+Saint Lucia : 142
+Ghana : 143
+BAHRAIN : 144
+Ethiopia : 145
+EMRO : 146
+Albania : 147
+Lithuania : 148
+Slovakia : 149
+Republic of Congo : 150
+PAHO : 151
+Switzerland : 152
+Bermuda : 153
+Sudan : 154
+Zimbabwe : 155
+Gulf Cooperation Council (GCC) : 156
+Asia-Pacific Economic Cooperation : 157
+South Africa : 158
+Ecuador : 159
+Peru : 160
+Venezuela : 161
+Panama : 162
+Greece : 163
+Georgia : 164
+Turkmenistan : 165
+Slovenia : 166
+American Samoa : 167
+Romania : 168
+Croatia : 169
+Hungary : 170
+United Nations : 171
+Saint Vincent and the Grenadines : 172
+Nauru : 173
+Tunisia : 174
+Libya : 175
+Palestine : 176
+International Olympic Committee (IOC) : 177
+Europe : 178
+Bulgaria : 179
+North Macedonia : 180
+Asian Development Bank (ADB) : 181
+Arab League : 182
+Norway : 183
+Jerusalem : 184
+Indenesia : 185
+Estonia : 186
+Somalia : 187
+Belarus : 188
+wHO : 189
+Andorra : 190
+International Air Transport Association (IATA) : 191
+Bosnia and Herzegovina : 192
+Moldova : 193
+Aruba : 194
+Cayman Islands : 195
+Yemen : 196
+Costa Rica : 197
+FIFA : 198
+Iceland : 199
+NATO : 200
+International Monetary Fund (IMF) : 201
+Cameroon : 202
+Vatican : 203
+Togo : 204
+World Tourism Organization : 205
+G20 : 206
+Tokelau : 207
+Democratic Republic of Congo (DRC) : 208
+Burkina Faso : 209
+Tanzania : 210
+Sierra Leone : 211
+World Trade Organization (WTO) : 212
+Guernsey : 213
+Malta : 214
+Honduras : 215
+Benin : 216
+Haiti : 217
+Montenegro : 218
+Chad : 219
+Guyana : 220
+Association of Tennis Professionals (ATP) : 221
+Curacao : 222
+Uruguay : 223
+Kynea : 224
+Macedonia : 225
+Sint Maarten : 226
+Nicaragua : 227
+Djibouti : 228
+French Guiana : 229
+OIE : 230
+Malawi : 231
+Dominica : 232
+Burundi : 233
+South Sudan : 234
+Ivory Coast : 235
+Indigenous Organizations of the Amazon Basin (COICA) : 236
+Lesotho : 237
+Guinea-Bissau : 238
+Zambia : 239
+Guinea : 240
+Suriname : 241
+Barbados : 242
+Anguilla : 243
+Monaco : 244
+Niger : 245
+Eswatini : 246
+Réunion : 247
+Guadeloupe : 248
+Doctors Without Borders (MSF) : 249
+Pacific islands : 250
+Asia : 251
+Central African Republic : 252
+Saint Martin : 253
+Grermany : 254
+OPEC : 255
+International Organization for Migration (IOM) : 256
+International Committee of the Red Cross (ICRC) : 257
+Countries : 258
+Turkey and Somalia : 259
+International Civil Aviation Organization (ICAO) : 260
+Airport Council International (ACI) : 261
+Maldive : 262
+World Intellectual Property Organisation : 263
+Comoros Islands : 264
+European Union (EU) : 265
+UAE : 266
+Virgin Island (USA) : 267
+Comoros : 268
+Multiple Countries : 269
+European Commission : 270
+Australia/New Zealand : 271
+Dijbouti : 272
+Vanatu : 273
+Mauritania : 274
+United states : 275
+Mexica : 276
+UN World Food Programme (WFP) : 277
+United Nation : 278
+Study : 279
+Study / Research : 280
+European Uninon (EU) : 281
+Canary Islands : 282
+Saint  Vincent and the Grenadines. : 283
+World : 284
+Unites States : 285
+Canada and United States : 286
+Dagestan : 287
+United Kingdom and Thailand : 288
+United States and Mexico : 289
+European union : 290
+Untied Kingdom : 291
+Austrlia : 292
