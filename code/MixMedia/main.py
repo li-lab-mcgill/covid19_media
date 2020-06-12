@@ -109,8 +109,8 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
 
-parser.add_argument('--time_prior', type=int, default=0, help='whether to use time-dependent topic prior')
-parser.add_argument('--source_prior', type=int, default=0, help='whether to use source-specific topic prior')
+parser.add_argument('--time_prior', type=int, default=1, help='whether to use time-dependent topic prior')
+parser.add_argument('--source_prior', type=int, default=1, help='whether to use source-specific topic prior')
 
 
 args = parser.parse_args()
@@ -272,11 +272,12 @@ if not os.path.exists(args.save_path):
 if args.mode == 'eval':
     ckpt = args.load_from
 else:
-    ckpt = os.path.join(args.save_path, 
-        'mixmedia_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}'.format(
+ckpt = os.path.join(args.save_path, 
+        'mixmedia_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}'.format(
         args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
             args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
-            args.train_embeddings, args.predict_labels))
+            args.train_embeddings, args.predict_labels,
+            args.time_prior, args.source_prior))
 
 ## define model and optimizer
 if args.load_from != '':
