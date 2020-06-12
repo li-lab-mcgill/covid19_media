@@ -1,213 +1,287 @@
-Brazil : 0
-Canada : 1
-Ukraine : 2
-New Zealand : 3
-Jordan : 4
-Argentina : 5
-Chile : 6
-Singapore : 7
-Japan : 8
-Philippines : 9
-Switzerland : 10
-Lithuania : 11
-France : 12
-Cyprus : 13
-Lesotho : 14
-Algeria : 15
-Australia : 16
-Myanmar : 17
-Botswana : 18
-Honduras : 19
-Marshall Islands : 20
-Sri Lanka : 21
-Russian Federation : 22
-Romania : 23
-China : 24
-Austria : 25
-Tunisia : 26
-Kazakhstan : 27
-Denmark : 28
-Mexico : 29
-Mauritius : 30
-Iceland : 31
-Kenya : 32
-Yemen : 33
-United States Of America : 34
-Iran, Islamic Republic Of : 35
-Latvia : 36
-Germany : 37
-Namibia : 38
-Portugal : 39
-Mozambique : 40
-Uganda : 41
-Malaysia : 42
-Hungary : 43
-Barbados : 44
-Spain : 45
-Italy : 46
-Zimbabwe : 47
-South Africa : 48
-Ethiopia : 49
-Belize : 50
-Greece : 51
-United Arab Emirates : 52
-Uruguay : 53
-Cameroon : 54
-Nigeria : 55
-Saudi Arabia : 56
-Cambodia : 57
-Liechtenstein : 58
-Sweden : 59
-Indonesia : 60
-Belgium : 61
-Solomon Islands : 62
-India : 63
-Nepal : 64
-Democratic People's Republic Of Korea : 65
-Cuba : 66
-El Salvador : 67
-Thailand : 68
-North Macedonia : 69
-Gambia : 70
-Turkey : 71
-Croatia : 72
-Malawi : 73
-Niger : 74
-Bhutan : 75
-Czech Republic : 76
-Israel : 77
-Ghana : 78
-Senegal : 79
-Democratic Republic Of The Congo : 80
-Kyrgyzstan : 81
-South Sudan : 82
-Guinea : 83
-Libya : 84
-Suriname : 85
-Finland : 86
-Qatar : 87
-Eswatini : 88
-Bahamas : 89
-Iraq : 90
-Seychelles : 91
-Netherlands : 92
-Cook Islands : 93
-Brunei Darussalam : 94
-Sudan : 95
-Colombia : 96
-Ecuador : 97
-Chad : 98
-Rwanda : 99
-Guatemala : 100
-Morocco : 101
-Mongolia : 102
-Papua New Guinea : 103
-Liberia : 104
-Serbia : 105
-Peru : 106
-Samoa : 107
-Grenada : 108
-Syrian Arab Republic : 109
-Poland : 110
-Slovenia : 111
-Egypt : 112
-Equatorial Guinea : 113
-Bolivia, Plurinational State Of : 114
-United Kingdom Of Great Britain And Northern Ireland : 115
-Bangladesh : 116
-Pakistan : 117
-Fiji : 118
-Republic Of Korea : 119
-Bahrain : 120
-Lebanon : 121
-Armenia : 122
-Estonia : 123
-Anguilla : 124
-Saint Lucia : 125
-Turkmenistan : 126
-Malta : 127
-Burundi : 128
-Afghanistan : 129
-Palau : 130
-Slovakia : 131
-Bosnia And Herzegovina : 132
-Panama : 133
-Lao People's Democratic Republic : 134
-Guyana : 135
-Cote D Ivoire : 136
-Albania : 137
-Kuwait : 138
-Gabon : 139
-Benin : 140
-Oman : 141
-Viet Nam : 142
-French Polynesia : 143
-Dominica : 144
-Antigua And Barbuda : 145
-Saint Kitts And Nevis : 146
-Jamaica : 147
-Bulgaria : 148
-Angola : 149
-Nauru : 150
-Cabo Verde : 151
-Venezuela, Bolivarian Republic Of : 152
-Republic Of Moldova : 153
-Mauritania : 154
-Micronesia, Federated States Of : 155
-Mali : 156
-Uzbekistan : 157
-Trinidad And Tobago : 158
-Belarus : 159
-Montenegro : 160
-Azerbaijan : 161
-Georgia : 162
-Dominican Republic : 163
-Guinea-Bissau : 164
-Northern Mariana Islands, Commonwealth Of The : 165
-Burkina Faso : 166
-Maldives : 167
-Vanuatu : 168
-Paraguay : 169
-Madagascar : 170
-United Republic Of Tanzania : 171
-New Caledonia : 172
-Ireland : 173
-Somalia : 174
-Djibouti : 175
-Luxembourg : 176
-Guam : 177
-Central African Republic : 178
-Costa Rica : 179
-Tonga : 180
-Kiribati : 181
-Comoros : 182
-Occupied Palestinian Territory, Including East Jerusalem : 183
-Norway : 184
-Timor-Leste : 185
-Sierra Leone : 186
-Togo : 187
-Eritrea : 188
-Nicaragua : 189
-Congo : 190
-Tajikistan : 191
-Zambia : 192
-Saint Vincent And The Grenadines : 193
-Haiti : 194
-Tokelau : 195
-San Marino : 196
-Holy See : 197
-Reunion : 198
-Aruba : 199
-Tuvalu : 200
-Bermuda : 201
-Monaco : 202
-Curacao : 203
-Niue : 204
-Sao Tome And Principe : 205
-Cayman Islands : 206
-Sint Maarten : 207
-Andorra : 208
-Guernsey : 209
-American Samoa : 210
-Guadeloupe : 211
-French Guiana : 212
+garda : 0
+sbs news : 1
+msn news : 2
+rnz : 3
+daily ft : 4
+france 24 : 5
+portugal news : 6
+abc news : 7
+the star : 8
+nepali times : 9
+moscow times : 10
+the globe and mail : 11
+waterkant : 12
+unian news : 13
+colombo page : 14
+voa news : 15
+financial times : 16
+gardaworld : 17
+cuba debate : 18
+pna : 19
+club of mozambique : 20
+milenio : 21
+saudi press agency : 22
+klix : 23
+kazakh tv : 24
+elsalvador.com : 25
+aki press : 26
+middle east eye : 27
+news err : 28
+reuters : 29
+libyaobserver : 30
+dominica news online : 31
+dabanga news : 32
+the namibian : 33
+times of oman : 34
+libya observer : 35
+journal du cameroon : 36
+solomon times : 37
+post online media : 38
+angop : 39
+iol : 40
+borkena news : 41
+rferl.org : 42
+bbc : 43
+civil.ge : 44
+president press conference : 45
+nairametrics - president speech transcript : 46
+daily post : 47
+err news : 48
+sabc digital news : 49
+pia : 50
+forbes : 51
+swissinfo : 52
+anadolu agency : 53
+usn : 54
+lrt : 55
+dabangasudan : 56
+bulgarian ntnl. television : 57
+lrt news : 58
+guinea ecuatorial press : 59
+portugal resident : 60
+aljazeera : 61
+front page africa : 62
+news : 63
+the guardian : 64
+sapo25 : 65
+the portugal news : 66
+us today : 67
+gabon media time : 68
+the sunday morning : 69
+africa news : 70
+politico : 71
+matangi tonga : 72
+kurdistan24 : 73
+eye witness news : 74
+latinfinance : 75
+stuff : 76
+portugalnews : 77
+al-monitor : 78
+el observador : 79
+macau hub : 80
+global news : 81
+cbnc africa : 82
+vanuatu daily post : 83
+der standard : 84
+norway today : 85
+cnn : 86
+aa : 87
+thenational : 88
+time magazine : 89
+anadolu : 90
+fdd : 91
+news.am : 92
+die krone : 93
+dagblad suriname : 94
+china news : 95
+voa : 96
+malay mail : 97
+balkaninsight : 98
+sarajevo times : 99
+aa news : 100
+tageblatt : 101
+bbc news: prime minister press conference : 102
+the brief : 103
+the herald : 104
+ezega : 105
+matangi tonga newspaper : 106
+al jazeera : 107
+meta : 108
+all africa : 109
+fiji times : 110
+emirates news agency : 111
+channelnewsasia : 112
+local news : 113
+capital business : 114
+the telegraph : 115
+miami herald : 116
+can : 117
+n1 : 118
+yle state media : 119
+tagesschau : 120
+apa news : 121
+colombopage : 122
+tirana times 09/03/3030 : 123
+pr newswire : 124
+us news : 125
+dw : 126
+palestinechronicle : 127
+russia today : 128
+journal du cameroun : 129
+xinhua news : 130
+china.org.cn : 131
+kuwait times : 132
+the libya observer : 133
+the observer : 134
+the local : 135
+news ghana : 136
+middleeasteye : 137
+tagesblatt : 138
+telemundo : 139
+bbc news : 140
+the economist : 141
+lithuanian radio and television : 142
+news24x7world : 143
+today nicaragua : 144
+swiss info : 145
+ny times : 146
+nzz : 147
+the international news : 148
+prensa latina : 149
+la tercera : 150
+aa.com : 151
+east african : 152
+oman times : 153
+khaleej times : 154
+guardian nigeria : 155
+anadalou agency : 156
+colombiareports : 157
+azatutyan : 158
+alwatan voice : 159
+greek city times : 160
+telesur news : 161
+capitalfm : 162
+cna : 163
+afp : 164
+the moscow times : 165
+gulf news : 166
+times of malta : 167
+avas : 168
+euractiv : 169
+jornal economico : 170
+independent balkan news agency : 171
+hürriyet : 172
+proindie brazil news : 173
+daily mail : 174
+err : 175
+macau bus hub : 176
+the times : 177
+rfi : 178
+haiti libre : 179
+cgtn africa : 180
+garda world : 181
+cnbc africa : 182
+the northern times : 183
+daily nation : 184
+el pais : 185
+le faso : 186
+newzroom afrika: press conference : 187
+arab news : 188
+globo : 189
+apa : 190
+amazonas explorers : 191
+l'express de madagascar : 192
+lusaka times : 193
+deutschlandfunk : 194
+times of israel : 195
+guardian : 196
+proinde : 197
+brussels times : 198
+el salvador.com : 199
+euronews : 200
+presidency of iran : 201
+irish times : 202
+syrian arab news agency : 203
+amazonas explorer : 204
+media : 205
+tico times : 206
+government : 207
+nz herald : 208
+nepalitimes : 209
+kingdom of morocco : 210
+el mundo : 211
+the citizen : 212
+ada derana : 213
+the africa report : 214
+france24 : 215
+fbc news : 216
+jerusalem post : 217
+ministry of education : 218
+vrt : 219
+solomons govt : 220
+dailysabah : 221
+nyt : 222
+news day : 223
+daily postg : 224
+al wihda info : 225
+new humanitarian : 226
+news 18 : 227
+spectator : 228
+el comercio : 229
+yen : 230
+xihau : 231
+salzburg 24 : 232
+new delhi tv : 233
+la prensa : 234
+infomigrants : 235
+al monitor : 236
+total croatia news : 237
+burkina 24 : 238
+guam daily post : 239
+the diplomat : 240
+sf gate : 241
+wall st journal : 242
+mbs news : 243
+island sun : 244
+faapa : 245
+arabnews : 246
+rtl : 247
+pml daily : 248
+somali nationals news agency : 249
+la prense : 250
+vrt news : 251
+bizcommunity : 252
+eltiempo : 253
+telangana today : 254
+mustaqbal radio : 255
+eturbo news : 256
+the nation : 257
+alibreville : 258
+the iran project : 259
+the guardian world : 260
+hongkongfp : 261
+la times : 262
+irrawaddy : 263
+azertag : 264
+cnbcafrica : 265
+lakoom : 266
+nbc : 267
+dwt online : 268
+democracy now : 269
+sputnik : 270
+ther star : 271
+mining weekly : 272
+radio tamazuj : 273
+delano : 274
+the national : 275
+facebook : 276
+civilnet : 277
+lefaso : 278
+middle east monitor : 279
+khaleejtimes : 280
+listin diario : 281
+caribbean news global) : 282
+eu observer : 283
+estonian world : 284
+alarabiya : 285
+caspian news : 286
