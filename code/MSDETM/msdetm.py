@@ -256,8 +256,8 @@ class MSDETM(nn.Module):
         outputs = self.classifier(theta)
 
         if self.multiclass_labels: # multi-class prediction loss as independent Bernoulli
-
-            pred_loss = (-labels * F.log_softmax(outputs, dim=-1) - (1-labels) * F.log_softmax(1-outputs, dim=-1)).sum()
+            
+            pred_loss = (-labels * F.log_softmax(outputs, dim=-1) - (1-labels) * torch.log(1-F.softmax(outputs, dim=-1))).sum()
 
         else: # single-label prediction
             

@@ -31,8 +31,8 @@ importlib.reload(sys.modules['data'])
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
-parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
-parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
+# parser.add_argument('--dataset', type=str, default='GPHIN', help='name of corpus')
+# parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='WHO_all', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='../../data/WHO_June10/WHO_all', help='directory containing data')
@@ -43,8 +43,8 @@ parser.add_argument('--data_path', type=str, default='data/GPHIN', help='directo
 # parser.add_argument('--dataset', type=str, default='Aylien', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/data/Aylien', help='directory containing data')
 
-# parser.add_argument('--dataset', type=str, default='gphin_all_sources', help='name of corpus')
-# parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_all_sources', help='directory containing data')
+parser.add_argument('--dataset', type=str, default='gphin_all_sources', help='name of corpus')
+parser.add_argument('--data_path', type=str, default='../../data/GPHIN_labels/gphin_all_sources', help='directory containing data')
 
 # parser.add_argument('--dataset', type=str, default='GPHIN_all', help='name of corpus')
 # parser.add_argument('--data_path', type=str, default='/Users/yueli/Projects/covid19_media/pnair6/new_data/GPHIN_all', help='directory containing data')
@@ -106,8 +106,8 @@ parser.add_argument('--eval_batch_size', type=int, default=1000, help='input bat
 parser.add_argument('--load_from', type=str, default='', help='the name of the ckpt to eval from')
 parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or not')
 
-parser.add_argument('--predict_labels', type=int, default=0, help='whether to predict labels')
-parser.add_argument('--multiclass_labels', type=int, default=0, help='whether to predict labels')
+parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
+parser.add_argument('--multiclass_labels', type=int, default=1, help='whether to predict labels')
 
 parser.add_argument('--time_prior', type=int, default=1, help='whether to use time-dependent topic prior')
 parser.add_argument('--source_prior', type=int, default=1, help='whether to use source-specific topic prior')
