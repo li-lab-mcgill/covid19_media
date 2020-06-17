@@ -1,8 +1,7 @@
 import pickle
 
 
-with open('min_df_10/ids_map.pkl', 'rb') as f:
-    data = pickle.load(f)
-fi = open("ids.txt", "a")
-fi.write(str(data))
-fi.close()
+infile = open('min_df_10/vocab.pkl','rb')
+new_dict = pickle.load(infile)
+print(str(new_dict).encode('utf8'))
+infile.close()
