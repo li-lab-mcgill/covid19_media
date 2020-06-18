@@ -18,6 +18,8 @@ import pickle as pkl
 from argparse import ArgumentParser
 from datetime import datetime #Add import
 
+import fasttext
+
 #Split is fixed
 np.random.seed(0)
 
@@ -25,6 +27,61 @@ np.random.seed(0)
 max_df = 0.7
 min_df = 10  # choose desired value for min_df
 
+class Tokenizer:
+    def __init__(self, verbose=False, use_cache=True, 
+                 save_cache=True, cache_dir='word_index_cache'):
+        self.verbose = verbose
+        self.use_cache = use_cache
+        self.save_cache = save_cache
+        self.cache_dir = cache_dir
+        
+        self.word_index = {}
+        
+        if use_cache:
+            if not os.path.exists(cache_dir):
+                os.makedirs(cache_dir)
+    
+    def build_word_index(self, *args):
+        """
+        args: pandas series that we will use to build word index
+        """
+        if self.use_cache:
+            filename = os.path.join(self.cache_dir, "word_index.pickle")
+            if os.path.exists(filename):
+                print("Loading word index from cache...", end=" ")
+                self.word_index = pickle.load(open(filename, "rb"))
+                print("Done.")
+                return
+            
+            print("Word Index not found!")
+        
+        print("Generating new word index...", end=" ")
+        for df in args:
+            for sent in tqdm(df, disable=not self.verbose):
+                for word in sent.split():
+                    if word not in self.word_index:
+                        self.word_index[word] = len(self.word_index)
+        print("Done.")
+        
+        
+        if self.save_cache:
+            filename = os.path.join(self.cache_dir, "word_index.pickle")
+            print("Saving word index...", end=" ")
+            pickle.dump(self.word_index, open(filename, 'wb'))
+            print("Done.")
+    
+    def prepare_sequence(self, seq):
+        idxs = [self.word_index[w] for w in seq.split()]
+        return self.embedding_matrix[idxs]
+    
+    def build_embedding_matrix(self, path):
+        self.embedding_matrix = np.zeros((len(self.word_index), 300))
+        ft_model = fasttext.load_model(path)
+
+        for word, i in tqdm(self.word_index.items(), disable=not self.verbose):
+            self.embedding_matrix[i] = ft_model.get_word_vector(word)
+
+        return self.embedding_matrix
 
 def get_args():
     parser = ArgumentParser()
