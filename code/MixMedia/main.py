@@ -689,26 +689,26 @@ if args.mode == 'train':
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha).cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True)
+        np.save(ckpt+'_beta.npy', beta, allow_pickle=False)
 
         
         print('saving alpha...')
         alpha = model.mu_q_alpha.cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
+        np.save(ckpt+'_alpha.npy', alpha, allow_pickle=False)
 
 
         print('saving classifer weights...')
         classifer_weights = model.classifier.weight.cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_classifer.mat', {'values': classifer_weights}, do_compression=True)
+        np.save(ckpt+'_classifer.npy', classifer_weights, allow_pickle=False)
 
         print('saving eta ...')
         eta = get_eta('train').cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_eta.mat', {'values': eta}, do_compression=True)
+        np.save(ckpt+'_eta.npy', eta, allow_pickle=False)
 
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
             rho = model.rho.weight.cpu().detach().numpy()
-            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
+            np.save(ckpt+'_rho.npy', rho, allow_pickle=False)
 
         f=open(ckpt+'_val_ppl.txt','w')
         s1='\n'.join([str(i) for i in all_val_ppls])        
