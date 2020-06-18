@@ -318,8 +318,8 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
     bow_tr_tokens, bow_tr_counts = split_bow(bow_tr, n_docs_tr)
 
-    np.save(os.path.join(path_save, 'bow_tr_tokens.npy'), bow_tr_tokens, allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_tr_counts.npy'), bow_tr_counts, allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_tr_tokens.npy'), np.array(bow_tr_tokens), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_tr_counts.npy'), np.array(bow_tr_counts), allow_pickle=False)
     pkl.dump(countries_tr, open(path_save + 'bow_tr_countries.pkl',"wb"))
 
     del bow_tr
@@ -327,8 +327,8 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     del bow_tr_counts
 
     bow_ts_tokens, bow_ts_counts = split_bow(bow_ts, n_docs_ts)
-    np.save(os.path.join(path_save, 'bow_ts_tokens.npy'), bow_ts_tokens, allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_ts_counts.npy'), bow_ts_counts, allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_ts_tokens.npy'), np.array(bow_ts_tokens), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_ts_counts.npy'), np.array(bow_ts_counts), allow_pickle=False)
     #savemat(path_save + 'bow_ts_countries.mat', {'countries': countries_ts}, do_compression=True)
     pkl.dump(countries_ts, open(path_save + 'bow_ts_countries.pkl',"wb"))
 
@@ -338,8 +338,8 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
 
     bow_ts_h1_tokens, bow_ts_h1_counts = split_bow(bow_ts_h1, n_docs_ts_h1)
-    np.save(os.path.join(path_save, 'bow_ts_h1_tokens.npy'), bow_ts_h1_tokens, allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_ts_h1_counts.npy'), bow_ts_h1_counts, allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_ts_h1_tokens.npy'), np.array(bow_ts_h1_tokens), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_ts_h1_counts.npy'), np.array(bow_ts_h1_counts), allow_pickle=False)
     #savemat(path_save + 'bow_ts_h1_countries.mat', {'countries': countries_ts_h1}, do_compression=True)
     pkl.dump(countries_ts_h1, open(path_save + 'bow_ts_h1_countries.pkl',"wb"))
 
@@ -348,8 +348,8 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     del bow_ts_h1_counts
 
     bow_ts_h2_tokens, bow_ts_h2_counts = split_bow(bow_ts_h2, n_docs_ts_h2)
-    np.save(os.path.join(path_save, 'bow_ts_h2_tokens.npy'), bow_ts_h2_tokens, allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_ts_h2_counts.npy'), bow_ts_h2_counts, allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_ts_h2_tokens.npy'), np.array(bow_ts_h2_tokens), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_ts_h2_counts.npy'), np.array(bow_ts_h2_counts), allow_pickle=False)
     #savemat(path_save + 'bow_ts_h2_countries.mat', {'countries': countries_ts_h2}, do_compression=True)
     pkl.dump(countries_ts_h2, open(path_save + 'bow_ts_h2_countries.pkl',"wb"))
 
@@ -359,8 +359,8 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
 
     bow_va_tokens, bow_va_counts = split_bow(bow_va, n_docs_va)
-    np.save(os.path.join(path_save, 'bow_va_tokens.npy'), bow_va_tokens, allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_va_counts.npy'), bow_va_counts, allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_va_tokens.npy'), np.array(bow_va_tokens), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_va_counts.npy'), np.array(bow_va_counts), allow_pickle=False)
     #savemat(path_save + 'bow_va_countries.mat', {'countries': countries_va}, do_compression=True)
     pkl.dump(countries_va, open(path_save + 'bow_va_countries.pkl',"wb"))
 
