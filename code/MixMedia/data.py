@@ -11,25 +11,25 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def _fetch(path, name):
     if name == 'train':
-        token_file = os.path.join(path, 'bow_tr_tokens.mat')
-        count_file = os.path.join(path, 'bow_tr_counts.mat')
+        token_file = os.path.join(path, 'bow_tr_tokens.npy')
+        count_file = os.path.join(path, 'bow_tr_counts.npy')
     elif name == 'valid':
-        token_file = os.path.join(path, 'bow_va_tokens.mat')
-        count_file = os.path.join(path, 'bow_va_counts.mat')
+        token_file = os.path.join(path, 'bow_va_tokens.npy')
+        count_file = os.path.join(path, 'bow_va_counts.npy')
     else:
-        token_file = os.path.join(path, 'bow_ts_tokens.mat')
-        count_file = os.path.join(path, 'bow_ts_counts.mat')
-    tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
-    counts = scipy.io.loadmat(count_file)['counts'].squeeze()
+        token_file = os.path.join(path, 'bow_ts_tokens.npy')
+        count_file = os.path.join(path, 'bow_ts_counts.npy')
+    tokens = np.load(token_file)
+    counts = np.load(count_file)
     if name == 'test':
-        token_1_file = os.path.join(path, 'bow_ts_h1_tokens.mat')
-        count_1_file = os.path.join(path, 'bow_ts_h1_counts.mat')
-        token_2_file = os.path.join(path, 'bow_ts_h2_tokens.mat')
-        count_2_file = os.path.join(path, 'bow_ts_h2_counts.mat')
-        tokens_1 = scipy.io.loadmat(token_1_file)['tokens'].squeeze()
-        counts_1 = scipy.io.loadmat(count_1_file)['counts'].squeeze()
-        tokens_2 = scipy.io.loadmat(token_2_file)['tokens'].squeeze()
-        counts_2 = scipy.io.loadmat(count_2_file)['counts'].squeeze()
+        token_1_file = os.path.join(path, 'bow_ts_h1_tokens.npy')
+        count_1_file = os.path.join(path, 'bow_ts_h1_counts.npy')
+        token_2_file = os.path.join(path, 'bow_ts_h2_tokens.npy')
+        count_2_file = os.path.join(path, 'bow_ts_h2_counts.npy')
+        tokens_1 = np.load(token_1_file)
+        counts_1 = np.load(count_1_file)
+        tokens_2 = np.load(token_2_file)
+        counts_2 = np.load(count_2_file)
         return {'tokens': tokens, 'counts': counts, 'tokens_1': tokens_1, 
         'counts_1': counts_1, 'tokens_2': tokens_2, 'counts_2': counts_2}
     return {'tokens': tokens, 'counts': counts}
@@ -59,11 +59,11 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True):
         if predict:
             label_file = os.path.join(path, 'bow_ts_labels.pkl')    
     
-    tokens = scipy.io.loadmat(token_file)['tokens'].squeeze()
-    counts = scipy.io.loadmat(count_file)['counts'].squeeze()
+    tokens = np.load(token_file)
+    counts = np.load(count_file)
     
     if use_time:        
-        times = scipy.io.loadmat(time_file)['timestamps'].squeeze()
+        times = np.load(time_file)
     else:
         times = np.zeros(tokens.shape[0])
 
@@ -83,10 +83,10 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True):
         count_1_file = os.path.join(path, 'bow_ts_h1_counts')
         token_2_file = os.path.join(path, 'bow_ts_h2_tokens')
         count_2_file = os.path.join(path, 'bow_ts_h2_counts')        
-        tokens_1 = scipy.io.loadmat(token_1_file)['tokens'].squeeze()
-        counts_1 = scipy.io.loadmat(count_1_file)['counts'].squeeze()
-        tokens_2 = scipy.io.loadmat(token_2_file)['tokens'].squeeze()
-        counts_2 = scipy.io.loadmat(count_2_file)['counts'].squeeze()
+        tokens_1 = np.load(token_1_file)
+        counts_1 = np.load(count_1_file)
+        tokens_2 = np.load(token_2_file)
+        counts_2 = np.load(count_2_file)
 
         return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources, 'labels': labels,
                     'tokens_1': tokens_1, 'counts_1': counts_1, 
