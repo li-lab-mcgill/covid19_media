@@ -701,7 +701,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     # save fasttext embeddings
     with open(os.path.join(path_save, "embs_train.pkl"), "wb") as file:
         pickle.dump(docs_embs_tr, file)
-    with open(os.path.join(path_save, "embs_val.pkl"), "wb") as file:
+    with open(os.path.join(path_save, "embs_valid.pkl"), "wb") as file:
         pickle.dump(docs_embs_va, file)
     with open(os.path.join(path_save, "embs_test.pkl"), "wb") as file:
         pickle.dump(docs_embs_ts, file)
