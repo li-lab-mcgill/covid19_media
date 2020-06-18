@@ -48,16 +48,16 @@ class Tokenizer:
         print("Generating word index...", end=" ")
         for df in args:
             for sent in tqdm(df, disable=not self.verbose):
-                for word in sent.split():
+                for word in sent:
                     if word not in self.word_index:
                         self.word_index[word] = len(self.word_index)
         print("Done.")
     
     def prepare_sequence(self, seq):
-        idxs = [self.word_index[w] for w in seq.split()]
+        idxs = [self.word_index[w] for w in seq]
         return self.embedding_matrix[idxs]
     
-    def build_embedding_matrix(self, path='fasttext_cache//home/mcb/users/zwen8/thesis/models/word_embeddings/fasttext_xh/crawl-300d-2M-subword.bin'):
+    def build_embedding_matrix(self, path='fasttext_cache/crawl-300d-2M-subword.bin'):
         self.embedding_matrix = np.zeros((len(self.word_index), 300))
         ft_model = fasttext.load_model(path)
 
@@ -79,7 +79,7 @@ def get_stopwords(stopwords_file=None):
 
     if len(stopwords_file) != 0:
         # Read in stopwords. Comment following two lines and uncomment the next 2 lines if you wish to use ntlk stopwords
-        with open('stops.txt', 'r') as f:
+        with open(stopwords_file, 'r') as f:
             stops = f.read().split('\n')
         return stops
     else:
@@ -356,7 +356,7 @@ def preprocess(train_data, test_data, full_data):
         data_ids = np.append(train_data.index, test_data.index)
 
     # prepare fasttext word embeddings
-    tokenizer = Tokenizer()
+    tokenizer = Tokenizer(verbose=True)
     tokenizer.build_word_index(init_docs)
     tokenizer.build_embedding_matrix()
     init_docs_embs = [tokenizer.prepare_sequence(doc) for doc in tqdm(init_docs)]
@@ -502,7 +502,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
 
     docs_ts = [[word2id[w] for w in init_docs[idx_d+num_docs_tr].split() if w in word2id] for idx_d in range(tsSize)]
-    docs_embs_ts = [all_docs_embs[idx_permute[idx_d+num_docs_tr]] for idx_d in range(tsSize)]
+    docs_embs_ts = [all_docs_embs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
     print(len(docs_ts))
     #exit()
     timestamps_ts = [time2id[init_timestamps[idx_d+num_docs_tr]] for idx_d in range(tsSize)]
@@ -724,13 +724,13 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
     bow_tr_tokens, bow_tr_counts = split_bow(bow_tr, n_docs_tr)
 
-    np.save(os.path.join(path_save, 'bow_tr_tokens.npy'), np.array(bow_tr_tokens), allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_tr_counts.npy'), np.array(bow_tr_counts), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_tr_tokens.npy'), np.array(bow_tr_tokens))
+    np.save(os.path.join(path_save, 'bow_tr_counts.npy'), np.array(bow_tr_counts))
    
 
     if not full_data:
         pkl.dump(countries_tr, open(path_save + 'bow_tr_sources.pkl',"wb"))
-        np.save(os.path.join(path_save, 'bow_tr_timestamps.npy'), np.array(timestamps_tr), allow_pickle=False)
+        np.save(os.path.join(path_save, 'bow_tr_timestamps.npy'), np.array(timestamps_tr))
     pkl.dump(ids_tr, open(path_save + 'bow_tr_ids.pkl',"wb"))
     #savemat(path_save+"bow_tr_labels.mat",{'labels':labels_tr},do_compression=True)
     pickle.dump(labels_tr, open(path_save+"bow_tr_labels.pkl","wb"))
@@ -740,12 +740,12 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     del bow_tr_counts
 
     bow_ts_tokens, bow_ts_counts = split_bow(bow_ts, n_docs_ts)
-    np.save(os.path.join(path_save, 'bow_ts_tokens.npy'), np.array(bow_ts_tokens), allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_ts_counts.npy'), np.array(bow_ts_counts), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_ts_tokens.npy'), np.array(bow_ts_tokens))
+    np.save(os.path.join(path_save, 'bow_ts_counts.npy'), np.array(bow_ts_counts))
     #savemat(path_save + 'bow_ts_countries.mat', {'countries': countries_ts}, do_compression=True)
     if not full_data:
         pkl.dump(countries_ts, open(path_save + 'bow_ts_sources.pkl',"wb"))
-        np.save(os.path.join(path_save, 'bow_ts_timestamps.npy'), np.array(timestamps_ts), allow_pickle=False)
+        np.save(os.path.join(path_save, 'bow_ts_timestamps.npy'), np.array(timestamps_ts))
     pkl.dump(ids_ts, open(path_save + 'bow_ts_ids.pkl',"wb"))
     #savemat(path_save+"bow_ts_labels.mat",{'labels':labels_ts},do_compression=True)
     pickle.dump(labels_ts, open(path_save+"bow_ts_labels.pkl","wb"))
@@ -756,12 +756,12 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
 
     bow_ts_h1_tokens, bow_ts_h1_counts = split_bow(bow_ts_h1, n_docs_ts_h1)
-    np.save(os.path.join(path_save, 'bow_ts_h1_tokens.npy'), np.array(bow_ts_h1_tokens), allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_ts_h1_counts.npy'), np.array(bow_ts_h1_counts), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_ts_h1_tokens.npy'), np.array(bow_ts_h1_tokens))
+    np.save(os.path.join(path_save, 'bow_ts_h1_counts.npy'), np.array(bow_ts_h1_counts))
     #savemat(path_save + 'bow_ts_h1_countries.mat', {'countries': countries_ts_h1}, do_compression=True)
     if not full_data:
         pkl.dump(countries_ts_h1, open(path_save + 'bow_ts_h1_sources.pkl',"wb"))
-        np.save(os.path.join(path_save, 'bow_va_timestamps.npy'), np.array(timestamps_va), allow_pickle=False)
+        np.save(os.path.join(path_save, 'bow_va_timestamps.npy'), np.array(timestamps_va))
     #savemat(path_save+"bow_ts_h1_labels.mat",{'labels':labels_ts_h1},do_compression=True)
     pickle.dump(labels_ts_h1, open(path_save+"bow_ts_h1_labels.pkl","wb"))
 
@@ -770,8 +770,8 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     del bow_ts_h1_counts
 
     bow_ts_h2_tokens, bow_ts_h2_counts = split_bow(bow_ts_h2, n_docs_ts_h2)
-    np.save(os.path.join(path_save, 'bow_ts_h2_tokens.npy'), np.array(bow_ts_h2_tokens), allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_ts_h2_counts.npy'), np.array(bow_ts_h2_counts), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_ts_h2_tokens.npy'), np.array(bow_ts_h2_tokens))
+    np.save(os.path.join(path_save, 'bow_ts_h2_counts.npy'), np.array(bow_ts_h2_counts))
     #savemat(path_save + 'bow_ts_h2_countries.mat', {'countries': countries_ts_h2}, do_compression=True)
     if not full_data:
         pickle.dump(countries_ts_h2, open(path_save + 'bow_ts_h2_sources.pkl',"wb"))
@@ -785,8 +785,8 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
 
     bow_va_tokens, bow_va_counts = split_bow(bow_va, n_docs_va)
-    np.save(os.path.join(path_save, 'bow_va_tokens.npy'), np.array(bow_va_tokens), allow_pickle=False)
-    np.save(os.path.join(path_save, 'bow_va_counts.npy'), np.array(bow_va_counts), allow_pickle=False)
+    np.save(os.path.join(path_save, 'bow_va_tokens.npy'), np.array(bow_va_tokens))
+    np.save(os.path.join(path_save, 'bow_va_counts.npy'), np.array(bow_va_counts))
     #savemat(path_save + 'bow_va_countries.mat', {'countries': countries_va}, do_compression=True)
     if not full_data:
         pickle.dump(countries_va, open(path_save + 'bow_va_sources.pkl',"wb"))
