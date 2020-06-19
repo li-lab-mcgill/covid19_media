@@ -10,13 +10,13 @@ from tqdm import tqdm
 array_country = []
 
 #Get csv file
-df = pd.read_csv("who_all.csv")
+df = pd.read_csv("test.csv")
 
 def origin(ip, domain_str, result):
     origin_country = "{0} [{1}]: {2}".format(domain_str.strip(), ip, result)
     #print(origin_country)
     #Add to array
-    array_country.append(origin_country)
+    array_country.append(str(result))
 
 
 def getip(domain_str):
@@ -36,6 +36,7 @@ for domain_str in tqdm(ins):
         char20 = char20[char20.find('www'):]
         getip(char20)
     except socket.error as msg:
+        array_country.append(' ')
         #print("{0} [could not resolve]".format(char20.strip())) 
         if len(char20) > 2:
             try:
@@ -49,8 +50,8 @@ for domain_str in tqdm(ins):
 
 #Array to csv column : 
 mapping = dict(enumerate(array_country))
-df['C_ORIGIN'] = df['SOURCE'].map(mapping)
-df.to_csv("who_country_origin.csv", index=False)
+df_new = pd.DataFrame(array_country, columns=["C_Origin"])
+df_new.to_csv("who_country_origin.csv", index=False)
 
 geolite2.close()
 
