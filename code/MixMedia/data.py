@@ -122,11 +122,12 @@ def get_data(path, temporal=False, predict=False, use_time=False, use_source=Fal
 
     return vocab, train, valid, test
 
-def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temporal=False, times=None):
+def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300, temporal=False, times=None):
     
     """fetch input data by batch."""
     batch_size = len(ind)
     data_batch = np.zeros((batch_size, vocab_size))
+    embs_batch = []
     
     if temporal:
         times_batch = np.zeros((batch_size, ))
@@ -164,8 +165,12 @@ def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temp
         if doc_id != -1:
             for j, word in enumerate(doc):
                 data_batch[i, word] = count[j]
+
+        # get embeddings batch
+        embs_batch.append(embs[doc_id])
     
     data_batch = torch.from_numpy(data_batch).float().to(device)
+    embs_batch_padded = torch.nn.utils.rnn.pad_sequence(embs_batch, batch_first=True)
     sources_batch = torch.from_numpy(sources_batch).to(device)
     labels_batch = torch.from_numpy(labels_batch).to(device)
 
@@ -173,7 +178,7 @@ def get_batch(tokens, counts, ind, sources, labels, vocab_size, emsize=300, temp
         times_batch = torch.from_numpy(times_batch).to(device)
         return data_batch, times_batch, sources_batch, labels_batch
 
-    return data_batch, sources_batch, labels_batch
+    return data_batch, embs_batch_padded, sources_batch, labels_batch
 
 
 ## get source-specific word frequencies at each time point t

@@ -140,6 +140,7 @@ args.vocab_size = vocab_size
 print('Getting training data ...')
 train_tokens = train['tokens']
 train_counts = train['counts']
+train_embs = train['embs']
 train_times = train['times']
 train_sources = train['sources']
 train_labels = train['labels']
@@ -189,6 +190,7 @@ train_rnn_inp = data.get_rnn_input(
 print('Getting validation data ...')
 valid_tokens = valid['tokens']
 valid_counts = valid['counts']
+valid_embs = valid['embs']
 valid_times = valid['times']
 valid_sources = valid['sources']
 valid_labels = train['labels']
@@ -204,6 +206,7 @@ valid_rnn_inp = data.get_rnn_input(
 print('Getting testing data ...')
 test_tokens = test['tokens']
 test_counts = test['counts']
+test_embs = test['embs']
 test_times = test['times']
 test_sources = test['sources']
 test_labels = test['labels']
@@ -218,6 +221,7 @@ test_rnn_inp = data.get_rnn_input(
 
 test_1_tokens = test['tokens_1']
 test_1_counts = test['counts_1']
+test_1_embs = test['embs_1']
 test_1_times = test_times
 args.num_docs_test_1 = len(test_1_tokens)
 test_1_rnn_inp = data.get_rnn_input(
@@ -228,6 +232,7 @@ test_1_rnn_inp = data.get_rnn_input(
 
 test_2_tokens = test['tokens_2']
 test_2_counts = test['counts_2']
+test_2_embs = test['embs_2']
 test_2_times = test_times
 args.num_docs_test_2 = len(test_2_tokens)
 test_2_rnn_inp = data.get_rnn_input(
@@ -326,8 +331,8 @@ def train(epoch):
         optimizer.zero_grad()
         model.zero_grad()        
         
-        data_batch, times_batch, sources_batch, labels_batch = data.get_batch(
-            train_tokens, train_counts, ind, train_sources, train_labels, 
+        data_batch, embs_batch, times_batch, sources_batch, labels_batch = data.get_batch(
+            train_tokens, train_counts, train_embs, ind, train_sources, train_labels, 
             args.vocab_size, args.emb_size, temporal=True, times=train_times)        
 
         sums = data_batch.sum(1).unsqueeze(1)
@@ -479,6 +484,7 @@ def get_completion_ppl(source):
             indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)            
             tokens = valid_tokens
             counts = valid_counts
+            embs = valid_embs
             times = valid_times
             sources = valid_sources
             labels = valid_labels
@@ -491,8 +497,8 @@ def get_completion_ppl(source):
             cnt = 0
             for idx, ind in enumerate(indices):
                 
-                data_batch, times_batch, sources_batch, labels_batch = data.get_batch(
-                    tokens, counts, ind, sources, labels, 
+                data_batch, embs_batch, times_batch, sources_batch, labels_batch = data.get_batch(
+                    tokens, counts, embs, ind, sources, labels, 
                     args.vocab_size, args.emb_size, temporal=True, times=times)
 
                 sums = data_batch.sum(1).unsqueeze(1)
@@ -535,8 +541,10 @@ def get_completion_ppl(source):
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             tokens_1 = test_1_tokens
             counts_1 = test_1_counts
+            embs_1 = test_1_embs
             tokens_2 = test_2_tokens
             counts_2 = test_2_counts            
+            embs_2 = test_2_embs
 
             eta_1 = get_eta('test')
 
@@ -547,8 +555,8 @@ def get_completion_ppl(source):
             indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
 
-                data_batch_1, times_batch_1, sources_batch_1, labels_batch_1 = data.get_batch(
-                    tokens_1, counts_1, ind, test_sources, test_labels,
+                data_batch_1, embs_batch_1, times_batch_1, sources_batch_1, labels_batch_1 = data.get_batch(
+                    tokens_1, counts_1, embs_1, ind, test_sources, test_labels,
                     args.vocab_size, args.emb_size, temporal=True, times=test_times)
                 
                 sums_1 = data_batch_1.sum(1).unsqueeze(1)
@@ -560,8 +568,8 @@ def get_completion_ppl(source):
                 
                 theta = get_theta(eta_1, normalized_data_batch_1, times_batch_1, sources_batch_1)
 
-                data_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
-                    tokens_2, counts_2, ind, test_sources, test_labels,
+                data_batch_2, embs_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
+                    tokens_2, counts_2, embs_2, ind, test_sources, test_labels,
                     args.vocab_size, args.emb_size, temporal=True, times=test_times)
 
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
