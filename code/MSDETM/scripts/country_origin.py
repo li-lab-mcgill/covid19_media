@@ -5,6 +5,7 @@
 import socket
 from geolite2 import geolite2
 import pandas as pd 
+from tqdm import tqdm
 
 array_country = []
 
@@ -13,7 +14,7 @@ df = pd.read_csv("who_all.csv")
 
 def origin(ip, domain_str, result):
     origin_country = "{0} [{1}]: {2}".format(domain_str.strip(), ip, result)
-    print(origin_country)
+    #print(origin_country)
     #Add to array
     array_country.append(origin_country)
 
@@ -26,7 +27,7 @@ def getip(domain_str):
     origin(ip, domain_str, result)
 
 ins = df["LINK"].tolist()
-for domain_str in ins:
+for domain_str in tqdm(ins):
     try:
         domain = str(domain_str)
         char20 = domain[0:40]
@@ -35,7 +36,7 @@ for domain_str in ins:
         char20 = char20[char20.find('www'):]
         getip(char20)
     except socket.error as msg:
-        print("{0} [could not resolve]".format(char20.strip())) 
+        #print("{0} [could not resolve]".format(char20.strip())) 
         if len(char20) > 2:
             try:
                 subdomain = char20.split('.', 1)[1]
