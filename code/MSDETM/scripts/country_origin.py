@@ -10,7 +10,7 @@ from tqdm import tqdm
 array_country = []
 
 #Get csv file
-df = pd.read_csv("test.csv")
+df = pd.read_csv("who_all.csv")
 
 def origin(ip, domain_str, result):
     origin_country = "{0} [{1}]: {2}".format(domain_str.strip(), ip, result)
@@ -34,7 +34,11 @@ for domain_str in tqdm(ins):
         strip_char = '/'
         char20 = strip_char.join(char20.split(strip_char)[:3])
         char20 = char20[char20.find('www'):]
-        getip(char20)
+        try:
+            getip(char20)
+        except:
+            array_country.append(' ')
+            continue
     except socket.error as msg:
         array_country.append(' ')
         #print("{0} [could not resolve]".format(char20.strip())) 
