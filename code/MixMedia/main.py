@@ -75,6 +75,8 @@ parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of 
 
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
+parser.add_argument('--one_hot_qtheta_emb', type=bool, default=True, help='whther to use 1-hot embedding as q_theta input')
+
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
@@ -130,7 +132,8 @@ torch.manual_seed(args.seed)
 print('Getting vocabulary ...')
 data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
 
-vocab, train, valid, test = data.get_data(data_file, temporal=True, predict=args.predict_labels, use_time=args.time_prior, use_source=args.source_prior)
+vocab, train, valid, test = data.get_data(data_file, temporal=True, predict=args.predict_labels, \
+    use_time=args.time_prior, use_source=args.source_prior, if_one_hot=args.one_hot_qtheta_emb)
 
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
