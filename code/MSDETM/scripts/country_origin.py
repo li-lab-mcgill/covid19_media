@@ -30,21 +30,21 @@ ins = df["LINK"].tolist()
 for domain_str in tqdm(ins):
     try:
         domain = str(domain_str)
-        char20 = domain[0:40]
+        char40 = domain[0:40]
         strip_char = '/'
-        char20 = strip_char.join(char20.split(strip_char)[:3])
-        char20 = char20[char20.find('www'):]
+        char40 = strip_char.join(char40.split(strip_char)[:3])
+        char40 = char40[char40.find('www'):]
         try:
-            getip(char20)
+            getip(char40)
         except:
             array_country.append(' ')
             continue
     except socket.error as msg:
         array_country.append(' ')
-        #print("{0} [could not resolve]".format(char20.strip())) 
-        if len(char20) > 2:
+        #print("{0} [could not resolve]".format(char40.strip())) 
+        if len(char40) > 2:
             try:
-                subdomain = char20.split('.', 1)[1]
+                subdomain = char40.split('.', 1)[1]
             except:
                 continue
             try:
