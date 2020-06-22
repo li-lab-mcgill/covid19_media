@@ -40,6 +40,13 @@ class MixMedia(nn.Module):
 
         self.theta_act = self.get_activation(args.theta_act)
 
+        # LSTM params for q_theta
+        self.q_theta_layers = args.q_theta_layers
+        self.q_theta_input_dim = args.q_theta_input_dim
+        self.q_theta_hidden_size = args.q_theta_hidden_size
+        self.q_theta_bi = args.q_theta_bi
+        self.q_theta_drop = args.q_theta_drop
+
         ## define the word embedding matrix \rho: L x V
         if args.train_embeddings:
             self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False) # L x V
@@ -56,14 +63,19 @@ class MixMedia(nn.Module):
     
     
         ## define variational distribution for \theta_{1:D} via amortizartion... theta is K x D
-        self.q_theta = nn.Sequential(
-                    nn.Linear(args.vocab_size+args.num_topics, args.t_hidden_size), 
-                    self.theta_act,
-                    nn.Linear(args.t_hidden_size, args.t_hidden_size),
-                    self.theta_act,
-                )
-        self.mu_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
-        self.logsigma_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
+        # self.q_theta = nn.Sequential(
+        #             nn.Linear(args.vocab_size+args.num_topics, args.t_hidden_size), 
+        #             self.theta_act,
+        #             nn.Linear(args.t_hidden_size, args.t_hidden_size),
+        #             self.theta_act,
+        #         )
+        self.q_theta = nn.LSTM(self.q_theta_input_dim, hidden_size=self.q_theta_hidden_size, \
+            bidirectional=self.q_theta_bi, dropout=self.q_theta_drop, num_layers=self.q_theta_layers, batch_first=True)
+        q_theta_out_dim = 2 * self.q_theta_hidden_size if self.q_theta_bi else self.q_theta_hidden_size
+        # self.mu_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
+        self.mu_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True)
+        # self.logsigma_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
+        self.logsigma_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True)
 
         ## define variational distribution for \eta via amortizartion... eta is K x T
         self.q_eta_map = nn.Linear(args.vocab_size, args.eta_hidden_size)
@@ -192,12 +204,14 @@ class MixMedia(nn.Module):
 
 
 
-    def get_theta(self, eta, bows, times, sources): ## amortized inference
+    def get_theta(self, eta, embs, times, sources): ## amortized inference
         """Returns the topic proportions.
         """
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
-        inp = torch.cat([bows, eta_std], dim=1)
-        q_theta = self.q_theta(inp)
+        # inp = torch.cat([bows, eta_std], dim=1)
+        q_theta_out, _ = self.q_theta(embs)
+        # max-pooling and concat with eta_std to get q_theta
+        q_theta = torch.cat([torch.max(q_theta_out, dim=1)[0], eta_std], dim=1)
 
         if self.enc_drop > 0:
             q_theta = self.t_drop(q_theta)
@@ -255,7 +269,7 @@ class MixMedia(nn.Module):
         return pred_loss    
 
 
-    def forward(self, bows, normalized_bows, times, sources, labels, rnn_inp, num_docs):        
+    def forward(self, bows, normalized_bows, embs, times, sources, labels, rnn_inp, num_docs):        
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz
@@ -263,7 +277,7 @@ class MixMedia(nn.Module):
         
         eta, kl_eta = self.get_eta(rnn_inp)
 
-        theta, kl_theta = self.get_theta(eta, normalized_bows, times, sources)
+        theta, kl_theta = self.get_theta(eta, embs, times, sources)
         kl_theta = kl_theta.sum() * coeff
         
         beta = self.get_beta(alpha)

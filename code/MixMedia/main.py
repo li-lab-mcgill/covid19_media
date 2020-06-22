@@ -75,7 +75,12 @@ parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of 
 
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
+# q_theta LSTM arguments
 parser.add_argument('--one_hot_qtheta_emb', type=bool, default=True, help='whther to use 1-hot embedding as q_theta input')
+parser.add_argument('--q_theta_layers', type=int, default=3, help='number of layers for q_theta')
+parser.add_argument('--q_theta_hidden_size', type=int, default=512, help='number of hidden units for q_theta')
+parser.add_argument('--q_theta_drop', type=float, default=0.1, help='dropout rate for q_theta')
+parser.add_argument('--q_theta_bi', type=bool, default=True, help='whether to use bidirectional LSTM for q_theta')
 
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
@@ -148,6 +153,7 @@ train_times = train['times']
 train_sources = train['sources']
 train_labels = train['labels']
 
+args.q_theta_input_dim = train_embs[0].shape[1]
 
 if len(train_labels.shape) == 2 and args.multiclass_labels == 0:
     print("multiclass_labels is turned off but multi-class label file is provided")
@@ -347,7 +353,7 @@ def train(epoch):
 
         # print("forward passing ...")
 
-        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, 
+        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, embs_batch,
             times_batch, sources_batch, labels_batch, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
@@ -467,12 +473,14 @@ def get_eta(data_type):
             raise Exception('invalid data_type: '.data_type)
 
 
-def get_theta(eta, bows, times, sources):
+def get_theta(eta, embs, times, sources):
     model.eval()
     with torch.no_grad():
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
-        inp = torch.cat([bows, eta_std], dim=1)
-        q_theta = model.q_theta(inp)        
+        # inp = torch.cat([bows, eta_std], dim=1)
+        # q_theta = model.q_theta(inp)
+        q_theta_out, _ = model.q_theta(embs)        
+        q_theta = torch.cat([torch.max(q_theta_out, dim=1)[0], eta_std], dim=1)
         mu_theta = model.mu_q_theta(q_theta)
         theta = F.softmax(mu_theta, dim=-1)        
         return theta
@@ -511,7 +519,7 @@ def get_completion_ppl(source):
                 else:
                     normalized_data_batch = data_batch
                 
-                theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
+                theta = get_theta(eta, embs_batch, times_batch, sources_batch)
                                 
                 beta = model.get_beta(alpha)
                 nll = -torch.log(torch.mm(theta, beta)) * data_batch
@@ -569,7 +577,7 @@ def get_completion_ppl(source):
                 else:
                     normalized_data_batch_1 = data_batch_1
                 
-                theta = get_theta(eta_1, normalized_data_batch_1, times_batch_1, sources_batch_1)
+                theta = get_theta(eta_1, embs_batch_1, times_batch_1, sources_batch_1)
 
                 data_batch_2, embs_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
                     tokens_2, counts_2, embs_2, ind, test_sources, test_labels,
