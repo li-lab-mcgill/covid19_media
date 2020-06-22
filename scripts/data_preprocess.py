@@ -55,7 +55,9 @@ class Tokenizer:
     
     def prepare_sequence(self, seq):
         idxs = [self.word_index[w] for w in seq]
-        return self.embedding_matrix[idxs]
+        embs_one_hot = np.array((len(idxs)), len(self.word_index))
+        embs_one_hot[np.arange(len(idxs)), idxs] = 1
+        return self.embedding_matrix[idxs], embs_one_hot
     
     def build_embedding_matrix(self, path='fasttext_cache/crawl-300d-2M-subword.bin'):
         self.embedding_matrix = np.zeros((len(self.word_index), 300))
@@ -359,7 +361,11 @@ def preprocess(train_data, test_data, full_data):
     tokenizer = Tokenizer(verbose=True)
     tokenizer.build_word_index(init_docs)
     tokenizer.build_embedding_matrix()
-    init_docs_embs = [tokenizer.prepare_sequence(doc) for doc in tqdm(init_docs)]
+    init_docs_embs, init_docs_embs_one_hot = [], []
+    for doc in tqdm(init_docs):
+        embs, embs_one_hot = tokenizer.prepare_sequence(doc)
+        init_docs_embs.append(embs)
+        init_docs_embs_one_hot.append(embs_one_hot)
 
     # remove punctuations
     print("Remove punctuations")
@@ -376,7 +382,7 @@ def preprocess(train_data, test_data, full_data):
     init_docs = [[w for w in init_docs[doc] if len(w)>1] for doc in range(len(init_docs))]
     init_docs = [" ".join(init_docs[doc]) for doc in range(len(init_docs))]
 
-    return init_docs, init_docs_tr, init_docs_ts, init_countries, data_ids, init_timestamps, data_labels, init_docs_embs
+    return init_docs, init_docs_tr, init_docs_ts, init_countries, data_ids, init_timestamps, data_labels, init_docs_embs, init_docs_embs_one_hot
 
 
 def get_features(init_timestamps, init_docs, stops, min_df=min_df, max_df=max_df):
@@ -453,7 +459,7 @@ def split_bow(bow_in, n_docs):
 
 
 
-def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, init_ids, full_data, init_timestamps, data_labels, source_map, all_docs_embs):
+def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, init_ids, full_data, init_timestamps, data_labels, source_map, all_docs_embs, all_docs_embs_one_hot):
 
     # Split in train/test/valid
     print('tokenizing documents and splitting into train/test/valid...')
@@ -476,6 +482,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     # Split in train/test/valid
     docs_tr = [[word2id[w] for w in init_docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
     docs_embs_tr = [all_docs_embs[idx_permute[idx_d]] for idx_d in range(trSize)]
+    docs_embs_one_hot_tr = [all_docs_embs_one_hot[idx_permute[idx_d]] for idx_d in range(trSize)]
     timestamps_tr = [time2id[init_timestamps[idx_permute[idx_d]]] for idx_d in range(trSize)]
     if not full_data:
         countries_tr = [source_map[init_countries[idx_permute[idx_d]]] for idx_d in range(trSize)]
@@ -489,6 +496,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
     docs_va = [[word2id[w] for w in init_docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(vaSize)]
     docs_embs_va = [all_docs_embs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+    docs_embs_one_hot_va = [all_docs_embs_one_hot[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
     timestamps_va = [time2id[init_timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(vaSize)]
     if not full_data:
         countries_va = [source_map[init_countries[idx_permute[idx_d+trSize]]] for idx_d in range(vaSize)]
@@ -503,6 +511,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
     docs_ts = [[word2id[w] for w in init_docs[idx_d+num_docs_tr].split() if w in word2id] for idx_d in range(tsSize)]
     docs_embs_ts = [all_docs_embs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    docs_embs_one_hot_ts = [all_docs_embs_one_hot[idx_d+num_docs_tr] for idx_d in range(tsSize)]
     print(len(docs_ts))
     #exit()
     timestamps_ts = [time2id[init_timestamps[idx_d+num_docs_tr]] for idx_d in range(tsSize)]
@@ -530,8 +539,11 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_va, labels_va, ids_va, preserve_idxs_va = remove_empty(docs_va, labels_va, ids_va)
 
     docs_embs_tr = [docs_embs_tr[idx] for idx in preserve_idxs_tr]
+    docs_embs_one_hot_tr = [docs_embs_one_hot_tr[idx] for idx in preserve_idxs_tr]
     docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
+    docs_embs_one_hot_ts = [docs_embs_one_hot_ts[idx] for idx in preserve_idxs_ts]
     docs_embs_va = [docs_embs_va[idx] for idx in preserve_idxs_va]
+    docs_embs_one_hot_va = [docs_embs_one_hot_va[idx] for idx in preserve_idxs_va]
 
     # Remove test documents with length=1
     preserve_idxs_ts = [idx for idx, doc in enumerate(docs_ts) if len(doc)>1]
@@ -539,6 +551,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     labels_ts = [lab for doc,lab in zip(docs_ts, labels_ts) if len(doc) > 1]
     id_ts = [id for doc, id in zip(docs_ts, ids_ts) if len(doc) > 1]
     docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
+    docs_embs_one_hot_ts = [docs_embs_one_hot_ts[idx] for idx in preserve_idxs_ts]
 
     print('  number of documents (train): {} [this should be equal to {}]'.format(len(docs_tr), trSize))
     print('  number of documents (test): {} [this should be equal to {}]'.format(len(docs_ts), tsSize))
@@ -554,7 +567,9 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_ts_h1 = [[w for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc in docs_ts]
     docs_ts_h2 = [[w for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc in docs_ts]
     docs_embs_ts_h1 = [doc_embs[: int(np.floor(doc_embs.shape[0]/2.0-1))] for doc_embs in docs_embs_ts]
+    docs_embs_one_hot_ts_h1 = [doc_embs[: int(np.floor(doc_embs.shape[0]/2.0-1))] for doc_embs in docs_embs_one_hot_ts]
     docs_embs_ts_h2 = [doc_embs[int(np.ceil(doc_embs.shape[0]/2.0-1)): ] for doc_embs in docs_embs_ts]
+    docs_embs_one_hot_ts_h2 = [doc_embs[int(np.ceil(doc_embs.shape[0]/2.0-1)): ] for doc_embs in docs_embs_one_hot_ts]
     if not full_data:
         countries_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
         countries_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
@@ -638,7 +653,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     del doc_indices_va
 
     return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, \
-        docs_embs_tr, docs_embs_ts, docs_embs_va, docs_embs_ts_h1, docs_embs_ts_h2
+        docs_embs_tr, docs_embs_one_hot_tr, docs_embs_ts, docs_embs_one_hot_ts, docs_embs_va, docs_embs_one_hot_va, docs_embs_ts_h1, docs_embs_one_hot_ts_h1, docs_embs_ts_h2, docs_embs_one_hot_ts_h2
 
 # Write files for LDA C++ code
 def write_lda_file(filename, timestamps_in, time_list_in, bow_in):
@@ -665,7 +680,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_va, ids_ts, full_data, 
     timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list,
     labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, label_map, id2word, id2time, 
-    docs_embs_tr, docs_embs_ts, docs_embs_va, docs_embs_ts_h1, docs_embs_ts_h2):
+    docs_embs_tr, docs_embs_one_hot_tr, docs_embs_ts, docs_embs_one_hot_ts, docs_embs_va, docs_embs_one_hot_va, docs_embs_ts_h1, docs_embs_one_hot_ts_h1, docs_embs_ts_h2, docs_embs_one_hot_ts_h2):
 
     # Write the vocabulary to a file
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
@@ -709,6 +724,18 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
         pickle.dump(docs_embs_ts_h1, file)
     with open(os.path.join(path_save, "embs_test_h2.pkl"), "wb") as file:
         pickle.dump(docs_embs_ts_h2, file)
+
+    # save one hot embeddings (for q_theta)
+    with open(os.path.join(path_save, "one_hot_embs_train.pkl"), "wb") as file:
+        pickle.dump(docs_embs_one_hot_tr, file)
+    with open(os.path.join(path_save, "one_hot_embs_valid.pkl"), "wb") as file:
+        pickle.dump(docs_embs_one_hot_va, file)
+    with open(os.path.join(path_save, "one_hot_embs_test.pkl"), "wb") as file:
+        pickle.dump(docs_embs_one_hot_ts, file)
+    with open(os.path.join(path_save, "one_hot_embs_test_h1.pkl"), "wb") as file:
+        pickle.dump(docs_embs_one_hot_ts_h1, file)
+    with open(os.path.join(path_save, "one_hot_embs_test_h2.pkl"), "wb") as file:
+        pickle.dump(docs_embs_one_hot_ts_h2, file)
     
     # all countries
     if not full_data:
@@ -819,7 +846,7 @@ if __name__ == '__main__':
     # preprocess the news articles
     print("Preprocessing the articles")
     #print(train.data)
-    all_docs, train_docs, test_docs, init_countries, init_ids, init_timestamps, data_labels, all_docs_embs = preprocess(train, test, args.full_data)
+    all_docs, train_docs, test_docs, init_countries, init_ids, init_timestamps, data_labels, all_docs_embs, all_docs_embs_one_hot = preprocess(train, test, args.full_data)
 
     # get a list of stopwords
     #stopwords_en, stopwords_fr = get_stopwords(args.stopwords_path)
@@ -831,9 +858,10 @@ if __name__ == '__main__':
 
     # split data into train, test and validation and corresponding countries in BOW format
     print("Splitting data..\n")
-    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, docs_embs_tr, docs_embs_ts, docs_embs_va, docs_embs_ts_h1, docs_embs_ts_h2 \
-        = split_data(all_docs, train_docs, test_docs, word2id, init_countries, init_ids, args.full_data, init_timestamps, data_labels, countries_to_idx, all_docs_embs)
+    bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, \
+        docs_embs_tr, docs_embs_one_hot_tr, docs_embs_ts, docs_embs_one_hot_ts, docs_embs_va, docs_embs_one_hot_va, docs_embs_ts_h1, docs_embs_one_hot_ts_h1, docs_embs_ts_h2, docs_embs_one_hot_ts_h2 \
+        = split_data(all_docs, train_docs, test_docs, word2id, init_countries, init_ids, args.full_data, init_timestamps, data_labels, countries_to_idx, all_docs_embs, all_docs_embs_one_hot)
 
     print("Saving data..\n")
     save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, ids_tr, ids_va, ids_ts, args.full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, label_map, id2word, id2time, \
-        docs_embs_tr, docs_embs_ts, docs_embs_va, docs_embs_ts_h1, docs_embs_ts_h2)
+        docs_embs_tr, docs_embs_one_hot_tr, docs_embs_ts, docs_embs_one_hot_ts, docs_embs_va, docs_embs_one_hot_va, docs_embs_ts_h1, docs_embs_one_hot_ts_h1, docs_embs_ts_h2, docs_embs_one_hot_ts_h2)
