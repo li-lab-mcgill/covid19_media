@@ -1,2 +1,3 @@
 .vscode/settings.json
 scripts/fasttext_cache/crawl-300d-2M-subword.bin
+code/MixMedia/run_MixMedia.sh
