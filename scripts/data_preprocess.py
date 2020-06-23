@@ -55,7 +55,7 @@ class Tokenizer:
     
     def prepare_sequence(self, seq):
         idxs = [self.word_index[w] for w in seq]
-        embs_one_hot = np.array((len(idxs)), len(self.word_index))
+        embs_one_hot = np.zeros((len(idxs)), len(self.word_index))
         embs_one_hot[np.arange(len(idxs)), idxs] = 1
         return self.embedding_matrix[idxs], embs_one_hot
     
