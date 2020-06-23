@@ -9,16 +9,24 @@ from pdb import set_trace
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def get_embs(path, name, if_one_hot=True):
+def get_embs(path, name, if_one_hot=True, emb_vocab_size=None):
     if if_one_hot:
-        embs_filename = os.path.join(path, f'one_hot_embs_{name}.pkl')
+        embs_filename = os.path.join(path, f'idxs_embs_{name}.pkl')
     else:
         embs_filename = os.path.join(path, f'embs_{name}.pkl')
     with open(embs_filename, 'rb') as file:
         embs = pickle.load(file)
-    return embs
+    if if_one_hot:
+        if not emb_vocab_size:
+            # inferring vocab size from maximal index of training idxs
+            # only valid for training set. for val/test sets, use vocab size inferred from training set
+            emb_vocab_size = int(np.max([np.max(emb) for emb in embs]))
+        embs_one_hot = np.zeros((len(embs), emb_vocab_size))
+        embs_one_hot[np.arange(len(embs)), embs] = 1
+        embs = embs_one_hot
+    return embs, emb_vocab_size
 
-def _fetch(path, name, if_one_hot=True):
+def _fetch(path, name, if_one_hot=True, emb_vocab_size=None):
     if name == 'train':
         token_file = os.path.join(path, 'bow_tr_tokens.npy')
         count_file = os.path.join(path, 'bow_tr_counts.npy')
@@ -30,7 +38,7 @@ def _fetch(path, name, if_one_hot=True):
         count_file = os.path.join(path, 'bow_ts_counts.npy')
     tokens = np.load(token_file)
     counts = np.load(count_file)
-    embs = get_embs(path, name, if_one_hot)
+    embs, emb_vocab_size = get_embs(path, name, if_one_hot, emb_vocab_size)
     if name == 'test':
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens.npy')
         count_1_file = os.path.join(path, 'bow_ts_h1_counts.npy')
@@ -38,15 +46,15 @@ def _fetch(path, name, if_one_hot=True):
         count_2_file = os.path.join(path, 'bow_ts_h2_counts.npy')
         tokens_1 = np.load(token_1_file)
         counts_1 = np.load(count_1_file)
-        embs_1 = get_embs(path, 'test_h1', if_one_hot)
+        embs_1, emb_vocab_size = get_embs(path, 'test_h1', if_one_hot, emb_vocab_size)
         tokens_2 = np.load(token_2_file)
         counts_2 = np.load(count_2_file)
-        embs_2 = get_embs(path, 'test_h2', if_one_hot)
+        embs_2, emb_vocab_size = get_embs(path, 'test_h2', if_one_hot, emb_vocab_size)
         return {'tokens': tokens, 'counts': counts, 'embs': embs, 'tokens_1': tokens_1, 
-        'counts_1': counts_1, 'embs_1': embs_1, 'tokens_2': tokens_2, 'counts_2': counts_2, 'embs_2': embs_2}
-    return {'tokens': tokens, 'counts': counts, 'embs': embs}
+        'counts_1': counts_1, 'embs_1': embs_1, 'tokens_2': tokens_2, 'counts_2': counts_2, 'embs_2': embs_2}, emb_vocab_size
+    return {'tokens': tokens, 'counts': counts, 'embs': embs}, emb_vocab_size
 
-def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if_one_hot=True):
+def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if_one_hot=True, emb_vocab_size=None):
     
     if name == 'train':
         token_file = os.path.join(path, 'bow_tr_tokens')
@@ -73,7 +81,7 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if
     
     tokens = np.load(token_file)
     counts = np.load(count_file)
-    embs = get_embs(path, name, if_one_hot)
+    embs, emb_vocab_size = get_embs(path, name, if_one_hot, emb_vocab_size)
     
     if use_time:        
         times = np.load(time_file)
@@ -98,16 +106,16 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if
         count_2_file = os.path.join(path, 'bow_ts_h2_counts')        
         tokens_1 = np.load(token_1_file)
         counts_1 = np.load(count_1_file)
-        embs_1 = get_embs(path, 'test_h1', if_one_hot)
+        embs_1, emb_vocab_size = get_embs(path, 'test_h1', if_one_hot, emb_vocab_size)
         tokens_2 = np.load(token_2_file)
         counts_2 = np.load(count_2_file)
-        embs_2 = get_embs(path, 'test_h2', if_one_hot)
+        embs_2, emb_vocab_size = get_embs(path, 'test_h2', if_one_hot, emb_vocab_size)
 
         return {'tokens': tokens, 'counts': counts, 'embs': embs, 'times': times, 'sources': sources, 'labels': labels,
                     'tokens_1': tokens_1, 'counts_1': counts_1, 'embs_1': embs_1,
-                        'tokens_2': tokens_2, 'counts_2': counts_2, 'embs_2': embs_2} 
+                        'tokens_2': tokens_2, 'counts_2': counts_2, 'embs_2': embs_2}, emb_vocab_size 
 
-    return {'tokens': tokens, 'counts': counts, 'embs': embs, 'times': times, 'sources': sources, 'labels': labels}
+    return {'tokens': tokens, 'counts': counts, 'embs': embs, 'times': times, 'sources': sources, 'labels': labels}, emb_vocab_size
 
 def get_data(path, temporal=False, predict=False, use_time=False, use_source=False, if_one_hot=True):
     ### load vocabulary
@@ -115,13 +123,13 @@ def get_data(path, temporal=False, predict=False, use_time=False, use_source=Fal
         vocab = pickle.load(f)
 
     if not temporal:
-        train = _fetch(path, 'train', if_one_hot=if_one_hot)
-        valid = _fetch(path, 'valid', if_one_hot=if_one_hot)
-        test = _fetch(path, 'test', if_one_hot=if_one_hot)
+        train, emb_vocab_size = _fetch(path, 'train', if_one_hot=if_one_hot)
+        valid, _ = _fetch(path, 'valid', if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size)
+        test, _ = _fetch(path, 'test', if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size)
     else:
-        train = _fetch_temporal(path, 'train', predict, use_time, use_source, if_one_hot=if_one_hot)
-        valid = _fetch_temporal(path, 'valid', predict, use_time, use_source, if_one_hot=if_one_hot)
-        test = _fetch_temporal(path, 'test', predict, use_time, use_source, if_one_hot=if_one_hot)
+        train, emb_vocab_size = _fetch_temporal(path, 'train', predict, use_time, use_source, if_one_hot=if_one_hot)
+        valid, _ = _fetch_temporal(path, 'valid', predict, use_time, use_source, if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size)
+        test, _ = _fetch_temporal(path, 'test', predict, use_time, use_source, if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size)
 
     return vocab, train, valid, test
 
