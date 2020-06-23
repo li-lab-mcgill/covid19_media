@@ -9,20 +9,20 @@ import numpy as np
 import os 
 import math 
 import random 
-import matplotlib.pyplot as plt 
-import seaborn as sns
+# import matplotlib.pyplot as plt 
+# import seaborn as sns
 import scipy.io
 
 import data 
 
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
 from mixmedia import MixMedia
 from utils import nearest_neighbors, get_topic_coherence
 
-from IPython.core.debugger import set_trace
+# from IPython.core.debugger import set_trace
 
 import sys, importlib
 importlib.reload(sys.modules['data'])
