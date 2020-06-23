@@ -9,6 +9,16 @@ from pdb import set_trace
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+def pickle_load(filename):
+    with open(filenmae, "rb") as file:
+        data = pickle.load(file)
+    return data
+
+def idxs_to_one_hot(idxs, emb_vocab_size):
+    embs_one_hot = np.zeros((len(idxs), emb_vocab_size))
+    embs_one_hot[np.arange(len(idxs)), idxs] = 1
+    return embs_one_hot
+
 def get_embs(path, name, if_one_hot=True, emb_vocab_size=None):
     if if_one_hot:
         embs_filename = os.path.join(path, f'idxs_embs_{name}.pkl')
@@ -20,35 +30,34 @@ def get_embs(path, name, if_one_hot=True, emb_vocab_size=None):
         if not emb_vocab_size:
             # inferring vocab size from maximal index of training idxs
             # only valid for training set. for val/test sets, use vocab size inferred from training set
-            emb_vocab_size = int(np.max([np.max(emb) for emb in embs]))
-        embs_one_hot = np.zeros((len(embs), emb_vocab_size))
-        embs_one_hot[np.arange(len(embs)), embs] = 1
-        embs = embs_one_hot
+            emb_vocab_size = int(np.max([np.max(emb) for emb in embs]) + 1)
+            print("q_theta vocab size", emb_vocab_size)
+        embs = [idxs_to_one_hot(emb, emb_vocab_size) for emb in embs]
     return embs, emb_vocab_size
 
 def _fetch(path, name, if_one_hot=True, emb_vocab_size=None):
     if name == 'train':
-        token_file = os.path.join(path, 'bow_tr_tokens.npy')
-        count_file = os.path.join(path, 'bow_tr_counts.npy')
+        token_file = os.path.join(path, 'bow_tr_tokens.pkl')
+        count_file = os.path.join(path, 'bow_tr_counts.pkl')
     elif name == 'valid':
-        token_file = os.path.join(path, 'bow_va_tokens.npy')
-        count_file = os.path.join(path, 'bow_va_counts.npy')
+        token_file = os.path.join(path, 'bow_va_tokens.pkl')
+        count_file = os.path.join(path, 'bow_va_counts.pkl')
     else:
-        token_file = os.path.join(path, 'bow_ts_tokens.npy')
-        count_file = os.path.join(path, 'bow_ts_counts.npy')
-    tokens = np.load(token_file)
-    counts = np.load(count_file)
+        token_file = os.path.join(path, 'bow_ts_tokens.pkl')
+        count_file = os.path.join(path, 'bow_ts_counts.pkl')
+    tokens = pickle_load(token_file, allow_pickle=True)
+    counts = pickle_load(count_file, allow_pickle=True)
     embs, emb_vocab_size = get_embs(path, name, if_one_hot, emb_vocab_size)
     if name == 'test':
-        token_1_file = os.path.join(path, 'bow_ts_h1_tokens.npy')
-        count_1_file = os.path.join(path, 'bow_ts_h1_counts.npy')
-        token_2_file = os.path.join(path, 'bow_ts_h2_tokens.npy')
-        count_2_file = os.path.join(path, 'bow_ts_h2_counts.npy')
-        tokens_1 = np.load(token_1_file)
-        counts_1 = np.load(count_1_file)
+        token_1_file = os.path.join(path, 'bow_ts_h1_tokens.pkl')
+        count_1_file = os.path.join(path, 'bow_ts_h1_counts.pkl')
+        token_2_file = os.path.join(path, 'bow_ts_h2_tokens.pkl')
+        count_2_file = os.path.join(path, 'bow_ts_h2_counts.pkl')
+        tokens_1 = pickle_load(token_1_file, allow_pickle=True)
+        counts_1 = pickle_load(count_1_file, allow_pickle=True)
         embs_1, emb_vocab_size = get_embs(path, 'test_h1', if_one_hot, emb_vocab_size)
-        tokens_2 = np.load(token_2_file)
-        counts_2 = np.load(count_2_file)
+        tokens_2 = pickle_load(token_2_file, allow_pickle=True)
+        counts_2 = pickle_load(count_2_file, allow_pickle=True)
         embs_2, emb_vocab_size = get_embs(path, 'test_h2', if_one_hot, emb_vocab_size)
         return {'tokens': tokens, 'counts': counts, 'embs': embs, 'tokens_1': tokens_1, 
         'counts_1': counts_1, 'embs_1': embs_1, 'tokens_2': tokens_2, 'counts_2': counts_2, 'embs_2': embs_2}, emb_vocab_size
@@ -57,34 +66,35 @@ def _fetch(path, name, if_one_hot=True, emb_vocab_size=None):
 def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if_one_hot=True, emb_vocab_size=None):
     
     if name == 'train':
-        token_file = os.path.join(path, 'bow_tr_tokens')
-        count_file = os.path.join(path, 'bow_tr_counts')
-        time_file = os.path.join(path, 'bow_tr_timestamps')
+        token_file = os.path.join(path, 'bow_tr_tokens.pkl')
+        count_file = os.path.join(path, 'bow_tr_counts.pkl')
+        time_file = os.path.join(path, 'bow_tr_timestamps.pkl')
         source_file = os.path.join(path, 'bow_tr_sources.pkl')
 
         if predict:
             label_file = os.path.join(path, 'bow_tr_labels.pkl')
     elif name == 'valid':
-        token_file = os.path.join(path, 'bow_va_tokens')
-        count_file = os.path.join(path, 'bow_va_counts')
-        time_file = os.path.join(path, 'bow_va_timestamps')
+        token_file = os.path.join(path, 'bow_va_tokens.pkl')
+        count_file = os.path.join(path, 'bow_va_counts.pkl')
+        time_file = os.path.join(path, 'bow_va_timestamps.pkl')
         source_file = os.path.join(path, 'bow_va_sources.pkl')
         if predict:
             label_file = os.path.join(path, 'bow_va_labels.pkl')
     else:
-        token_file = os.path.join(path, 'bow_ts_tokens')
-        count_file = os.path.join(path, 'bow_ts_counts')
-        time_file = os.path.join(path, 'bow_ts_timestamps')
+        token_file = os.path.join(path, 'bow_ts_tokens.pkl')
+        count_file = os.path.join(path, 'bow_ts_counts.pkl')
+        time_file = os.path.join(path, 'bow_ts_timestamps.pkl')
         source_file = os.path.join(path, 'bow_ts_sources.pkl')
         if predict:
             label_file = os.path.join(path, 'bow_ts_labels.pkl')    
     
-    tokens = np.load(token_file)
-    counts = np.load(count_file)
+    tokens = pickle_load(token_file, allow_pickle=True)
+    raise Exception(tokens[0])
+    counts = pickle_load(count_file, allow_pickle=True)
     embs, emb_vocab_size = get_embs(path, name, if_one_hot, emb_vocab_size)
     
     if use_time:        
-        times = np.load(time_file)
+        times = pickle_load(time_file, allow_pickle=True)
     else:
         times = np.zeros(tokens.shape[0])
 
@@ -100,15 +110,15 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if
         labels = np.zeros(tokens.shape[0])
 
     if name == 'test':
-        token_1_file = os.path.join(path, 'bow_ts_h1_tokens')
-        count_1_file = os.path.join(path, 'bow_ts_h1_counts')
-        token_2_file = os.path.join(path, 'bow_ts_h2_tokens')
-        count_2_file = os.path.join(path, 'bow_ts_h2_counts')        
-        tokens_1 = np.load(token_1_file)
-        counts_1 = np.load(count_1_file)
+        token_1_file = os.path.join(path, 'bow_ts_h1_tokens.pkl')
+        count_1_file = os.path.join(path, 'bow_ts_h1_counts.pkl')
+        token_2_file = os.path.join(path, 'bow_ts_h2_tokens.pkl')
+        count_2_file = os.path.join(path, 'bow_ts_h2_counts.pkl')        
+        tokens_1 = pickle_load(token_1_file, allow_pickle=True)
+        counts_1 = pickle_load(count_1_file, allow_pickle=True)
         embs_1, emb_vocab_size = get_embs(path, 'test_h1', if_one_hot, emb_vocab_size)
-        tokens_2 = np.load(token_2_file)
-        counts_2 = np.load(count_2_file)
+        tokens_2 = pickle_load(token_2_file, allow_pickle=True)
+        counts_2 = pickle_load(count_2_file, allow_pickle=True)
         embs_2, emb_vocab_size = get_embs(path, 'test_h2', if_one_hot, emb_vocab_size)
 
         return {'tokens': tokens, 'counts': counts, 'embs': embs, 'times': times, 'sources': sources, 'labels': labels,
@@ -133,7 +143,7 @@ def get_data(path, temporal=False, predict=False, use_time=False, use_source=Fal
 
     return vocab, train, valid, test
 
-def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300, temporal=False, times=None):
+def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300, temporal=False, times=None, get_emb=True):
     
     """fetch input data by batch."""
     batch_size = len(ind)
@@ -177,11 +187,15 @@ def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300
             for j, word in enumerate(doc):
                 data_batch[i, word] = count[j]
 
-        # get embeddings batch
-        embs_batch.append(embs[doc_id])
+        if get_emb:
+            # get embeddings batch
+            embs_batch.append(embs[doc_id])
     
     data_batch = torch.from_numpy(data_batch).float().to(device)
-    embs_batch_padded = torch.nn.utils.rnn.pad_sequence(embs_batch, batch_first=True)
+    if get_emb:
+        embs_batch_padded = torch.nn.utils.rnn.pad_sequence(embs_batch, batch_first=True)
+    else:
+        embs_batch_padded = []
     sources_batch = torch.from_numpy(sources_batch).to(device)
     labels_batch = torch.from_numpy(labels_batch).to(device)
 
@@ -204,7 +218,7 @@ def get_rnn_input(tokens, counts, times, sources, labels, num_times, num_sources
 
     for idx, ind in enumerate(indices):
         
-        data_batch, times_batch, sources_batch, labels_batch = get_batch(tokens, counts, ind, sources, labels, vocab_size, temporal=True, times=times)
+        data_batch, _, times_batch, sources_batch, labels_batch = get_batch(tokens, counts, None, ind, sources, labels, vocab_size, temporal=True, times=times, get_emb=False)
 
         for t in range(num_times):
             for src in range(num_sources):
