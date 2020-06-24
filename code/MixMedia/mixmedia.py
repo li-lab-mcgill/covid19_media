@@ -44,7 +44,7 @@ class MixMedia(nn.Module):
         self.q_theta_layers = args.q_theta_layers
         self.q_theta_input_dim = args.q_theta_input_dim
         self.q_theta_hidden_size = args.q_theta_hidden_size
-        self.q_theta_bi = args.q_theta_bi
+        self.q_theta_bi = bool(args.q_theta_bi)
         self.q_theta_drop = args.q_theta_drop
 
         ## define the word embedding matrix \rho: L x V

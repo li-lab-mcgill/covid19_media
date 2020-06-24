@@ -26,7 +26,9 @@ def get_embs(path, name, if_one_hot=True, emb_vocab_size=None):
         embs_filename = os.path.join(path, f'embs_{name}.pkl')
     with open(embs_filename, 'rb') as file:
         embs = pickle.load(file)
-    if if_one_hot and not emb_vocab_size:
+    if not if_one_hot and not emb_vocab_size:
+        emb_vocab_size = embs[0][0].shape[0]
+    elif if_one_hot and not emb_vocab_size:
             # inferring vocab size from maximal index of training idxs
             # only valid for training set. for val/test sets, use vocab size inferred from training set
             emb_vocab_size = int(np.max([np.max(emb) for emb in embs]) + 1)
@@ -141,7 +143,7 @@ def get_data(path, temporal=False, predict=False, use_time=False, use_source=Fal
 
     return vocab, train, valid, test, emb_vocab_size
 
-def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300, temporal=False, times=None, get_emb=True, emb_vocab_size=None):
+def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300, temporal=False, times=None, get_emb=True, if_one_hot=True, emb_vocab_size=None):
     
     """fetch input data by batch."""
     batch_size = len(ind)
@@ -187,7 +189,10 @@ def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300
 
         if get_emb:
             # get embeddings batch
-            embs_batch.append(torch.tensor(idxs_to_one_hot(embs[doc_id], emb_vocab_size), dtype=torch.float32))
+            if if_one_hot:
+                embs_batch.append(torch.tensor(idxs_to_one_hot(embs[doc_id], emb_vocab_size), dtype=torch.float32))
+            else:
+                embs_batch.append(torch.tensor(embs[doc_id], dtype=torch.float32))
     
     data_batch = torch.from_numpy(data_batch).float().to(device)
     if get_emb:
