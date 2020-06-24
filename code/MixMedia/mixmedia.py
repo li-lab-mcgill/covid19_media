@@ -219,7 +219,7 @@ class MixMedia(nn.Module):
     def get_beta(self, alpha):
         """Returns the topic matrix beta of shape K x V
         """
-        if self.train_embeddings:            
+        if self.train_embeddings:
             logit = self.rho(alpha)
         else:
             logit = torch.mm(alpha, self.rho.permute(1, 0)) 
@@ -234,7 +234,7 @@ class MixMedia(nn.Module):
         return nll.sum(-1)
 
 
-    def get_prediction_loss(self, theta, labels):        
+    def get_prediction_loss(self, theta, labels):
 
         # test code only
         # targets = torch.zeros(theta.size(0), self.num_labels)
@@ -252,7 +252,7 @@ class MixMedia(nn.Module):
             
             pred_loss = self.criterion(outputs, labels.type('torch.LongTensor').to(device))
 
-        return pred_loss    
+        return pred_loss
 
 
     def forward(self, bows, normalized_bows, times, sources, labels, rnn_inp, num_docs):        
@@ -270,7 +270,7 @@ class MixMedia(nn.Module):
         
         nll = self.get_nll(theta, beta, bows)
 
-        nll = nll.sum() * coeff        
+        nll = nll.sum() * coeff
 
         pred_loss = torch.tensor(0.0)
 
