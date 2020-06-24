@@ -137,7 +137,7 @@ torch.manual_seed(args.seed)
 print('Getting vocabulary ...')
 data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
 
-vocab, train, valid, test = data.get_data(data_file, temporal=True, predict=args.predict_labels, \
+vocab, train, valid, test, q_theta_input_dim = data.get_data(data_file, temporal=True, predict=args.predict_labels, \
     use_time=args.time_prior, use_source=args.source_prior, if_one_hot=args.one_hot_qtheta_emb)
 
 vocab_size = len(vocab)
@@ -153,7 +153,8 @@ train_times = train['times']
 train_sources = train['sources']
 train_labels = train['labels']
 
-args.q_theta_input_dim = train_embs[0].shape[1]
+# args.q_theta_input_dim = train_embs[0].shape[1]
+args.q_theta_input_dim = q_theta_input_dim
 
 if len(train_labels.shape) == 2 and args.multiclass_labels == 0:
     print("multiclass_labels is turned off but multi-class label file is provided")
@@ -342,7 +343,7 @@ def train(epoch):
         
         data_batch, embs_batch, times_batch, sources_batch, labels_batch = data.get_batch(
             train_tokens, train_counts, train_embs, ind, train_sources, train_labels, 
-            args.vocab_size, args.emb_size, temporal=True, times=train_times)        
+            args.vocab_size, args.emb_size, temporal=True, times=train_times, emb_vocab_size=q_theta_input_dim)        
 
         sums = data_batch.sum(1).unsqueeze(1)
 
@@ -510,7 +511,7 @@ def get_completion_ppl(source):
                 
                 data_batch, embs_batch, times_batch, sources_batch, labels_batch = data.get_batch(
                     tokens, counts, embs, ind, sources, labels, 
-                    args.vocab_size, args.emb_size, temporal=True, times=times)
+                    args.vocab_size, args.emb_size, temporal=True, times=times, emb_vocab_size=q_theta_input_dim)
 
                 sums = data_batch.sum(1).unsqueeze(1)
 
@@ -568,7 +569,7 @@ def get_completion_ppl(source):
 
                 data_batch_1, embs_batch_1, times_batch_1, sources_batch_1, labels_batch_1 = data.get_batch(
                     tokens_1, counts_1, embs_1, ind, test_sources, test_labels,
-                    args.vocab_size, args.emb_size, temporal=True, times=test_times)
+                    args.vocab_size, args.emb_size, temporal=True, times=test_times, emb_vocab_size=q_theta_input_dim)
                 
                 sums_1 = data_batch_1.sum(1).unsqueeze(1)
 
@@ -581,7 +582,7 @@ def get_completion_ppl(source):
 
                 data_batch_2, embs_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
                     tokens_2, counts_2, embs_2, ind, test_sources, test_labels,
-                    args.vocab_size, args.emb_size, temporal=True, times=test_times)
+                    args.vocab_size, args.emb_size, temporal=True, times=test_times, emb_vocab_size=q_theta_input_dim)
 
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
                 
