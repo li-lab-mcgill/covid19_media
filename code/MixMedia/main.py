@@ -77,7 +77,7 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 # q_theta LSTM arguments
 parser.add_argument('--one_hot_qtheta_emb', type=bool, default=True, help='whther to use 1-hot embedding as q_theta input')
-parser.add_argument('--q_theta_layers', type=int, default=3, help='number of layers for q_theta')
+parser.add_argument('--q_theta_layers', type=int, default=1, help='number of layers for q_theta')
 parser.add_argument('--q_theta_hidden_size', type=int, default=512, help='number of hidden units for q_theta')
 parser.add_argument('--q_theta_drop', type=float, default=0.1, help='dropout rate for q_theta')
 parser.add_argument('--q_theta_bi', type=bool, default=True, help='whether to use bidirectional LSTM for q_theta')
