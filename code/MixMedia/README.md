@@ -30,7 +30,7 @@ The pre-fitted embeddings can be found below:
 
 All the scripts to pre-process a dataset can be found in the folder 'scripts'. 
 
-## Using LSTM for $q_{theta}$
+## Using LSTM for q_theta
 
 Both one-hot encodings and word embeddings are allowed as input. Use `--one_hot_qtheta_emb` to specify whether to use one-hot encoding (default true). Other additional parameters include number of layers, hidden size, dropout rate and whether using bidirectional LSTM.
 
