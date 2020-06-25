@@ -190,7 +190,8 @@ def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300
         if get_emb:
             # get embeddings batch
             if if_one_hot:
-                embs_batch.append(torch.tensor(idxs_to_one_hot(embs[doc_id], emb_vocab_size), dtype=torch.float32))
+                # embs_batch.append(torch.tensor(idxs_to_one_hot(embs[doc_id], emb_vocab_size), dtype=torch.float32))
+                embs_batch.append(torch.tensor(embs[doc_id], dtype=torch.long))
             else:
                 embs_batch.append(torch.tensor(embs[doc_id], dtype=torch.float32))
     

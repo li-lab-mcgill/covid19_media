@@ -41,6 +41,7 @@ class MixMedia(nn.Module):
         self.theta_act = self.get_activation(args.theta_act)
 
         # LSTM params for q_theta
+        self.one_hot_qtheta_emb = args.one_hot_qtheta_emb
         self.q_theta_layers = args.q_theta_layers
         self.q_theta_input_dim = args.q_theta_input_dim
         self.q_theta_hidden_size = args.q_theta_hidden_size
@@ -49,7 +50,7 @@ class MixMedia(nn.Module):
 
         ## define the word embedding matrix \rho: L x V
         if args.train_embeddings:
-            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False) # L x V
+            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False).to(device) # L x V
         else:
             num_embeddings, emsize = word_embeddings.size()
             rho = nn.Embedding(num_embeddings, emsize)
@@ -58,8 +59,8 @@ class MixMedia(nn.Module):
     
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x L
-        self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size))
-        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size))
+        self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size)).to(device)
+        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size)).to(device)
     
     
         ## define variational distribution for \theta_{1:D} via amortizartion... theta is K x D
@@ -69,28 +70,33 @@ class MixMedia(nn.Module):
         #             nn.Linear(args.t_hidden_size, args.t_hidden_size),
         #             self.theta_act,
         #         )
-        self.q_theta = nn.LSTM(self.q_theta_input_dim, hidden_size=self.q_theta_hidden_size, \
-            bidirectional=self.q_theta_bi, dropout=self.q_theta_drop, num_layers=self.q_theta_layers, batch_first=True)
+        if self.one_hot_qtheta_emb:
+            self.q_theta_emb = nn.Embedding(self.q_theta_input_dim, args.rho_size).to('cpu')
+            self.q_theta = nn.LSTM(self.rho_size, hidden_size=self.q_theta_hidden_size, \
+                bidirectional=self.q_theta_bi, dropout=self.q_theta_drop, num_layers=self.q_theta_layers, batch_first=True).to(device)
+        else:
+            self.q_theta = nn.LSTM(self.q_theta_input_dim, hidden_size=self.q_theta_hidden_size, \
+                bidirectional=self.q_theta_bi, dropout=self.q_theta_drop, num_layers=self.q_theta_layers, batch_first=True).to(device)
         q_theta_out_dim = 2 * self.q_theta_hidden_size if self.q_theta_bi else self.q_theta_hidden_size
         # self.mu_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
-        self.mu_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True)
+        self.mu_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
         # self.logsigma_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
-        self.logsigma_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True)
+        self.logsigma_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
 
         ## define variational distribution for \eta via amortizartion... eta is K x T
-        self.q_eta_map = nn.Linear(args.vocab_size, args.eta_hidden_size)
+        self.q_eta_map = nn.Linear(args.vocab_size, args.eta_hidden_size).to(device)
         
-        self.q_eta = nn.LSTM(args.eta_hidden_size, args.eta_hidden_size, args.eta_nlayers, dropout=args.eta_dropout, batch_first=True)
+        self.q_eta = nn.LSTM(args.eta_hidden_size, args.eta_hidden_size, args.eta_nlayers, dropout=args.eta_dropout, batch_first=True).to(device)
 
-        self.mu_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
-        self.logsigma_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
+        self.mu_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True).to(device)
+        self.logsigma_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True).to(device)
         
         self.max_logsigma_t = 10
         self.min_logsigma_t = -10
 
 
         ## define supervised component for predicting labels
-        self.classifier = nn.Linear(args.num_topics, args.num_labels, bias=True)
+        self.classifier = nn.Linear(args.num_topics, args.num_labels, bias=True).to(device)
         self.criterion = nn.CrossEntropyLoss(reduction='sum')
 
 
@@ -209,6 +215,8 @@ class MixMedia(nn.Module):
         """
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
         # inp = torch.cat([bows, eta_std], dim=1)
+        if self.one_hot_qtheta_emb:
+            embs = self.q_theta_emb(embs)
         q_theta_out, _ = self.q_theta(embs)
         # max-pooling and concat with eta_std to get q_theta
         q_theta = torch.cat([torch.max(q_theta_out, dim=1)[0], eta_std], dim=1)

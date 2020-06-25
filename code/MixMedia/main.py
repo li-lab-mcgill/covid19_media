@@ -480,6 +480,8 @@ def get_theta(eta, embs, times, sources):
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
         # inp = torch.cat([bows, eta_std], dim=1)
         # q_theta = model.q_theta(inp)
+        if args.one_hot_qtheta_emb:
+            embs = model.q_theta_emb(embs)
         q_theta_out, _ = model.q_theta(embs)        
         q_theta = torch.cat([torch.max(q_theta_out, dim=1)[0], eta_std], dim=1)
         mu_theta = model.mu_q_theta(q_theta)
