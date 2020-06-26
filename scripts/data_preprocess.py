@@ -48,13 +48,14 @@ class Tokenizer:
         """
         args: pandas series that we will use to build word index
         """
-        
+        current_idx = 1 # starting with 1 to leave 0 for padding
         print("Generating word index...", end=" ")
         for df in args:
             for sent in tqdm(df, disable=not self.verbose):
                 for word in sent:
                     if word not in self.word_index:
-                        self.word_index[word] = len(self.word_index)
+                        self.word_index[word] = current_idx
+                        current_idx += 1
         print("Done.")
     
     def prepare_sequence(self, seq):
