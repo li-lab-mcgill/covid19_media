@@ -78,12 +78,13 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 # q_theta LSTM arguments
 parser.add_argument('--one_hot_qtheta_emb', type=int, default=1, help='whther to use 1-hot embedding as q_theta input')
 parser.add_argument('--q_theta_layers', type=int, default=1, help='number of layers for q_theta')
-parser.add_argument('--q_theta_hidden_size', type=int, default=512, help='number of hidden units for q_theta')
+parser.add_argument('--q_theta_hidden_size', type=int, default=256, help='number of hidden units for q_theta')
+parser.add_argument('--q_theta_heads', type=int, default=4, help='number of attention heads for q_theta')
 parser.add_argument('--q_theta_drop', type=float, default=0.1, help='dropout rate for q_theta')
 parser.add_argument('--q_theta_bi', type=int, default=1, help='whether to use bidirectional LSTM for q_theta')
 
 ### optimization-related arguments
-parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
+parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
 parser.add_argument('--epochs', type=int, default=150, help='number of epochs to train')
@@ -478,12 +479,14 @@ def get_theta(eta, embs, times, sources):
     model.eval()
     with torch.no_grad():
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
-        # inp = torch.cat([bows, eta_std], dim=1)
+        # inp = torch.cat([embs, eta_std], dim=1)
         # q_theta = model.q_theta(inp)
         if args.one_hot_qtheta_emb:
             embs = model.q_theta_emb(embs)
-        q_theta_out, _ = model.q_theta(embs)        
-        q_theta = torch.cat([torch.max(q_theta_out, dim=1)[0], eta_std], dim=1)
+        # q_theta_out, _ = model.q_theta(embs)        
+        q_theta_out = model.q_theta(embs)        
+        q_theta_out = model.q_theta_att(key=q_theta_out, query=model.q_theta_att_query, value=q_theta_out)[1].squeeze()
+        q_theta = torch.cat([q_theta_out, eta_std], dim=1)
         mu_theta = model.mu_q_theta(q_theta)
         theta = F.softmax(mu_theta, dim=-1)        
         return theta
@@ -523,6 +526,7 @@ def get_completion_ppl(source):
                     normalized_data_batch = data_batch
                 
                 theta = get_theta(eta, embs_batch, times_batch, sources_batch)
+                # theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
                                 
                 beta = model.get_beta(alpha)
                 nll = -torch.log(torch.mm(theta, beta)) * data_batch
@@ -678,6 +682,9 @@ if args.mode == 'train':
     best_val_ppl = 1e9
     all_val_ppls = []
     all_val_pdls = []
+
+    if args.anneal_lr:
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.25, patience=10, min_lr=1e-5)
     
     for epoch in range(1, args.epochs):
         train(epoch)
@@ -696,9 +703,11 @@ if args.mode == 'train':
             best_val_ppl = val_ppl
         else:
             ## check whether to anneal lr
-            lr = optimizer.param_groups[0]['lr']
-            if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
-                optimizer.param_groups[0]['lr'] /= args.lr_factor
+            # lr = optimizer.param_groups[0]['lr']
+            # if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > np.mean(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
+            #     optimizer.param_groups[0]['lr'] /= args.lr_factor
+            if args.anneal_lr:
+                scheduler.step(val_ppl)
         all_val_ppls.append(val_ppl)
         all_val_pdls.append(val_pdl)
 

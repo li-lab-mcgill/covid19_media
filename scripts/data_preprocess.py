@@ -119,20 +119,20 @@ def read_data(data_file, who_flag=False, full_data=False):
     data_ids = gphin_data.index.values
     print(gphin_data.columns)
     if not full_data:
-        #gphin_data.dropna(subset=['SOURCE', 'DATE ADDED'], inplace=True) #uncomment this and following 4 lines line if you're using WHO_all/GPHIN_all2
+        gphin_data.dropna(subset=['SOURCE', 'DATE ADDED'], inplace=True) #uncomment this and following 4 lines line if you're using WHO_all/GPHIN_all2
         # processing the country names by removing leading and trailing spaces and newlines
-        # gphin_data['SOURCE'] = gphin_data['SOURCE'].apply(lambda x: x.strip(" "))
-        # gphin_data['SOURCE'] = gphin_data['SOURCE'].apply(lambda x: x.lower())
-        # gphin_data['country'] = gphin_data['SOURCE'].apply(lambda x: x.strip("\n"))
-        gphin_data.dropna(subset=['SOURCE_TYPE', 'DATE ADDED'], inplace=True) #uncomment this line and next 4 lines if you're using WHO_all2
-        gphin_data['SOURCE_TYPE'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.strip(" "))
-        gphin_data['SOURCE_TYPE'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.lower())
-        gphin_data['country'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.strip("\n"))
+        gphin_data['SOURCE'] = gphin_data['SOURCE'].apply(lambda x: x.strip(" "))
+        gphin_data['SOURCE'] = gphin_data['SOURCE'].apply(lambda x: x.lower())
+        gphin_data['country'] = gphin_data['SOURCE'].apply(lambda x: x.strip("\n"))
+        # gphin_data.dropna(subset=['SOURCE_TYPE', 'DATE ADDED'], inplace=True) #uncomment this line and next 4 lines if you're using WHO_all2
+        # gphin_data['SOURCE_TYPE'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.strip(" "))
+        # gphin_data['SOURCE_TYPE'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.lower())
+        # gphin_data['country'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.strip("\n"))
 
-        # gphin_data.dropna(subset=['COUNTRY /ORGANIZATION', 'DATE ADDED'], inplace=True) #uncomment this and next 4 lines if you're using GPHIN_all
-        # gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip(" "))
-        # gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.lower())
-        # gphin_data['country'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip("\n"))
+        gphin_data.dropna(subset=['COUNTRY /ORGANIZATION', 'DATE ADDED'], inplace=True) #uncomment this and next 4 lines if you're using GPHIN_all
+        gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip(" "))
+        gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.lower())
+        gphin_data['country'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip("\n"))
 
         # processing the timestamps by removing leading and trailing spaces and newlines
         gphin_data['DATE ADDED'] = gphin_data['DATE ADDED'].apply(lambda x: x.strip(" "))
