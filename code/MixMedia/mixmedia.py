@@ -15,13 +15,15 @@ from pdb import set_trace
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class Attention(nn.Module):
-    def __init__(self, d_model, dropout_rate=0):
+    def __init__(self, d_model, query_in_size, dropout_rate=0):
         super().__init__()
+        self.query_map = nn.Linear(query_in_size, d_model)
         self.W = nn.Parameter(torch.randn(d_model, d_model))    # (M * M)
         self.bias = nn.Parameter(torch.randn(1))
         self.dropout = nn.Dropout(dropout_rate) if dropout_rate != 0 else None
 
     def forward(self, key, query, value):
+        query = F.tanh(self.query_map(query))
         if query.shape[0] > 1:  # not using a single vector as query for all samples in batch
             query_W_key = torch.bmm(torch.matmul(query, self.W), key.transpose(-2, -1)) # (B * N * N)
         else:
@@ -101,12 +103,14 @@ class MixMedia(nn.Module):
             # self.q_theta = nn.LSTM(self.q_theta_input_dim, hidden_size=self.q_theta_hidden_size, \
                 # bidirectional=self.q_theta_bi, dropout=self.q_theta_drop, num_layers=self.q_theta_layers, batch_first=True).to(device)
         # q_theta_out_dim = 2 * self.q_theta_hidden_size if self.q_theta_bi else self.q_theta_hidden_size
-        self.q_theta_att_query = nn.Parameter(torch.randn(1, q_theta_out_dim)).to(device)
-        self.q_theta_att = Attention(q_theta_out_dim, self.q_theta_drop).to(device)
+        # self.q_theta_att_query = nn.Parameter(torch.randn(1, q_theta_out_dim)).to(device)
+        self.q_theta_att = Attention(q_theta_out_dim, args.num_topics, self.q_theta_drop).to(device)
         # self.mu_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
-        self.mu_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
+        # self.mu_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
+        self.mu_q_theta = nn.Linear(q_theta_out_dim, args.num_topics, bias=True).to(device)
         # self.logsigma_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
-        self.logsigma_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
+        # self.logsigma_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
+        self.logsigma_q_theta = nn.Linear(q_theta_out_dim, args.num_topics, bias=True).to(device)
 
         ## define variational distribution for \eta via amortizartion... eta is K x T
         self.q_eta_map = nn.Linear(args.vocab_size, args.eta_hidden_size).to(device)
@@ -245,9 +249,10 @@ class MixMedia(nn.Module):
         # q_theta_out, _ = self.q_theta(embs)
         q_theta_out = self.q_theta(embs)
         # max-pooling and concat with eta_std to get q_theta
-        q_theta_out = self.q_theta_att(key=q_theta_out, query=self.q_theta_att_query, value=q_theta_out)[1].squeeze()
+        # q_theta_out = self.q_theta_att(key=q_theta_out, query=self.q_theta_att_query, value=q_theta_out)[1].squeeze()
         # q_theta_out = torch.max(q_theta_out, dim=1)[0]
-        q_theta = torch.cat([q_theta_out, eta_std], dim=1)
+        # q_theta = torch.cat([q_theta_out, eta_std], dim=1)
+        q_theta = self.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
         # q_theta = torch.cat([torch.max(q_theta_out, dim=1)[0], eta_std], dim=1)
 
         if self.enc_drop > 0:
