@@ -154,6 +154,9 @@ train_times = train['times']
 train_sources = train['sources']
 train_labels = train['labels']
 
+train_lengths = [len(train_emb) for train_emb in train_embs]
+train_indices_order = np.argsort(train_lengths)
+
 # args.q_theta_input_dim = train_embs[0].shape[1]
 args.q_theta_input_dim = q_theta_input_dim
 
@@ -334,7 +337,8 @@ def train(epoch):
     acc_pred_loss = 0 # classification loss
     cnt = 0
 
-    indices = torch.randperm(args.num_docs_train)
+    # indices = torch.randperm(args.num_docs_train)
+    indices = torch.tensor(train_indices_order)
     indices = torch.split(indices, args.batch_size)
     
     for idx, ind in enumerate(indices):
@@ -485,10 +489,13 @@ def get_theta(eta, embs, times, sources):
             embs = model.q_theta_emb(embs)
         # q_theta_out, _ = model.q_theta(embs)        
         q_theta_out = model.q_theta(embs)        
-        q_theta_out = model.q_theta_att(key=q_theta_out, query=model.q_theta_att_query, value=q_theta_out)[1].squeeze()
-        q_theta = torch.cat([q_theta_out, eta_std], dim=1)
+        # q_theta_out = model.q_theta_att(key=q_theta_out, query=model.q_theta_att_query, value=q_theta_out)[1].squeeze()
+        q_theta = model.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
+        # q_theta_out = torch.max(q_theta_out, dim=1)[0]
+        # q_theta = torch.cat([q_theta_out, eta_std], dim=1)
         mu_theta = model.mu_q_theta(q_theta)
-        theta = F.softmax(mu_theta, dim=-1)        
+        theta = F.softmax(mu_theta, dim=-1) 
+        print(q_theta)       
         return theta
 
 def get_completion_ppl(source):
