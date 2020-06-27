@@ -25,12 +25,12 @@ def get_document_frequency(data, wi, wj=None):
         D_wi = 0
         for l in range(len(data)):
             # doc = data[l].squeeze(0)
-            doc = data[l].squeeze()
-            if len(doc) == 1: 
-                continue
-                #doc = [doc.squeeze()]
-            else:
-                doc = doc.squeeze()
+            doc = data[l]
+            # if len(doc) == 1: 
+            #     continue
+            #     #doc = [doc.squeeze()]
+            # else:
+            #     doc = doc.squeeze()
             if wi in doc:
                 D_wi += 1
         return D_wi
@@ -38,11 +38,11 @@ def get_document_frequency(data, wi, wj=None):
     D_wi_wj = 0
     for l in range(len(data)):
         # doc = data[l].squeeze(0)
-        doc = data[l].squeeze()
-        if len(doc) == 1: 
-            doc = [doc.squeeze()]
-        else:
-            doc = doc.squeeze()
+        doc = data[l]
+        # if len(doc) == 1: 
+        #     doc = [doc.squeeze()]
+        # else:
+        #     doc = doc.squeeze()
         if wj in doc:
             D_wj += 1
             if wi in doc:
