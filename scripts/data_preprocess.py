@@ -38,7 +38,7 @@ class Tokenizer:
         # self.save_cache = save_cache
         # self.cache_dir = cache_dir
         
-        self.word_index = {}
+        self.word_index = {"[PAD]": 0}  # 0 index reserved for padding
         
         # if use_cache:
         #     if not os.path.exists(cache_dir):
@@ -48,14 +48,13 @@ class Tokenizer:
         """
         args: pandas series that we will use to build word index
         """
-        current_idx = 1 # starting with 1 to leave 0 for padding
+
         print("Generating word index...", end=" ")
         for df in args:
             for sent in tqdm(df, disable=not self.verbose):
                 for word in sent:
                     if word not in self.word_index:
-                        self.word_index[word] = current_idx
-                        current_idx += 1
+                        self.word_index[word] = len(self.word_index)
         print("Done.")
     
     def prepare_sequence(self, seq):
@@ -130,10 +129,10 @@ def read_data(data_file, who_flag=False, full_data=False):
         # gphin_data['SOURCE_TYPE'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.lower())
         # gphin_data['country'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.strip("\n"))
 
-        gphin_data.dropna(subset=['COUNTRY /ORGANIZATION', 'DATE ADDED'], inplace=True) #uncomment this and next 4 lines if you're using GPHIN_all
-        gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip(" "))
-        gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.lower())
-        gphin_data['country'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip("\n"))
+        # gphin_data.dropna(subset=['COUNTRY /ORGANIZATION', 'DATE ADDED'], inplace=True) #uncomment this and next 4 lines if you're using GPHIN_all
+        # gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip(" "))
+        # gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.lower())
+        # gphin_data['country'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip("\n"))
 
         # processing the timestamps by removing leading and trailing spaces and newlines
         gphin_data['DATE ADDED'] = gphin_data['DATE ADDED'].apply(lambda x: x.strip(" "))
