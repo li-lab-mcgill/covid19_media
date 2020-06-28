@@ -188,12 +188,12 @@ def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300
                 data_batch[i, word] = count[j]
 
         if get_emb:
-            # get embeddings batch
+            # get embeddings batch, max length of 512
             if if_one_hot:
                 # embs_batch.append(torch.tensor(idxs_to_one_hot(embs[doc_id], emb_vocab_size), dtype=torch.float32))
-                embs_batch.append(torch.tensor(embs[doc_id], dtype=torch.long))
+                embs_batch.append(torch.tensor(embs[doc_id][: 512], dtype=torch.long))
             else:
-                embs_batch.append(torch.tensor(embs[doc_id], dtype=torch.float32))
+                embs_batch.append(torch.tensor(embs[doc_id][: 512], dtype=torch.float32))
     
     data_batch = torch.from_numpy(data_batch).float().to(device)
     if get_emb:
