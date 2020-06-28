@@ -494,8 +494,7 @@ def get_theta(eta, embs, times, sources):
         # q_theta_out = torch.max(q_theta_out, dim=1)[0]
         # q_theta = torch.cat([q_theta_out, eta_std], dim=1)
         mu_theta = model.mu_q_theta(q_theta)
-        theta = F.softmax(mu_theta, dim=-1) 
-        print(q_theta)       
+        theta = F.softmax(mu_theta, dim=-1)      
         return theta
 
 def get_completion_ppl(source):
