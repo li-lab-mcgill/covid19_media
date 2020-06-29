@@ -77,6 +77,7 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 # q_theta LSTM arguments
 parser.add_argument('--one_hot_qtheta_emb', type=int, default=1, help='whther to use 1-hot embedding as q_theta input')
+parser.add_argument('--q_theta_arc', type=str, default='lstm', help='q_theta model structure (lstm or trm)', choices=['lstm', 'trm'])
 parser.add_argument('--q_theta_layers', type=int, default=1, help='number of layers for q_theta')
 parser.add_argument('--q_theta_hidden_size', type=int, default=256, help='number of hidden units for q_theta')
 parser.add_argument('--q_theta_heads', type=int, default=4, help='number of attention heads for q_theta')
@@ -154,6 +155,7 @@ train_times = train['times']
 train_sources = train['sources']
 train_labels = train['labels']
 
+# sort training samples in order of length
 train_lengths = [len(train_emb) for train_emb in train_embs]
 train_indices_order = np.argsort(train_lengths)
 
@@ -209,6 +211,10 @@ valid_times = valid['times']
 valid_sources = valid['sources']
 valid_labels = train['labels']
 
+# sort valid samples in order of length
+valid_lengths = [len(valid_emb) for valid_emb in valid_embs]
+valid_indices_order = np.argsort(valid_lengths)
+
 
 args.num_docs_valid = len(valid_tokens)
 valid_rnn_inp = data.get_rnn_input(
@@ -224,6 +230,10 @@ test_embs = test['embs']
 test_times = test['times']
 test_sources = test['sources']
 test_labels = test['labels']
+
+# sort test samples in order of length
+test_lengths = [len(test_emb) for test_emb in test_embs]
+test_indices_order = np.argsort(test_lengths)
 
 
 args.num_docs_test = len(test_tokens)
@@ -291,12 +301,22 @@ if not os.path.exists(args.save_path):
 if args.mode == 'eval':
     ckpt = args.load_from
 else:
-    ckpt = os.path.join(args.save_path, 
-        'mixmedia_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}'.format(
-        args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
-            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
-            args.train_embeddings, args.predict_labels,
-            args.time_prior, args.source_prior))
+    if args.q_theta_arc == 'trm':
+        ckpt = os.path.join(args.save_path, 
+            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}_qthetaLayers_{}_qthetaHidden_{}_qthetaHeads_{}_qthetaDrop_{}'.format(
+            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
+                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
+                args.train_embeddings, args.predict_labels,
+                args.time_prior, args.source_prior,
+                args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_heads, args.q_theta_drop))
+    else:
+        ckpt = os.path.join(args.save_path, 
+            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}_qthetaLayers_{}_qthetaHidden_{}_qthetaBi_{}_qthetaDrop_{}'.format(
+            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
+                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
+                args.train_embeddings, args.predict_labels,
+                args.time_prior, args.source_prior,
+                args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_bi, args.q_theta_drop))
 
 ## define model and optimizer
 if args.load_from != '':
@@ -487,14 +507,18 @@ def get_theta(eta, embs, times, sources):
         # q_theta = model.q_theta(inp)
         if args.one_hot_qtheta_emb:
             embs = model.q_theta_emb(embs)
-        # q_theta_out, _ = model.q_theta(embs)        
-        q_theta_out = model.q_theta(embs)        
+        if model.q_theta_arc == 'trm':
+            embs = model.pos_encode(embs)
+            q_theta_out = model.q_theta(embs)        
+        else:
+            q_theta_out, _ = model.q_theta(embs)        
         # q_theta_out = model.q_theta_att(key=q_theta_out, query=model.q_theta_att_query, value=q_theta_out)[1].squeeze()
-        q_theta = model.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
-        # q_theta_out = torch.max(q_theta_out, dim=1)[0]
-        # q_theta = torch.cat([q_theta_out, eta_std], dim=1)
+        # q_theta = model.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
+        q_theta_out = torch.max(q_theta_out, dim=1)[0]
+        q_theta = torch.cat([q_theta_out, eta_std], dim=1)
         mu_theta = model.mu_q_theta(q_theta)
-        theta = F.softmax(mu_theta, dim=-1)      
+        theta = F.softmax(mu_theta, dim=-1)   
+        # print(q_theta)   
         return theta
 
 def get_completion_ppl(source):
@@ -504,7 +528,9 @@ def get_completion_ppl(source):
     with torch.no_grad():
         alpha = model.mu_q_alpha # KxTxL
         if source == 'val':
-            indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)            
+            indices = torch.tensor(valid_indices_order)
+            indices = torch.split(indices, args.eval_batch_size)            
+            # indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)            
             tokens = valid_tokens
             counts = valid_counts
             embs = valid_embs
@@ -562,7 +588,8 @@ def get_completion_ppl(source):
             print('*'*100)
             return ppl_all, pdl_all
         else: 
-            indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
+            indices = torch.tensor(test_indices_order)
+            indices = torch.split(indices, args.eval_batch_size)
             tokens_1 = test_1_tokens
             counts_1 = test_1_counts
             embs_1 = test_1_embs
@@ -576,7 +603,7 @@ def get_completion_ppl(source):
             acc_pred_loss = 0
 
             cnt = 0
-            indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
+            # indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
 
                 data_batch_1, embs_batch_1, times_batch_1, sources_batch_1, labels_batch_1 = data.get_batch(
