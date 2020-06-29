@@ -107,7 +107,8 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if
     if predict:
         labels = np.array(pickle.load(open(label_file, 'rb')))
     else:
-        labels = np.zeros(tokens.shape[0])
+        # labels = np.zeros(tokens.shape[0])
+        labels = np.zeros(len(tokens))
 
     if name == 'test':
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens.pkl')
