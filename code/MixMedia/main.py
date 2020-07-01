@@ -725,7 +725,7 @@ if args.mode == 'train':
     all_val_pdls = []
 
     if args.anneal_lr:
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.25, patience=10, min_lr=1e-5)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.25, patience=10, min_lr=1e-7)
     
     for epoch in range(1, args.epochs):
         train(epoch)
