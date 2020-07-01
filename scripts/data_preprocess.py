@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 #from sklearn.datasets import fetch_20newsgroups
-import numpy as np
 import pickle
 import random
 from scipy import sparse
@@ -18,7 +17,9 @@ import pickle as pkl
 from argparse import ArgumentParser
 from datetime import datetime #Add import
 
+# libraries for lstm q_theta
 import fasttext
+from transformers import ElectraTokenizer
 
 #Split is fixed
 np.random.seed(0)
@@ -369,6 +370,20 @@ def preprocess(train_data, test_data, full_data):
         init_docs_embs.append(embs)
         init_docs_embs_idxs.append(embs_idxs)
 
+    # prepare ELECTRA word embeddings
+    electra_tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
+    init_docs_electra_idxs = []
+    for doc in tqdm(init_docs):
+        electra_idxs = electra_tokenizer.encode(" ".join(doc))
+        init_docs_electra_idxs.append(electra_idxs)
+
+    # put q_theta stuff in a dictionary
+    q_theta_data = {
+        "init_docs_embs": init_docs_embs,
+        "init_docs_embs_idxs": init_docs_embs_idxs,
+        "init_docs_electra_idxs": init_docs_electra_idxs,
+    }
+
     # remove punctuations
     print("Remove punctuations")
     init_docs = [[w.lower() for w in init_docs[doc] if not contains_punctuation(w)] for doc in range(len(init_docs))]
@@ -384,7 +399,7 @@ def preprocess(train_data, test_data, full_data):
     init_docs = [[w for w in init_docs[doc] if len(w)>1] for doc in range(len(init_docs))]
     init_docs = [" ".join(init_docs[doc]) for doc in range(len(init_docs))]
 
-    return init_docs, init_docs_tr, init_docs_ts, init_countries, data_ids, init_timestamps, data_labels, init_docs_embs, init_docs_embs_idxs
+    return init_docs, init_docs_tr, init_docs_ts, init_countries, data_ids, init_timestamps, data_labels, q_theta_data
 
 
 def get_features(init_timestamps, init_docs, stops, min_df=min_df, max_df=max_df):
@@ -461,7 +476,12 @@ def split_bow(bow_in, n_docs):
 
 
 
-def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, init_ids, full_data, init_timestamps, data_labels, source_map, all_docs_embs, all_docs_embs_idxs):
+def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, init_ids, full_data, init_timestamps, data_labels, source_map, q_theta_data):
+
+    # Get embeddings/embedding idxs from q_theta dictionary
+    all_docs_embs = q_theta_data["init_docs_embs"]
+    all_docs_embs_idxs = q_theta_data["init_docs_embs_idxs"]
+    all_docs_electra_idxs = q_theta_data["init_docs_electra_idxs"]
 
     # Split in train/test/valid
     print('tokenizing documents and splitting into train/test/valid...')
@@ -485,6 +505,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_tr = [[word2id[w] for w in init_docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
     docs_embs_tr = [all_docs_embs[idx_permute[idx_d]] for idx_d in range(trSize)]
     docs_embs_idxs_tr = [all_docs_embs_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
+    docs_electra_idxs_tr = [all_docs_electra_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
     # create list of unseen idxs in trainning set
     embs_idxs_seen = set(idx for docs_embs_idx_tr in docs_embs_idxs_tr for idx in docs_embs_idx_tr)
     print("q_theta vocab size", len(embs_idxs_seen))
@@ -503,10 +524,12 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_va = [[word2id[w] for w in init_docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(vaSize)]
     docs_embs_va = [all_docs_embs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
     docs_embs_idxs_va = [all_docs_embs_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+    docs_electra_idxs_va = [all_docs_electra_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
     for doc_idx, docs_embs_idx_va in tqdm(enumerate(docs_embs_idxs_va)):
         mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_va]
         docs_embs_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_va, mask)))
         docs_embs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_va[doc_idx], mask)))
+        docs_electra_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_va[doc_idx], mask)))
     timestamps_va = [time2id[init_timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(vaSize)]
     if not full_data:
         countries_va = [source_map[init_countries[idx_permute[idx_d+trSize]]] for idx_d in range(vaSize)]
@@ -522,10 +545,12 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_ts = [[word2id[w] for w in init_docs[idx_d+num_docs_tr].split() if w in word2id] for idx_d in range(tsSize)]
     docs_embs_ts = [all_docs_embs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
     docs_embs_idxs_ts = [all_docs_embs_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    docs_electra_idxs_ts = [all_docs_electra_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
     for doc_idx, docs_embs_idx_ts in tqdm(enumerate(docs_embs_idxs_ts)):
         mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_ts]
         docs_embs_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_ts, mask)))
         docs_embs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_ts[doc_idx], mask)))
+        docs_electra_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_ts[doc_idx], mask)))
     print(len(docs_ts))
     #exit()
     timestamps_ts = [time2id[init_timestamps[idx_d+num_docs_tr]] for idx_d in range(tsSize)]
@@ -554,10 +579,13 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
     docs_embs_tr = [docs_embs_tr[idx] for idx in preserve_idxs_tr]
     docs_embs_idxs_tr = [docs_embs_idxs_tr[idx] for idx in preserve_idxs_tr]
+    docs_electra_idxs_tr = [docs_electra_idxs_tr[idx] for idx in preserve_idxs_tr]
     docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
     docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
+    docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
     docs_embs_va = [docs_embs_va[idx] for idx in preserve_idxs_va]
     docs_embs_idxs_va = [docs_embs_idxs_va[idx] for idx in preserve_idxs_va]
+    docs_electra_idxs_va = [docs_electra_idxs_va[idx] for idx in preserve_idxs_va]
 
     # Remove test documents with length=1
     preserve_idxs_ts = [idx for idx, doc in enumerate(docs_ts) if len(doc)>1]
@@ -566,6 +594,7 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     id_ts = [id for doc, id in zip(docs_ts, ids_ts) if len(doc) > 1]
     docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
     docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
+    docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
 
     print('  number of documents (train): {} [this should be equal to {}]'.format(len(docs_tr), trSize))
     print('  number of documents (test): {} [this should be equal to {}]'.format(len(docs_ts), tsSize))
@@ -582,8 +611,10 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_ts_h2 = [[w for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc in docs_ts]
     docs_embs_ts_h1 = [doc_embs[: int(np.floor(doc_embs.shape[0]/2.0-1))] for doc_embs in docs_embs_ts]
     docs_embs_idxs_ts_h1 = [doc_embs[: int(np.floor(doc_embs.shape[0]/2.0-1))] for doc_embs in docs_embs_idxs_ts]
+    docs_electra_idxs_ts_h1 = [doc_embs[: int(np.floor(doc_embs.shape[0]/2.0-1))] for doc_embs in docs_electra_idxs_ts_h1]
     docs_embs_ts_h2 = [doc_embs[int(np.ceil(doc_embs.shape[0]/2.0-1)): ] for doc_embs in docs_embs_ts]
     docs_embs_idxs_ts_h2 = [doc_embs[int(np.ceil(doc_embs.shape[0]/2.0-1)): ] for doc_embs in docs_embs_idxs_ts]
+    docs_electra_idxs_ts_h2 = [doc_embs[int(np.ceil(doc_embs.shape[0]/2.0-1)): ] for doc_embs in docs_electra_idxs_ts_h2]
     if not full_data:
         countries_ts_h1 = [[c for i,w in enumerate(doc) if i<=len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
         countries_ts_h2 = [[c for i,w in enumerate(doc) if i>len(doc)/2.0-1] for doc,c in zip(docs_ts,countries_ts)]
@@ -666,8 +697,26 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     del doc_indices_ts_h2
     del doc_indices_va
 
+    q_theta_data = {
+        "docs_embs_tr": docs_embs_tr,
+        "docs_embs_idxs_tr": docs_embs_idxs_tr,
+        "docs_electra_idxs_tr": docs_electra_idxs_tr,
+        "docs_embs_ts": docs_embs_ts,
+        "docs_embs_idxs_ts": docs_embs_idxs_ts,
+        "docs_electra_idxs_ts": docs_electra_idxs_ts,
+        "docs_embs_va": docs_embs_va,
+        "docs_embs_idxs_va": docs_embs_idxs_va,
+        "docs_electra_idxs_va": docs_electra_idxs_va,
+        "docs_embs_ts_h1": docs_embs_ts_h1,
+        "docs_embs_idxs_ts_h1": docs_embs_idxs_ts_h1,
+        "docs_electra_idxs_ts_h1": docs_electra_idxs_ts_h1,
+        "docs_embs_ts_h2": docs_embs_ts_h2,
+        "docs_embs_idxs_ts_h2": docs_embs_idxs_ts_h2,
+        "docs_electra_idxs_ts_h2": docs_electra_idxs_ts_h2,
+    }
+
     return bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, \
-        docs_embs_tr, docs_embs_idxs_tr, docs_embs_ts, docs_embs_idxs_ts, docs_embs_va, docs_embs_idxs_va, docs_embs_ts_h1, docs_embs_idxs_ts_h1, docs_embs_ts_h2, docs_embs_idxs_ts_h2
+        q_theta_data
 
 # Write files for LDA C++ code
 def write_lda_file(filename, timestamps_in, time_list_in, bow_in):
@@ -694,6 +743,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_va, ids_ts, full_data, 
     timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list,
     labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, label_map, id2word, id2time, 
+    q_theta_data,
     docs_embs_tr, docs_embs_idxs_tr, docs_embs_ts, docs_embs_idxs_ts, docs_embs_va, docs_embs_idxs_va, docs_embs_ts_h1, docs_embs_idxs_ts_h1, docs_embs_ts_h2, docs_embs_idxs_ts_h2):
 
     # Write the vocabulary to a file
@@ -726,33 +776,48 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
 
     print("Saving q_theta embeddings ...", end=" ")
     # save fasttext embeddings
-    pickle_save(os.path.join(path_save, "embs_train.pkl"), docs_embs_tr)
-    pickle_save(os.path.join(path_save, "embs_valid.pkl"), docs_embs_va)
-    pickle_save(os.path.join(path_save, "embs_test.pkl"), docs_embs_ts)
-    pickle_save(os.path.join(path_save, "embs_test_h1.pkl"), docs_embs_ts_h1)
-    pickle_save(os.path.join(path_save, "embs_test_h2.pkl"), docs_embs_ts_h2)
+    pickle_save(os.path.join(path_save, "embs_train.pkl"), q_theta_data["docs_embs_tr"])
+    pickle_save(os.path.join(path_save, "embs_valid.pkl"), q_theta_data["docs_embs_va"])
+    pickle_save(os.path.join(path_save, "embs_test.pkl"), q_theta_data["docs_embs_ts"])
+    pickle_save(os.path.join(path_save, "embs_test_h1.pkl"), q_theta_data["docs_embs_ts_h1"])
+    pickle_save(os.path.join(path_save, "embs_test_h2.pkl"), q_theta_data["docs_embs_ts_h2"])
     print("Done")
 
-    del docs_embs_tr
-    del docs_embs_va
-    del docs_embs_ts
-    del docs_embs_ts_h1
-    del docs_embs_ts_h2
+    del q_theta_data["docs_embs_tr"]
+    del q_theta_data["docs_embs_va"]
+    del q_theta_data["docs_embs_ts"]
+    del q_theta_data["docs_embs_ts_h1"]
+    del q_theta_data["docs_embs_ts_h2"]
 
     print("Saving q_theta 1-hot embeddings ...", end=" ")
     # save one hot embeddings (for q_theta)
-    pickle_save(os.path.join(path_save, "idxs_embs_train.pkl"), docs_embs_idxs_tr)
-    pickle_save(os.path.join(path_save, "idxs_embs_valid.pkl"), docs_embs_idxs_va)
-    pickle_save(os.path.join(path_save, "idxs_embs_test.pkl"), docs_embs_idxs_ts)
-    pickle_save(os.path.join(path_save, "idxs_embs_test_h1.pkl"), docs_embs_idxs_ts_h1)
-    pickle_save(os.path.join(path_save, "idxs_embs_test_h2.pkl"), docs_embs_idxs_ts_h2)
+    pickle_save(os.path.join(path_save, "idxs_embs_train.pkl"), q_theta_data["docs_embs_idxs_tr"])
+    pickle_save(os.path.join(path_save, "idxs_embs_valid.pkl"), q_theta_data["docs_embs_idxs_va"])
+    pickle_save(os.path.join(path_save, "idxs_embs_test.pkl"), q_theta_data["docs_embs_idxs_ts"])
+    pickle_save(os.path.join(path_save, "idxs_embs_test_h1.pkl"), q_theta_data["docs_embs_idxs_ts_h1"])
+    pickle_save(os.path.join(path_save, "idxs_embs_test_h2.pkl"), q_theta_data["docs_embs_idxs_ts_h2"])
     print("Done")
 
-    del docs_embs_idxs_tr
-    del docs_embs_idxs_va
-    del docs_embs_idxs_ts
-    del docs_embs_idxs_ts_h1
-    del docs_embs_idxs_ts_h2
+    del q_theta_data["docs_embs_idxs_tr"]
+    del q_theta_data["docs_embs_idxs_va"]
+    del q_theta_data["docs_embs_idxs_ts"]
+    del q_theta_data["docs_embs_idxs_ts_h1"]
+    del q_theta_data["docs_embs_idxs_ts_h2"]
+
+    print("Saving q_theta ELECTRA embeddings ...", end=" ")
+    # save electra embeddings (for q_theta)
+    pickle_save(os.path.join(path_save, "idxs_electra_train.pkl"), q_theta_data["docs_electra_idxs_tr"])
+    pickle_save(os.path.join(path_save, "idxs_electra_valid.pkl"), q_theta_data["docs_electra_idxs_va"])
+    pickle_save(os.path.join(path_save, "idxs_electra_test.pkl"), q_theta_data["docs_electra_idxs_ts"])
+    pickle_save(os.path.join(path_save, "idxs_electra_test_h1.pkl"), q_theta_data["docs_electra_idxs_ts_h1"])
+    pickle_save(os.path.join(path_save, "idxs_electra_test_h2.pkl"), q_theta_data["docs_electra_idxs_ts_h2"])
+    print("Done")
+
+    del q_theta_data["docs_electra_idxs_tr"]
+    del q_theta_data["docs_electra_idxs_va"]
+    del q_theta_data["docs_electra_idxs_ts"]
+    del q_theta_data["docs_electra_idxs_ts_h1"]
+    del q_theta_data["docs_electra_idxs_ts_h2"]
     
     # all countries
     if not full_data:
@@ -863,7 +928,7 @@ if __name__ == '__main__':
     # preprocess the news articles
     print("Preprocessing the articles")
     #print(train.data)
-    all_docs, train_docs, test_docs, init_countries, init_ids, init_timestamps, data_labels, all_docs_embs, all_docs_embs_idxs = preprocess(train, test, args.full_data)
+    all_docs, train_docs, test_docs, init_countries, init_ids, init_timestamps, data_labels, q_theta_data = preprocess(train, test, args.full_data)
 
     # get a list of stopwords
     #stopwords_en, stopwords_fr = get_stopwords(args.stopwords_path)
@@ -876,9 +941,9 @@ if __name__ == '__main__':
     # split data into train, test and validation and corresponding countries in BOW format
     print("Splitting data..\n")
     bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, \
-        docs_embs_tr, docs_embs_idxs_tr, docs_embs_ts, docs_embs_idxs_ts, docs_embs_va, docs_embs_idxs_va, docs_embs_ts_h1, docs_embs_idxs_ts_h1, docs_embs_ts_h2, docs_embs_idxs_ts_h2 \
-        = split_data(all_docs, train_docs, test_docs, word2id, init_countries, init_ids, args.full_data, init_timestamps, data_labels, countries_to_idx, all_docs_embs, all_docs_embs_idxs)
+        q_theta_data \
+        = split_data(all_docs, train_docs, test_docs, word2id, init_countries, init_ids, args.full_data, init_timestamps, data_labels, countries_to_idx, q_theta_data)
 
     print("Saving data..\n")
     save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, ids_tr, ids_va, ids_ts, args.full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, label_map, id2word, id2time, \
-        docs_embs_tr, docs_embs_idxs_tr, docs_embs_ts, docs_embs_idxs_ts, docs_embs_va, docs_embs_idxs_va, docs_embs_ts_h1, docs_embs_idxs_ts_h1, docs_embs_ts_h2, docs_embs_idxs_ts_h2)
+        q_theta_data)
