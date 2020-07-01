@@ -743,8 +743,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_va, ids_ts, full_data, 
     timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list,
     labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, label_map, id2word, id2time, 
-    q_theta_data,
-    docs_embs_tr, docs_embs_idxs_tr, docs_embs_ts, docs_embs_idxs_ts, docs_embs_va, docs_embs_idxs_va, docs_embs_ts_h1, docs_embs_idxs_ts_h1, docs_embs_ts_h2, docs_embs_idxs_ts_h2):
+    q_theta_data):
 
     # Write the vocabulary to a file
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
