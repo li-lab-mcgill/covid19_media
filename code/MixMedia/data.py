@@ -19,14 +19,19 @@ def idxs_to_one_hot(idxs, emb_vocab_size):
     embs_one_hot[np.arange(len(idxs)), idxs] = 1
     return embs_one_hot
 
-def get_embs(path, name, if_one_hot=True, emb_vocab_size=None):
-    if if_one_hot:
+def get_embs(path, name, if_one_hot=True, emb_vocab_size=None, q_theta_arc='lstm'):
+    if q_theta_arc == 'electra':
+        embs_filename = os.path.join(path, f'idxs_electra_{name}.pkl')
+    elif if_one_hot:
         embs_filename = os.path.join(path, f'idxs_embs_{name}.pkl')
     else:
         embs_filename = os.path.join(path, f'embs_{name}.pkl')
     with open(embs_filename, 'rb') as file:
         embs = pickle.load(file)
-    if not if_one_hot and not emb_vocab_size:
+
+    if q_theta_arc == 'electra':    # no need of emb_vocab_size for electra
+        pass
+    elif not if_one_hot and not emb_vocab_size:
         emb_vocab_size = embs[0][0].shape[0]
     elif if_one_hot and not emb_vocab_size:
             # inferring vocab size from maximal index of training idxs
@@ -36,7 +41,7 @@ def get_embs(path, name, if_one_hot=True, emb_vocab_size=None):
         # embs = [idxs_to_one_hot(emb, emb_vocab_size) for emb in embs]
     return embs, emb_vocab_size
 
-def _fetch(path, name, if_one_hot=True, emb_vocab_size=None):
+def _fetch(path, name, if_one_hot=True, emb_vocab_size=None, q_theta_arc='lstm'):
     if name == 'train':
         token_file = os.path.join(path, 'bow_tr_tokens.pkl')
         count_file = os.path.join(path, 'bow_tr_counts.pkl')
@@ -48,7 +53,7 @@ def _fetch(path, name, if_one_hot=True, emb_vocab_size=None):
         count_file = os.path.join(path, 'bow_ts_counts.pkl')
     tokens = pickle_load(token_file)
     counts = pickle_load(count_file)
-    embs, emb_vocab_size = get_embs(path, name, if_one_hot, emb_vocab_size)
+    embs, emb_vocab_size = get_embs(path, name, if_one_hot, emb_vocab_size, q_theta_arc)
     if name == 'test':
         token_1_file = os.path.join(path, 'bow_ts_h1_tokens.pkl')
         count_1_file = os.path.join(path, 'bow_ts_h1_counts.pkl')
@@ -56,15 +61,15 @@ def _fetch(path, name, if_one_hot=True, emb_vocab_size=None):
         count_2_file = os.path.join(path, 'bow_ts_h2_counts.pkl')
         tokens_1 = pickle_load(token_1_file)
         counts_1 = pickle_load(count_1_file)
-        embs_1, emb_vocab_size = get_embs(path, 'test_h1', if_one_hot, emb_vocab_size)
+        embs_1, emb_vocab_size = get_embs(path, 'test_h1', if_one_hot, emb_vocab_size, q_theta_arc)
         tokens_2 = pickle_load(token_2_file)
         counts_2 = pickle_load(count_2_file)
-        embs_2, emb_vocab_size = get_embs(path, 'test_h2', if_one_hot, emb_vocab_size)
+        embs_2, emb_vocab_size = get_embs(path, 'test_h2', if_one_hot, emb_vocab_size, q_theta_arc)
         return {'tokens': tokens, 'counts': counts, 'embs': embs, 'tokens_1': tokens_1, 
         'counts_1': counts_1, 'embs_1': embs_1, 'tokens_2': tokens_2, 'counts_2': counts_2, 'embs_2': embs_2}, emb_vocab_size
     return {'tokens': tokens, 'counts': counts, 'embs': embs}, emb_vocab_size
 
-def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if_one_hot=True, emb_vocab_size=None):
+def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if_one_hot=True, emb_vocab_size=None, q_theta_arc='lstm'):
     
     if name == 'train':
         token_file = os.path.join(path, 'bow_tr_tokens.pkl')
@@ -91,7 +96,7 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if
     
     tokens = pickle_load(token_file)
     counts = pickle_load(count_file)
-    embs, emb_vocab_size = get_embs(path, name, if_one_hot, emb_vocab_size)
+    embs, emb_vocab_size = get_embs(path, name, if_one_hot, emb_vocab_size, q_theta_arc)
     
     if use_time:        
         times = pickle_load(time_file)
@@ -117,10 +122,10 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if
         count_2_file = os.path.join(path, 'bow_ts_h2_counts.pkl')        
         tokens_1 = pickle_load(token_1_file)
         counts_1 = pickle_load(count_1_file)
-        embs_1, emb_vocab_size = get_embs(path, 'test_h1', if_one_hot, emb_vocab_size)
+        embs_1, emb_vocab_size = get_embs(path, 'test_h1', if_one_hot, emb_vocab_size, q_theta_arc)
         tokens_2 = pickle_load(token_2_file)
         counts_2 = pickle_load(count_2_file)
-        embs_2, emb_vocab_size = get_embs(path, 'test_h2', if_one_hot, emb_vocab_size)
+        embs_2, emb_vocab_size = get_embs(path, 'test_h2', if_one_hot, emb_vocab_size, q_theta_arc)
 
         return {'tokens': tokens, 'counts': counts, 'embs': embs, 'times': times, 'sources': sources, 'labels': labels,
                     'tokens_1': tokens_1, 'counts_1': counts_1, 'embs_1': embs_1,
@@ -128,19 +133,19 @@ def _fetch_temporal(path, name, predict=True, use_time=True, use_source=True, if
 
     return {'tokens': tokens, 'counts': counts, 'embs': embs, 'times': times, 'sources': sources, 'labels': labels}, emb_vocab_size
 
-def get_data(path, temporal=False, predict=False, use_time=False, use_source=False, if_one_hot=True):
+def get_data(path, temporal=False, predict=False, use_time=False, use_source=False, if_one_hot=True, q_theta_arc='lstm'):
     ### load vocabulary
     with open(os.path.join(path, 'vocab.pkl'), 'rb') as f:
         vocab = pickle.load(f)
 
     if not temporal:
-        train, emb_vocab_size = _fetch(path, 'train', if_one_hot=if_one_hot)
-        valid, _ = _fetch(path, 'valid', if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size)
-        test, _ = _fetch(path, 'test', if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size)
+        train, emb_vocab_size = _fetch(path, 'train', if_one_hot=if_one_hot, q_theta_arc=q_theta_arc)
+        valid, _ = _fetch(path, 'valid', if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size, q_theta_arc=q_theta_arc)
+        test, _ = _fetch(path, 'test', if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size, q_theta_arc=q_theta_arc)
     else:
-        train, emb_vocab_size = _fetch_temporal(path, 'train', predict, use_time, use_source, if_one_hot=if_one_hot)
-        valid, _ = _fetch_temporal(path, 'valid', predict, use_time, use_source, if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size)
-        test, _ = _fetch_temporal(path, 'test', predict, use_time, use_source, if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size)
+        train, emb_vocab_size = _fetch_temporal(path, 'train', predict, use_time, use_source, if_one_hot=if_one_hot, q_theta_arc=q_theta_arc)
+        valid, _ = _fetch_temporal(path, 'valid', predict, use_time, use_source, if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size, q_theta_arc=q_theta_arc)
+        test, _ = _fetch_temporal(path, 'test', predict, use_time, use_source, if_one_hot=if_one_hot, emb_vocab_size=emb_vocab_size, q_theta_arc=q_theta_arc)
 
     return vocab, train, valid, test, emb_vocab_size
 

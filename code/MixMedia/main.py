@@ -77,7 +77,7 @@ parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
 # q_theta LSTM arguments
 parser.add_argument('--one_hot_qtheta_emb', type=int, default=1, help='whther to use 1-hot embedding as q_theta input')
-parser.add_argument('--q_theta_arc', type=str, default='lstm', help='q_theta model structure (lstm or trm)', choices=['lstm', 'trm'])
+parser.add_argument('--q_theta_arc', type=str, default='lstm', help='q_theta model structure (lstm, trm or electra)', choices=['lstm', 'trm', 'electra'])
 parser.add_argument('--q_theta_layers', type=int, default=1, help='number of layers for q_theta')
 parser.add_argument('--q_theta_hidden_size', type=int, default=256, help='number of hidden units for q_theta')
 parser.add_argument('--q_theta_heads', type=int, default=4, help='number of attention heads for q_theta')
@@ -140,7 +140,7 @@ print('Getting vocabulary ...')
 data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
 
 vocab, train, valid, test, q_theta_input_dim = data.get_data(data_file, temporal=True, predict=args.predict_labels, \
-    use_time=args.time_prior, use_source=args.source_prior, if_one_hot=args.one_hot_qtheta_emb)
+    use_time=args.time_prior, use_source=args.source_prior, if_one_hot=args.one_hot_qtheta_emb, q_theta_arc=args.q_theta_arc)
 
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
@@ -309,7 +309,7 @@ else:
                 args.train_embeddings, args.predict_labels,
                 args.time_prior, args.source_prior,
                 args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_heads, args.q_theta_drop))
-    else:
+    elif args.q_theta_arc == 'lstm':
         ckpt = os.path.join(args.save_path, 
             'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}_qthetaLayers_{}_qthetaHidden_{}_qthetaBi_{}_qthetaDrop_{}'.format(
             args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
@@ -317,6 +317,14 @@ else:
                 args.train_embeddings, args.predict_labels,
                 args.time_prior, args.source_prior,
                 args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_bi, args.q_theta_drop))
+    else:
+        ckpt = os.path.join(args.save_path, 
+            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}'.format(
+            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
+                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
+                args.train_embeddings, args.predict_labels,
+                args.time_prior, args.source_prior,
+                args.q_theta_arc))
 
 ## define model and optimizer
 if args.load_from != '':
@@ -505,13 +513,13 @@ def get_theta(eta, embs, times, sources):
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
         # inp = torch.cat([embs, eta_std], dim=1)
         # q_theta = model.q_theta(inp)
-        if args.one_hot_qtheta_emb:
+        if args.one_hot_qtheta_emb and args.q_theta_arc != 'electra':
             embs = model.q_theta_emb(embs)
         if model.q_theta_arc == 'trm':
             embs = model.pos_encode(embs)
             q_theta_out = model.q_theta(embs)        
         else:
-            q_theta_out, _ = model.q_theta(embs)        
+            q_theta_out = model.q_theta(embs)[0]
         # q_theta_out = model.q_theta_att(key=q_theta_out, query=model.q_theta_att_query, value=q_theta_out)[1].squeeze()
         # q_theta = model.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
         q_theta_out = torch.max(q_theta_out, dim=1)[0]

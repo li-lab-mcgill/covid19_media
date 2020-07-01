@@ -12,6 +12,8 @@ from torch.autograd import Variable
 # from IPython.core.debugger import set_trace
 from pdb import set_trace
 
+# q_theta models
+from transformers import ElectraModel
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -109,7 +111,7 @@ class MixMedia(nn.Module):
         #             nn.Linear(args.t_hidden_size, args.t_hidden_size),
         #             self.theta_act,
         #         )
-        if self.one_hot_qtheta_emb:
+        if self.one_hot_qtheta_emb and self.q_theta_arc != 'electra':
             self.q_theta_emb = nn.Embedding(self.q_theta_input_dim, args.rho_size).to('cpu')
             self.q_theta_input_dim = self.rho_size  # change q_theta input size to rho_size after embedding
             # if args.q_theta_arc == 'trm':
@@ -125,10 +127,13 @@ class MixMedia(nn.Module):
             self.q_theta = nn.TransformerEncoder(nn.TransformerEncoderLayer(d_model=self.q_theta_input_dim, nhead=args.q_theta_heads, dropout=self.q_theta_drop), \
                 self.q_theta_layers).to(device)
             q_theta_out_dim = self.q_theta_input_dim
-        else:
+        elif self.q_theta_arc == 'lstm':
             self.q_theta = nn.LSTM(self.q_theta_input_dim, hidden_size=self.q_theta_hidden_size, \
                 bidirectional=self.q_theta_bi, dropout=self.q_theta_drop, num_layers=self.q_theta_layers, batch_first=True).to(device)
             q_theta_out_dim = 2 * self.q_theta_hidden_size if self.q_theta_bi else self.q_theta_hidden_size
+        else:
+            self.q_theta = ElectraModel.from_pretrained('google/electra-small-discriminator').to(device)
+            q_theta_out_dim = self.q_theta.config.hidden_size
         self.q_theta_att_query = nn.Parameter(torch.randn(1, q_theta_out_dim)).to(device)
         self.q_theta_att = Attention(q_theta_out_dim, args.num_topics, self.q_theta_drop).to(device)
         # self.mu_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
@@ -270,13 +275,13 @@ class MixMedia(nn.Module):
         """
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
         # inp = torch.cat([bows, eta_std], dim=1)
-        if self.one_hot_qtheta_emb:
+        if self.one_hot_qtheta_emb and self.q_theta_arc != 'electra':
             embs = self.q_theta_emb(embs)
         if self.q_theta_arc == 'trm':
             embs = self.pos_encode(embs)
             q_theta_out = self.q_theta(embs)
         else:
-            q_theta_out, _ = self.q_theta(embs)
+            q_theta_out = self.q_theta(embs)[0]
         
         # max-pooling and concat with eta_std to get q_theta
         # q_theta_out = self.q_theta_att(key=q_theta_out, query=self.q_theta_att_query, value=q_theta_out)[1].squeeze()
