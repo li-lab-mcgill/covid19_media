@@ -9,20 +9,20 @@ import numpy as np
 import os 
 import math 
 import random 
-import matplotlib.pyplot as plt 
-import seaborn as sns
+# import matplotlib.pyplot as plt 
+# import seaborn as sns
 import scipy.io
 
 import data 
 
-from sklearn.decomposition import PCA
+# from sklearn.decomposition import PCA
 from torch import nn, optim
 from torch.nn import functional as F
 
 from mixmedia import MixMedia
 from utils import nearest_neighbors, get_topic_coherence
 
-from IPython.core.debugger import set_trace
+# from IPython.core.debugger import set_trace
 
 import sys, importlib
 importlib.reload(sys.modules['data'])
@@ -75,8 +75,17 @@ parser.add_argument('--eta_hidden_size', type=int, default=200, help='number of 
 
 parser.add_argument('--delta', type=float, default=0.005, help='prior variance')
 
+# q_theta LSTM arguments
+parser.add_argument('--one_hot_qtheta_emb', type=int, default=1, help='whther to use 1-hot embedding as q_theta input')
+parser.add_argument('--q_theta_arc', type=str, default='lstm', help='q_theta model structure (lstm, trm or electra)', choices=['lstm', 'trm', 'electra'])
+parser.add_argument('--q_theta_layers', type=int, default=1, help='number of layers for q_theta')
+parser.add_argument('--q_theta_hidden_size', type=int, default=256, help='number of hidden units for q_theta')
+parser.add_argument('--q_theta_heads', type=int, default=4, help='number of attention heads for q_theta')
+parser.add_argument('--q_theta_drop', type=float, default=0.1, help='dropout rate for q_theta')
+parser.add_argument('--q_theta_bi', type=int, default=1, help='whether to use bidirectional LSTM for q_theta')
+
 ### optimization-related arguments
-parser.add_argument('--lr', type=float, default=0.001, help='learning rate')
+parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
 
 parser.add_argument('--epochs', type=int, default=150, help='number of epochs to train')
@@ -130,7 +139,8 @@ torch.manual_seed(args.seed)
 print('Getting vocabulary ...')
 data_file = os.path.join(args.data_path, 'min_df_{}'.format(args.min_df))
 
-vocab, train, valid, test = data.get_data(data_file, temporal=True, predict=args.predict_labels, use_time=args.time_prior, use_source=args.source_prior)
+vocab, train, valid, test, q_theta_input_dim = data.get_data(data_file, temporal=True, predict=args.predict_labels, \
+    use_time=args.time_prior, use_source=args.source_prior, if_one_hot=args.one_hot_qtheta_emb, q_theta_arc=args.q_theta_arc)
 
 vocab_size = len(vocab)
 args.vocab_size = vocab_size
@@ -140,10 +150,17 @@ args.vocab_size = vocab_size
 print('Getting training data ...')
 train_tokens = train['tokens']
 train_counts = train['counts']
+train_embs = train['embs']
 train_times = train['times']
 train_sources = train['sources']
 train_labels = train['labels']
 
+# sort training samples in order of length
+train_lengths = [len(train_emb) for train_emb in train_embs]
+train_indices_order = np.argsort(train_lengths)
+
+# args.q_theta_input_dim = train_embs[0].shape[1]
+args.q_theta_input_dim = q_theta_input_dim
 
 if len(train_labels.shape) == 2 and args.multiclass_labels == 0:
     print("multiclass_labels is turned off but multi-class label file is provided")
@@ -189,9 +206,14 @@ train_rnn_inp = data.get_rnn_input(
 print('Getting validation data ...')
 valid_tokens = valid['tokens']
 valid_counts = valid['counts']
+valid_embs = valid['embs']
 valid_times = valid['times']
 valid_sources = valid['sources']
 valid_labels = train['labels']
+
+# sort valid samples in order of length
+valid_lengths = [len(valid_emb) for valid_emb in valid_embs]
+valid_indices_order = np.argsort(valid_lengths)
 
 
 args.num_docs_valid = len(valid_tokens)
@@ -204,9 +226,14 @@ valid_rnn_inp = data.get_rnn_input(
 print('Getting testing data ...')
 test_tokens = test['tokens']
 test_counts = test['counts']
+test_embs = test['embs']
 test_times = test['times']
 test_sources = test['sources']
 test_labels = test['labels']
+
+# sort test samples in order of length
+test_lengths = [len(test_emb) for test_emb in test_embs]
+test_indices_order = np.argsort(test_lengths)
 
 
 args.num_docs_test = len(test_tokens)
@@ -218,6 +245,7 @@ test_rnn_inp = data.get_rnn_input(
 
 test_1_tokens = test['tokens_1']
 test_1_counts = test['counts_1']
+test_1_embs = test['embs_1']
 test_1_times = test_times
 args.num_docs_test_1 = len(test_1_tokens)
 test_1_rnn_inp = data.get_rnn_input(
@@ -228,6 +256,7 @@ test_1_rnn_inp = data.get_rnn_input(
 
 test_2_tokens = test['tokens_2']
 test_2_counts = test['counts_2']
+test_2_embs = test['embs_2']
 test_2_times = test_times
 args.num_docs_test_2 = len(test_2_tokens)
 test_2_rnn_inp = data.get_rnn_input(
@@ -272,12 +301,30 @@ if not os.path.exists(args.save_path):
 if args.mode == 'eval':
     ckpt = args.load_from
 else:
-    ckpt = os.path.join(args.save_path, 
-        'mixmedia_{}_K_{}_Htheta_{}_Optim_{}_Clip_{}_ThetaAct_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}'.format(
-        args.dataset, args.num_topics, args.t_hidden_size, args.optimizer, args.clip, args.theta_act, 
-            args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
-            args.train_embeddings, args.predict_labels,
-            args.time_prior, args.source_prior))
+    if args.q_theta_arc == 'trm':
+        ckpt = os.path.join(args.save_path, 
+            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}_qthetaLayers_{}_qthetaHidden_{}_qthetaHeads_{}_qthetaDrop_{}'.format(
+            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
+                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
+                args.train_embeddings, args.predict_labels,
+                args.time_prior, args.source_prior,
+                args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_heads, args.q_theta_drop))
+    elif args.q_theta_arc == 'lstm':
+        ckpt = os.path.join(args.save_path, 
+            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}_qthetaLayers_{}_qthetaHidden_{}_qthetaBi_{}_qthetaDrop_{}'.format(
+            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
+                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
+                args.train_embeddings, args.predict_labels,
+                args.time_prior, args.source_prior,
+                args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_bi, args.q_theta_drop))
+    else:
+        ckpt = os.path.join(args.save_path, 
+            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}'.format(
+            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
+                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
+                args.train_embeddings, args.predict_labels,
+                args.time_prior, args.source_prior,
+                args.q_theta_arc))
 
 ## define model and optimizer
 if args.load_from != '':
@@ -318,7 +365,8 @@ def train(epoch):
     acc_pred_loss = 0 # classification loss
     cnt = 0
 
-    indices = torch.randperm(args.num_docs_train)
+    # indices = torch.randperm(args.num_docs_train)
+    indices = torch.tensor(train_indices_order)
     indices = torch.split(indices, args.batch_size)
     
     for idx, ind in enumerate(indices):
@@ -326,9 +374,9 @@ def train(epoch):
         optimizer.zero_grad()
         model.zero_grad()        
         
-        data_batch, times_batch, sources_batch, labels_batch = data.get_batch(
-            train_tokens, train_counts, ind, train_sources, train_labels, 
-            args.vocab_size, args.emb_size, temporal=True, times=train_times)        
+        data_batch, embs_batch, times_batch, sources_batch, labels_batch = data.get_batch(
+            train_tokens, train_counts, train_embs, ind, train_sources, train_labels, 
+            args.vocab_size, args.emb_size, temporal=True, times=train_times, if_one_hot=args.one_hot_qtheta_emb, emb_vocab_size=q_theta_input_dim)        
 
         sums = data_batch.sum(1).unsqueeze(1)
 
@@ -339,7 +387,7 @@ def train(epoch):
 
         # print("forward passing ...")
 
-        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, 
+        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, embs_batch,
             times_batch, sources_batch, labels_batch, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
@@ -459,14 +507,26 @@ def get_eta(data_type):
             raise Exception('invalid data_type: '.data_type)
 
 
-def get_theta(eta, bows, times, sources):
+def get_theta(eta, embs, times, sources):
     model.eval()
     with torch.no_grad():
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
-        inp = torch.cat([bows, eta_std], dim=1)
-        q_theta = model.q_theta(inp)        
+        # inp = torch.cat([embs, eta_std], dim=1)
+        # q_theta = model.q_theta(inp)
+        if args.one_hot_qtheta_emb and args.q_theta_arc != 'electra':
+            embs = model.q_theta_emb(embs)
+        if model.q_theta_arc == 'trm':
+            embs = model.pos_encode(embs)
+            q_theta_out = model.q_theta(embs)        
+        else:
+            q_theta_out = model.q_theta(embs)[0]
+        # q_theta_out = model.q_theta_att(key=q_theta_out, query=model.q_theta_att_query, value=q_theta_out)[1].squeeze()
+        # q_theta = model.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
+        q_theta_out = torch.max(q_theta_out, dim=1)[0]
+        q_theta = torch.cat([q_theta_out, eta_std], dim=1)
         mu_theta = model.mu_q_theta(q_theta)
-        theta = F.softmax(mu_theta, dim=-1)        
+        theta = F.softmax(mu_theta, dim=-1)   
+        # print(q_theta)   
         return theta
 
 def get_completion_ppl(source):
@@ -476,9 +536,12 @@ def get_completion_ppl(source):
     with torch.no_grad():
         alpha = model.mu_q_alpha # KxTxL
         if source == 'val':
-            indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)            
+            indices = torch.tensor(valid_indices_order)
+            indices = torch.split(indices, args.eval_batch_size)            
+            # indices = torch.split(torch.tensor(range(args.num_docs_valid)), args.eval_batch_size)            
             tokens = valid_tokens
             counts = valid_counts
+            embs = valid_embs
             times = valid_times
             sources = valid_sources
             labels = valid_labels
@@ -491,9 +554,9 @@ def get_completion_ppl(source):
             cnt = 0
             for idx, ind in enumerate(indices):
                 
-                data_batch, times_batch, sources_batch, labels_batch = data.get_batch(
-                    tokens, counts, ind, sources, labels, 
-                    args.vocab_size, args.emb_size, temporal=True, times=times)
+                data_batch, embs_batch, times_batch, sources_batch, labels_batch = data.get_batch(
+                    tokens, counts, embs, ind, sources, labels, 
+                    args.vocab_size, args.emb_size, temporal=True, times=times, if_one_hot=args.one_hot_qtheta_emb, emb_vocab_size=q_theta_input_dim)
 
                 sums = data_batch.sum(1).unsqueeze(1)
 
@@ -502,7 +565,8 @@ def get_completion_ppl(source):
                 else:
                     normalized_data_batch = data_batch
                 
-                theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
+                theta = get_theta(eta, embs_batch, times_batch, sources_batch)
+                # theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
                                 
                 beta = model.get_beta(alpha)
                 nll = -torch.log(torch.mm(theta, beta)) * data_batch
@@ -532,11 +596,14 @@ def get_completion_ppl(source):
             print('*'*100)
             return ppl_all, pdl_all
         else: 
-            indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
+            indices = torch.tensor(test_indices_order)
+            indices = torch.split(indices, args.eval_batch_size)
             tokens_1 = test_1_tokens
             counts_1 = test_1_counts
+            embs_1 = test_1_embs
             tokens_2 = test_2_tokens
             counts_2 = test_2_counts            
+            embs_2 = test_2_embs
 
             eta_1 = get_eta('test')
 
@@ -544,12 +611,12 @@ def get_completion_ppl(source):
             acc_pred_loss = 0
 
             cnt = 0
-            indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
+            # indices = torch.split(torch.tensor(range(args.num_docs_test)), args.eval_batch_size)
             for idx, ind in enumerate(indices):
 
-                data_batch_1, times_batch_1, sources_batch_1, labels_batch_1 = data.get_batch(
-                    tokens_1, counts_1, ind, test_sources, test_labels,
-                    args.vocab_size, args.emb_size, temporal=True, times=test_times)
+                data_batch_1, embs_batch_1, times_batch_1, sources_batch_1, labels_batch_1 = data.get_batch(
+                    tokens_1, counts_1, embs_1, ind, test_sources, test_labels,
+                    args.vocab_size, args.emb_size, temporal=True, times=test_times, if_one_hot=args.one_hot_qtheta_emb, emb_vocab_size=q_theta_input_dim)
                 
                 sums_1 = data_batch_1.sum(1).unsqueeze(1)
 
@@ -558,11 +625,11 @@ def get_completion_ppl(source):
                 else:
                     normalized_data_batch_1 = data_batch_1
                 
-                theta = get_theta(eta_1, normalized_data_batch_1, times_batch_1, sources_batch_1)
+                theta = get_theta(eta_1, embs_batch_1, times_batch_1, sources_batch_1)
 
-                data_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
-                    tokens_2, counts_2, ind, test_sources, test_labels,
-                    args.vocab_size, args.emb_size, temporal=True, times=test_times)
+                data_batch_2, embs_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
+                    tokens_2, counts_2, embs_2, ind, test_sources, test_labels,
+                    args.vocab_size, args.emb_size, temporal=True, times=test_times, if_one_hot=args.one_hot_qtheta_emb, emb_vocab_size=q_theta_input_dim)
 
                 sums_2 = data_batch_2.sum(1).unsqueeze(1)
                 
@@ -656,6 +723,9 @@ if args.mode == 'train':
     best_val_ppl = 1e9
     all_val_ppls = []
     all_val_pdls = []
+
+    if args.anneal_lr:
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', factor=0.25, patience=10, min_lr=1e-7)
     
     for epoch in range(1, args.epochs):
         train(epoch)
@@ -674,9 +744,11 @@ if args.mode == 'train':
             best_val_ppl = val_ppl
         else:
             ## check whether to anneal lr
-            lr = optimizer.param_groups[0]['lr']
-            if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > min(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
-                optimizer.param_groups[0]['lr'] /= args.lr_factor
+            # lr = optimizer.param_groups[0]['lr']
+            # if args.anneal_lr and (len(all_val_ppls) > args.nonmono and val_ppl > np.mean(all_val_ppls[:-args.nonmono]) and lr > 1e-5):
+            #     optimizer.param_groups[0]['lr'] /= args.lr_factor
+            if args.anneal_lr:
+                scheduler.step(val_ppl)
         all_val_ppls.append(val_ppl)
         all_val_pdls.append(val_pdl)
 
@@ -689,26 +761,26 @@ if args.mode == 'train':
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha).cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_beta.mat', {'values': beta}, do_compression=True)
+        np.save(ckpt+'_beta.npy', beta, allow_pickle=False)
 
         
         print('saving alpha...')
         alpha = model.mu_q_alpha.cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_alpha.mat', {'values': alpha}, do_compression=True)
+        np.save(ckpt+'_alpha.npy', alpha, allow_pickle=False)
 
 
         print('saving classifer weights...')
         classifer_weights = model.classifier.weight.cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_classifer.mat', {'values': classifer_weights}, do_compression=True)
+        np.save(ckpt+'_classifer.npy', classifer_weights, allow_pickle=False)
 
         print('saving eta ...')
         eta = get_eta('train').cpu().detach().numpy()
-        scipy.io.savemat(ckpt+'_eta.mat', {'values': eta}, do_compression=True)
+        np.save(ckpt+'_eta.npy', eta, allow_pickle=False)
 
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
             rho = model.rho.weight.cpu().detach().numpy()
-            scipy.io.savemat(ckpt+'_rho.mat', {'values': rho}, do_compression=True)
+            np.save(ckpt+'_rho.npy', rho, allow_pickle=False)
 
         f=open(ckpt+'_val_ppl.txt','w')
         s1='\n'.join([str(i) for i in all_val_ppls])        

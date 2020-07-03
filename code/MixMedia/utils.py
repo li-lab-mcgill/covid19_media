@@ -1,12 +1,12 @@
 from sklearn.manifold import TSNE
 import torch 
 import numpy as np
-import bokeh.plotting as bp
+# import bokeh.plotting as bp
 
-from bokeh.plotting import save
-from bokeh.models import HoverTool
-import matplotlib.pyplot as plt 
-import matplotlib 
+# from bokeh.plotting import save
+# from bokeh.models import HoverTool
+# import matplotlib.pyplot as plt 
+# import matplotlib 
 
 tiny = 1e-6
 
@@ -24,23 +24,25 @@ def get_document_frequency(data, wi, wj=None):
     if wj is None:
         D_wi = 0
         for l in range(len(data)):
-            doc = data[l].squeeze(0)
-            if len(doc) == 1: 
-                continue
-                #doc = [doc.squeeze()]
-            else:
-                doc = doc.squeeze()
+            # doc = data[l].squeeze(0)
+            doc = data[l]
+            # if len(doc) == 1: 
+            #     continue
+            #     #doc = [doc.squeeze()]
+            # else:
+            #     doc = doc.squeeze()
             if wi in doc:
                 D_wi += 1
         return D_wi
     D_wj = 0
     D_wi_wj = 0
     for l in range(len(data)):
-        doc = data[l].squeeze(0)
-        if len(doc) == 1: 
-            doc = [doc.squeeze()]
-        else:
-            doc = doc.squeeze()
+        # doc = data[l].squeeze(0)
+        doc = data[l]
+        # if len(doc) == 1: 
+        #     doc = [doc.squeeze()]
+        # else:
+        #     doc = doc.squeeze()
         if wj in doc:
             D_wj += 1
             if wi in doc:
@@ -137,23 +139,23 @@ def visualize(docs, _lda_keys, topics, theta):
     # project to 2D
     tsne_lda = tsne_model.fit_transform(theta)
     colormap = []
-    for name, hex in matplotlib.colors.cnames.items():
-        colormap.append(hex)
+    # for name, hex in matplotlib.colors.cnames.items():
+    #     colormap.append(hex)
 
-    colormap = colormap[:len(theta[0, :])]
-    colormap = np.array(colormap)
+    # colormap = colormap[:len(theta[0, :])]
+    # colormap = np.array(colormap)
 
-    title = '20 newsgroups TE embedding V viz'
-    num_example = len(docs)
+    # title = '20 newsgroups TE embedding V viz'
+    # num_example = len(docs)
 
-    plot_lda = bp.figure(plot_width=1400, plot_height=1100,
-                     title=title,
-                     tools="pan,wheel_zoom,box_zoom,reset,hover,previewsave",
-                     x_axis_type=None, y_axis_type=None, min_border=1)
+    # plot_lda = bp.figure(plot_width=1400, plot_height=1100,
+    #                  title=title,
+    #                  tools="pan,wheel_zoom,box_zoom,reset,hover,previewsave",
+    #                  x_axis_type=None, y_axis_type=None, min_border=1)
 
-    plt.scatter(x=tsne_lda[:, 0], y=tsne_lda[:, 1],
-                 color=colormap[_lda_keys][:num_example])
-    plt.show()
+    # plt.scatter(x=tsne_lda[:, 0], y=tsne_lda[:, 1],
+    #              color=colormap[_lda_keys][:num_example])
+    # plt.show()
 
 
 def pickle2csv(pkl_file):
