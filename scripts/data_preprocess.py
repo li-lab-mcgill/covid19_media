@@ -16,6 +16,9 @@ from sklearn.datasets.base import Bunch
 import pickle as pkl
 from argparse import ArgumentParser
 from datetime import datetime #Add import
+import nltk
+nltk.download('words')
+words = set(nltk.corpus.words.words())
 
 # libraries for lstm q_theta
 import fasttext
@@ -77,6 +80,7 @@ def get_args():
     parser.add_argument("--stopwords_path", type=str, default='stops.txt')
     parser.add_argument("--save_dir", type=str, default='new_debug_results/')
     parser.add_argument('--who_flag',type=bool, default=False)
+    parser.add_argument('--coronanet_flag',type=bool, default=False)
     parser.add_argument("--full_data", type=bool, default=False)
     return parser.parse_args()
 
@@ -95,7 +99,7 @@ def get_stopwords(stopwords_file=None):
         return stops_en
 
 
-def read_data(data_file, who_flag=False, full_data=False):
+def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
     # Read data
     print('reading data...')
     print(data_file)
@@ -115,7 +119,13 @@ def read_data(data_file, who_flag=False, full_data=False):
         week_of_month = np.where(x==day)[0][0] + 1
         return(week_of_month) 
 
-    # remove null values from data
+	all_words = []
+	# remove null values from data
+	#Keep only english words in the data
+	for summary in gphin_data['SUMMARY']:
+		en_summary = " ".join(w for w in nltk.wordpunct_tokenize(str(summary)) if w.lower() in words or not w.isalpha())
+		all_words.append(en_summary)
+	gphin_data['SUMMARY'] = all_words
     gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
     data_ids = gphin_data.index.values
     print(gphin_data.columns)
@@ -168,10 +178,8 @@ def read_data(data_file, who_flag=False, full_data=False):
             d = "{}-0{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
             all_times.append(d)
         
-        # converting list to array 
-
-
-        gphin_data['timestamps'] = all_times 
+		#Update column value with weeks array : 
+        gphin_data['DATE ADDED'] = all_times
 
         if who_flag:
             label_columns = ['WHO_MEASURE']
@@ -185,6 +193,13 @@ def read_data(data_file, who_flag=False, full_data=False):
             'Quarantine': 27, 'Restricting entry': 28, 'Restricting exit': 29, 'Restricting private gatherings at home': 30, 'Restricting visas': 31, 'Scaling up': 32, 
             'Shielding vulnerable groups': 33, 'Stay-at-home order': 34, 'Suspending or restricting international ferries or ships': 35, 'Suspending or restricting international flights': 36, 
             'Suspending or restricting movement': 37, 'Using antibodies for prevention': 38, 'Using medications for treatment': 39, 'Using other personal protective equipment': 40, 'Wearing a mask': 41}
+        elif coronanet_flag:
+            label_columns = ['MEASURE']
+            label_map = {'Anti-Disinformation Measures':0,'Closure and Regulation of Schools':1,'Curfew':2,'Declaration of Emergency':3, 'External Border Restrictions':4,
+            'Health Monitoring':5, 'Health Resources':6,'Health Testing':7, 'Hygiene':8, 'Internal Border Restrictions':9,'Lockdown':10,
+            'New Task Force, Bureau or Administrative Configuration':11, 'Other Policy Not Listed Above':12, 'Public Awareness Measures':13, 'Quarantine':14, 
+            'Quarantine/Lockdown':15, 'Restriction and Regularion of Businesses':16, 'Restriction and Regularion of Government Services':17, 'Restrictions of Mass Gatherings':18,
+            'Social Distancing':19}
         else:
             label_columns = ['LAND SCREENING','BORDER CLOSING','AIRPORT SCREENING: ENTRY','AIRPORT SCREENING: EXIT','TESTING & CASE DETECTION  ','QUARANTINE / MONITORING','TRAVEL ADVISORY','TRAVEL BAN / CANCELLATION',
             'TRADE BANS','EDUCATION CAMPAIGN','MASS GATHERING CANCELLATION','RESTRICTING OR LIMITING GATHERINGS','CLOSING PUBLIC PLACES','LOCKDOWN OR CURFEW','EASIND RESTRICTIONS','VACCINE/MCM DEPLOYED','PPE']
@@ -205,7 +220,7 @@ def read_data(data_file, who_flag=False, full_data=False):
 
         for country in tqdm(countries):
             summary = gphin_data[gphin_data.country == country].SUMMARY.values
-            timestamp = gphin_data[gphin_data.country == country].timestamps.values #Check this in detail
+            timestamp = gphin_data['DATE ADDED'].values #Check this in detail
             ind = gphin_data[gphin_data.country == country].index.values
             doc_label = gphin_data[gphin_data.country == country][label_columns]
             
@@ -219,7 +234,7 @@ def read_data(data_file, who_flag=False, full_data=False):
                 for i, grp in enumerate(grps):
                     labels = grp[1].WHO_MEASURE.values
                     summary.append(grp[1].SUMMARY.values[0])
-                    timestamps.append(grp[1]['timestamps'].values[0])
+                    timestamps.append(grp[1]['DATE ADDED'].values[0])
                     index.append(grp[1].index.values[0])
                     for l in labels:
                         try:
@@ -352,8 +367,8 @@ def preprocess(train_data, test_data, full_data):
         tr_timestamps = train_data.timestamp
         ts_timestamps = test_data.timestamp
         init_countries = np.append(tr_countries, ts_countries)
-        init_timestamps = np.concatenate([tr_timestamps, ts_timestamps])
-        data_ids = np.concatenate([train_data.index, test_data.index])
+        init_timestamps = np.append(tr_timestamps, ts_timestamps)
+        data_ids = np.append(train_data.index, test_data.index)
         data_labels = np.concatenate([train_data.labels, test_data.labels])
     else:
         init_countries = []
@@ -922,7 +937,7 @@ if __name__ == '__main__':
 
     # read in the data file
     print("Read in data file...\n")
-    train, test, countries_to_idx, label_map = read_data(args.data_file_path, args.who_flag, args.full_data)
+    train, test, countries_to_idx, label_map = read_data(args.data_file_path, args.who_flag, args.full_data, args.coronanet_flag)
 
     # preprocess the news articles
     print("Preprocessing the articles")
