@@ -119,13 +119,13 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
         week_of_month = np.where(x==day)[0][0] + 1
         return(week_of_month) 
 
-	all_words = []
-	# remove null values from data
-	#Keep only english words in the data
-	for summary in gphin_data['SUMMARY']:
-		en_summary = " ".join(w for w in nltk.wordpunct_tokenize(str(summary)) if w.lower() in words or not w.isalpha())
-		all_words.append(en_summary)
-	gphin_data['SUMMARY'] = all_words
+    all_words = []
+    # remove null values from data
+    #Keep only english words in the data
+    for summary in gphin_data['SUMMARY']:
+        en_summary = " ".join(w for w in nltk.wordpunct_tokenize(str(summary)) if w.lower() in words or not w.isalpha())
+        all_words.append(en_summary)
+    gphin_data['SUMMARY'] = all_words
     gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
     data_ids = gphin_data.index.values
     print(gphin_data.columns)
