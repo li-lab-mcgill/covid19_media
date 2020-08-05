@@ -98,6 +98,19 @@ def get_stopwords(stopwords_file=None):
 
         return stops_en
 
+def get_en_words(text, en_words, k=5, threshold=0.6):
+    '''
+    Getting English words of the text. A word is considered in English if the portion of its 
+    neighboring k words (including itself) that are in English word list is greater than threshold.
+    '''
+    assert k % 2 == 1, "k must be an odd number"
+    tokenized_text = text.split()
+    is_en_word = [word in en_words or not word.isalpha() for word in tokenized_text]
+    k_neighbor_sum = np.convolve(is_en_word, np.ones(k), mode='valid')
+    padding_length = int(np.floor(k / 2))
+    mask = np.concatenate([np.repeat(k_neighbor_sum[0], padding_length), k_neighbor_sum, \
+                           np.repeat(k_neighbor_sum[-1], padding_length)]) > threshold * k
+    return " ".join(list(itertools.compress(tokenized_text, mask)))
 
 def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
     # Read data
@@ -119,14 +132,17 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
         week_of_month = np.where(x==day)[0][0] + 1
         return(week_of_month) 
 
-    all_words = []
     # remove null values from data
-    #Keep only english words in the data
-    for summary in gphin_data['SUMMARY']:
-        en_summary = " ".join(w for w in nltk.wordpunct_tokenize(str(summary)) if w.lower() in words or not w.isalpha())
-        all_words.append(en_summary)
-    gphin_data['SUMMARY'] = all_words
     gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
+    gphin_data = gphin_data[gphin_data['SUMMARY'].apply(lambda text: text.lower()) != 'none']   # remove "NONE" entries
+
+    #Keep only english words in the data
+    # all_words = []
+    # for summary in gphin_data['SUMMARY']:
+    #     # en_summary = " ".join(w for w in nltk.wordpunct_tokenize(str(summary)) if w.lower() in words or not w.isalpha())
+    #     en_summary = get_en_words(summary, words)
+    #     all_words.append(en_summary)
+    gphin_data['SUMMARY'] = gphin_data['SUMMARY'].apply(lambda summary: get_en_words(summary, words))
     data_ids = gphin_data.index.values
     print(gphin_data.columns)
     if not full_data:
@@ -135,15 +151,6 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
         gphin_data['SOURCE'] = gphin_data['SOURCE'].apply(lambda x: x.strip(" "))
         gphin_data['SOURCE'] = gphin_data['SOURCE'].apply(lambda x: x.lower())
         gphin_data['country'] = gphin_data['SOURCE'].apply(lambda x: x.strip("\n"))
-        # gphin_data.dropna(subset=['SOURCE_TYPE', 'DATE ADDED'], inplace=True) #uncomment this line and next 4 lines if you're using WHO_all2
-        # gphin_data['SOURCE_TYPE'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.strip(" "))
-        # gphin_data['SOURCE_TYPE'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.lower())
-        # gphin_data['country'] = gphin_data['SOURCE_TYPE'].apply(lambda x: x.strip("\n"))
-
-        # gphin_data.dropna(subset=['COUNTRY /ORGANIZATION', 'DATE ADDED'], inplace=True) #uncomment this and next 4 lines if you're using GPHIN_all
-        # gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip(" "))
-        # gphin_data['COUNTRY /ORGANIZATION'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.lower())
-        # gphin_data['country'] = gphin_data['COUNTRY /ORGANIZATION'].apply(lambda x: x.strip("\n"))
 
         # processing the timestamps by removing leading and trailing spaces and newlines
         gphin_data['DATE ADDED'] = gphin_data['DATE ADDED'].apply(lambda x: x.strip(" "))
