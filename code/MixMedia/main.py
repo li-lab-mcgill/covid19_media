@@ -84,6 +84,11 @@ parser.add_argument('--q_theta_heads', type=int, default=4, help='number of atte
 parser.add_argument('--q_theta_drop', type=float, default=0.1, help='dropout rate for q_theta')
 parser.add_argument('--q_theta_bi', type=int, default=1, help='whether to use bidirectional LSTM for q_theta')
 
+# country npi LSTM arguments
+parser.add_argument('--cnpi_hidden_size', type=int, default=128, help='country npi lstm hidden size')
+parser.add_argument('--cnpi_drop', type=float, default=0.1, help='dropout rate for country npi lstm')
+parser.add_argument('--cnpi_layers', type=int, default=1, help='number of layers for country npi lstm')
+
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
 parser.add_argument('--lr_factor', type=float, default=4.0, help='divide learning rate by this')
