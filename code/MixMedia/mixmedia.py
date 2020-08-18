@@ -161,7 +161,7 @@ class MixMedia(nn.Module):
 
         # predicting country-level npi
         self.cnpi_lstm = nn.LSTM(args.num_topics, hidden_size=args.cnpi_hidden_size, \
-            bidirectional=self.cnpi_bi, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
+            bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
         self.cnpi_out = nn.Linear(args.cnpi_hidden_size, args.cnpi_num_labels, bias=True).to(device)
         self.cnpi_criterion = nn.BCEWithLogitsLoss(reduction='sum')
 
