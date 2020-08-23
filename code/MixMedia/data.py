@@ -233,15 +233,15 @@ def get_rnn_input(tokens, counts, times, sources, labels, num_times, num_sources
 
         for t in range(num_times):
             for src in range(num_sources):
-                tmp = ( (times_batch.type('torch.LongTensor') == t) * (sources_batch.type('torch.LongTensor') == src) ).nonzero()
+                mask = ( (times_batch.type('torch.LongTensor') == t) * (sources_batch.type('torch.LongTensor') == src) ).nonzero()
                 
-                if tmp.size(0) == 1:
-                    docs = data_batch[tmp].squeeze()
+                if mask.size(0) == 1:
+                    docs = data_batch[mask].squeeze()
                 else:
-                    docs = data_batch[tmp].squeeze().sum(0)
+                    docs = data_batch[mask].squeeze().sum(0)
 
                 rnn_input[src,t] += docs
-                cnt[src,t] += len(tmp)
+                cnt[src,t] += len(mask)
 
         if idx % 10 == 0:
             print('idx: {}/{}'.format(idx, len(indices)))    
