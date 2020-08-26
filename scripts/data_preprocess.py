@@ -16,6 +16,7 @@ from sklearn.datasets.base import Bunch
 import pickle as pkl
 from argparse import ArgumentParser
 from datetime import datetime #Add import
+import calendar
 import nltk
 nltk.download('words')
 words = set(nltk.corpus.words.words())
@@ -78,6 +79,7 @@ def get_args():
     parser = ArgumentParser()
     parser.add_argument("--data_file_path", type=str, default='gphin_all_countries/gphin_all_sources.csv')
     parser.add_argument("--stopwords_path", type=str, default='stops.txt')
+    parser.add_argument("--cnpi_labels_path", type=str)
     parser.add_argument("--save_dir", type=str, default='new_debug_results/')
     parser.add_argument('--who_flag',type=bool, default=False)
     parser.add_argument('--coronanet_flag',type=bool, default=False)
@@ -112,6 +114,12 @@ def get_en_words(text, en_words, k=5, threshold=0.6):
                            np.repeat(k_neighbor_sum[-1], padding_length)]) > threshold * k
     return " ".join(list(itertools.compress(tokenized_text, mask)))
 
+    #Method to get week from date
+def get_week_of_month(year, month, day):
+    x = np.array(calendar.monthcalendar(year, month))
+    week_of_month = np.where(x==day)[0][0] + 1
+    return(week_of_month) 
+
 def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
     # Read data
     print('reading data...')
@@ -122,15 +130,8 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
     timestamps = [] #Add timestamps array, not sure if we need this right now
 
     #Edit column of csv file to get all the timestamps in weeks:
-    import calendar
     import numpy as np
     calendar.setfirstweekday(6) #First weekday is Sunday
-
-    #Method to get week from date
-    def get_week_of_month(year, month, day):
-        x = np.array(calendar.monthcalendar(year, month))
-        week_of_month = np.where(x==day)[0][0] + 1
-        return(week_of_month) 
 
     # remove null values from data
     gphin_data = gphin_data[gphin_data['SUMMARY'].notna()]
@@ -177,12 +178,15 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
             original_date = '{}-{}-{}'.format(d.year,d.month,d.day)
             #Test file with original dates for gphin week data
             date_test = "Original Date (Y,M,D) -> {}, Week Date (Y,M,W) -> {}-0{}-{}    \n".format(original_date, d.isocalendar()[0], d.month, week_month) #Week number instead of days
-            f = open("original_date_week_comparison.txt", "a")
-            f.write(date_test)
-            f.close()
+            # the 3 lines below look like some mysterious testing code
+            # f = open("original_date_week_comparison.txt", "a")
+            # f.write(date_test)
+            # f.close()
 
             #Print month and date with week format (1-4)
-            d = "{}-0{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
+            # don't know why adding a 0 to month
+            # d = "{}-0{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
+            d = "{}-{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
             all_times.append(d)
         
 		#Update column value with weeks array : 
@@ -473,6 +477,57 @@ def get_features(init_timestamps, init_docs, stops, min_df=min_df, max_df=max_df
     time_list = [id2time[i] for i in range(len(all_times))]
 
     return vocab, word2id, id2word, time2id, id2time, time_list
+
+# def get_label_pair(country, date_str, labels_dict):
+#     date = datetime.strptime(date_str, "%m/%d/%Y")
+#     if country not in labels_dict:
+#         return None
+    
+#     valid_label_vecs = []
+    
+#     for date_str, label_vec in labels_dict[country].items():
+#         date_diff = date - datetime.strptime(date_str, "%d/%m/%Y")
+#         # if abs(date_diff.days) <= 7:
+#         if 0 <= date_diff.days <= 7:
+#             valid_label_vecs.append(label_vec)
+#     if not valid_label_vecs:
+#         return None
+#     return (np.sum(valid_label_vecs, axis=0) != 0).astype(int)
+
+def get_cnpis(countries_to_idx, time2id, labels_filename):
+    cnpis_df = pd.read_csv(labels_filename, index_col=0).dropna()
+    # only look at implementation of new measures
+    new_cnpis_df = cnpis_df[cnpis_df.stage_label == 'new']
+    new_cnpi_to_idx = {cnpi: idx for idx, cnpi in enumerate(new_cnpis_df.npi_label.unique())}
+    
+    cnpis = np.zeros((len(countries_to_idx), len(time2id), len(new_cnpi_to_idx)))
+
+    # reduce temporal resolution to week to align with time2id
+    def normalize_time(date_start):
+        d = datetime.strptime(date_start, "%d/%m/%Y")
+        week_month = get_week_of_month(d.year,d.month,d.day)
+        return "{}-{}-{}".format(d.isocalendar()[0], d.month, week_month)
+    new_cnpis_df["norm_date_start"] = new_cnpis_df.date_start.apply(normalize_time)
+
+    new_labels_dict = {}
+    for name, group in new_cnpis_df.groupby(['country_territory_area', 'norm_date_start']):
+        if name[0] not in new_labels_dict:
+            new_labels_dict[name[0]] = {}
+        new_labels_dict[name[0]][name[1]] = np.zeros(len(new_cnpi_to_idx))
+        for cnpi in group.npi_label.unique():
+            new_labels_dict[name[0]][name[1]][new_cnpi_to_idx[cnpi]] = 1
+
+    invalid_cnt = 0
+    for country_name, country_id in countries_to_idx.items():
+        for time, time_id in time2id.items():
+            # label_vec = get_label_pair(country_name, time, new_labels_dict)
+            try:
+                label_vec = new_labels_dict[country_name][time]
+                cnpis[country_id, time_id] = label_vec
+            except KeyError:
+                invalid_cnt += 1            
+
+    return cnpis
 
 def remove_empty(in_docs, in_labels, in_ids):
     preserve_idxs = [idx for idx, doc in enumerate(in_docs) if doc!=[]]
@@ -765,7 +820,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_va, ids_ts, full_data, 
     timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list,
     labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, label_map, id2word, id2time, 
-    q_theta_data):
+    q_theta_data, cnpis):
 
     # Write the vocabulary to a file
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
@@ -839,6 +894,11 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     del q_theta_data["docs_electra_idxs_ts"]
     del q_theta_data["docs_electra_idxs_ts_h1"]
     del q_theta_data["docs_electra_idxs_ts_h2"]
+
+    # save cnpis
+    if cnpis is not None:
+        pickle_save(os.path.join(path_save, "cnpis.pkl"), cnpis)
+        print("Country NPIs saved")
     
     # all countries
     if not full_data:
@@ -959,6 +1019,12 @@ if __name__ == '__main__':
     print("\nGetting features..\n")
     vocab, word2id, id2word, time2id, id2time, time_list = get_features(init_timestamps, all_docs, stopwords)
 
+    # get cnpis
+    if args.cnpi_labels_path:
+        cnpis = get_cnpis(countries_to_idx, time2id, args.cnpi_labels_path)
+    else:
+        cnpis = None
+
     # split data into train, test and validation and corresponding countries in BOW format
     print("Splitting data..\n")
     bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, vocab, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, ids_tr, ids_va, ids_ts, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, \
@@ -967,4 +1033,4 @@ if __name__ == '__main__':
 
     print("Saving data..\n")
     save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, ids_tr, ids_va, ids_ts, args.full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, label_map, id2word, id2time, \
-        q_theta_data)
+        q_theta_data, cnpis)
