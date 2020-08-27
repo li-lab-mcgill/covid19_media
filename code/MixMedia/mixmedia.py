@@ -75,6 +75,8 @@ class MixMedia(nn.Module):
         self.predict_labels = args.predict_labels
         self.multiclass_labels = args.multiclass_labels
 
+        self.predict_cnpi = args.predict_cnpi
+
         self.num_sources = args.num_sources
         self.num_labels = args.num_labels
 
@@ -88,6 +90,12 @@ class MixMedia(nn.Module):
         self.q_theta_hidden_size = args.q_theta_hidden_size
         self.q_theta_bi = bool(args.q_theta_bi)
         self.q_theta_drop = args.q_theta_drop
+
+        # params for cnpi prediction
+        self.cnpi_hidden_size = args.cnpi_hidden_size
+        self.cnpi_drop = args.cnpi_drop
+        self.cnpi_layers = args.cnpi_layers
+        self.num_cnpis = args.num_cnpis
 
         ## define the word embedding matrix \rho: L x V
         if args.train_embeddings:
@@ -156,13 +164,13 @@ class MixMedia(nn.Module):
 
 
         ## define supervised component for predicting labels
-        # self.classifier = nn.Linear(args.num_topics, args.num_labels, bias=True).to(device)
-        # self.criterion = nn.CrossEntropyLoss(reduction='sum')
+        self.classifier = nn.Linear(args.num_topics, args.num_labels, bias=True).to(device)
+        self.criterion = nn.CrossEntropyLoss(reduction='sum')
 
         # predicting country-level npi
-        self.cnpi_lstm = nn.LSTM(args.num_topics, hidden_size=args.cnpi_hidden_size, \
+        self.cnpi_lstm = nn.LSTM(args.num_topics, hidden_size=self.cnpi_hidden_size, \
             bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
-        self.cnpi_out = nn.Linear(args.cnpi_hidden_size, args.num_labels, bias=True).to(device)
+        self.cnpi_out = nn.Linear(self.cnpi_hidden_size, args.num_cnpis, bias=True).to(device)
         self.cnpi_criterion = nn.BCEWithLogitsLoss(reduction='sum')
 
     def get_activation(self, act):
@@ -330,31 +338,37 @@ class MixMedia(nn.Module):
         return nll.sum(-1)
 
 
-    # def get_prediction_loss(self, theta, labels):        
+    def get_prediction_loss(self, theta, labels):        
 
-    #     # test code only
-    #     # targets = torch.zeros(theta.size(0), self.num_labels)
-    #     # for i in range(theta.size(0)):
-    #     #     targets[i,labels[i].type('torch.LongTensor').item()] = 1
-    #     # labels = targets
+        # test code only
+        # targets = torch.zeros(theta.size(0), self.num_labels)
+        # for i in range(theta.size(0)):
+        #     targets[i,labels[i].type('torch.LongTensor').item()] = 1
+        # labels = targets
 
-    #     outputs = self.classifier(theta)
+        outputs = self.classifier(theta)
 
-    #     if self.multiclass_labels: # multi-class prediction loss as independent Bernoulli
+        if self.multiclass_labels: # multi-class prediction loss as independent Bernoulli
 
-    #         pred_loss = (-labels * F.log_softmax(outputs, dim=-1) - (1-labels) * torch.log(1-F.softmax(outputs, dim=-1))).sum()
+            pred_loss = (-labels * F.log_softmax(outputs, dim=-1) - (1-labels) * torch.log(1-F.softmax(outputs, dim=-1))).sum()
 
-    #     else: # single-label prediction
+        else: # single-label prediction
             
-    #         pred_loss = self.criterion(outputs, labels.type('torch.LongTensor').to(device))
+            pred_loss = self.criterion(outputs, labels.type('torch.LongTensor').to(device))
 
-    #     return pred_loss    
+        return pred_loss    
 
     def get_cnpi_prediction_loss(self, eta, cnpis):
-        predictions = self.cnpi_out(self.cnpi_lstm(eta)[0])
+        # get unique combinations of (source, time) as indices
+        # indices = torch.tensor(list(dict.fromkeys(list(zip(sources.tolist(), times.tolist())))), dtype=torch.long)
+        # get corresponding etas
+        # current_eta = eta[indices[:, 0], indices[:, 1]] # D' x K
+        predictions = self.cnpi_lstm(eta)[0]
+        # predictions = torch.max(predictions, dim=1)[0]
+        predictions = self.cnpi_out(predictions)
         return self.cnpi_criterion(predictions, cnpis)
 
-    def forward(self, bows, normalized_bows, embs, times, sources, labels, rnn_inp, num_docs):        
+    def forward(self, bows, normalized_bows, embs, times, sources, labels, cnpis, rnn_inp, num_docs):        
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz
@@ -375,13 +389,15 @@ class MixMedia(nn.Module):
         pred_loss = torch.tensor(0.0)
 
         nelbo = nll + kl_alpha + kl_eta + kl_theta
+        
         if self.predict_labels:
-            nelbo += self.get_cnpi_prediction_loss(eta, labels)
-        # if self.predict_labels:
-        #     pred_loss = self.get_prediction_loss(theta, labels) * coeff
-        #     nelbo = nll + kl_alpha + kl_eta + kl_theta + pred_loss
-        # else:
-        #     nelbo = nll + kl_alpha + kl_eta + kl_theta
+            pred_loss = self.get_prediction_loss(theta, labels) * coeff
+            nelbo = nll + kl_alpha + kl_eta + kl_theta + pred_loss
+        else:
+            nelbo = nll + kl_alpha + kl_eta + kl_theta
+
+        if self.predict_cnpi:
+            nelbo += self.get_cnpi_prediction_loss(eta, cnpis)
         
         return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss
 

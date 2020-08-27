@@ -85,7 +85,7 @@ parser.add_argument('--q_theta_drop', type=float, default=0.1, help='dropout rat
 parser.add_argument('--q_theta_bi', type=int, default=1, help='whether to use bidirectional LSTM for q_theta')
 
 # country npi LSTM arguments
-parser.add_argument('--cnpi_hidden_size', type=int, default=128, help='country npi lstm hidden size')
+parser.add_argument('--cnpi_hidden_size', type=int, default=64, help='country npi lstm hidden size')
 parser.add_argument('--cnpi_drop', type=float, default=0.1, help='dropout rate for country npi lstm')
 parser.add_argument('--cnpi_layers', type=int, default=1, help='number of layers for country npi lstm')
 
@@ -122,6 +122,8 @@ parser.add_argument('--tc', type=int, default=0, help='whether to compute tc or 
 
 parser.add_argument('--predict_labels', type=int, default=1, help='whether to predict labels')
 parser.add_argument('--multiclass_labels', type=int, default=1, help='whether to predict labels')
+
+parser.add_argument('--predict_cnpi', type=int, default=1, help='whether to predict country level npi')
 
 parser.add_argument('--time_prior', type=int, default=1, help='whether to use time-dependent topic prior')
 parser.add_argument('--source_prior', type=int, default=1, help='whether to use source-specific topic prior')
@@ -200,6 +202,15 @@ if args.predict_labels:
 else:
     args.num_labels = 0
 
+# get cnpis
+if args.predict_cnpi:
+    cnpis_file = os.path.join(data_file, 'cnpis.pkl')
+    with open(cnpis_file, 'rb') as file:
+        cnpis = pickle.load(file)
+    args.num_cnpis = cnpis.shape[-1]
+    cnpis = torch.from_numpy(cnpis).to(device)
+else:
+    cnpis = None
 
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, train_sources, train_labels,
@@ -393,7 +404,7 @@ def train(epoch):
         # print("forward passing ...")
 
         loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, embs_batch,
-            times_batch, sources_batch, labels_batch, train_rnn_inp, args.num_docs_train)
+            times_batch, sources_batch, labels_batch, cnpis, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
 
