@@ -830,15 +830,15 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     pickle_save(path_save + 'vocab.pkl', vocab)
     del vocab
 
-    with open(path_save+"vocab_map.txt","w") as f:
-        for i,w in id2word.items():
-            f.write(str(i)+" : " + str(w)+"\n")
-        f.close()
+    # with open(path_save+"vocab_map.txt","w") as f:
+    #     for i,w in id2word.items():
+    #         f.write(str(i)+" : " + str(w)+"\n")
+    #     f.close()
     pickle_save(path_save+"vocab_map.pkl", id2word)
  
-    with open(path_save + 'timestamps.txt', "w") as f:
-        for t in time_list:
-            f.write(str(t) + '\n')
+    # with open(path_save + 'timestamps.txt', "w") as f:
+    #     for t in time_list:
+    #         f.write(str(t) + '\n')
 
     pickle_save(path_save + 'timestamps.pkl', time_list)
     
@@ -848,7 +848,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     with open(path_save+"times_map.txt","w") as f:
         for i,v in id2time.items():
             f.write(str(i)+" : " + str(v) +"\n")
-        f.close()
+        # f.close()
 
     print("Saving q_theta embeddings ...", end=" ")
     # save fasttext embeddings
