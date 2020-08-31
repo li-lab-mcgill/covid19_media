@@ -204,13 +204,22 @@ else:
 
 # get cnpis
 if args.predict_cnpi:
+    # load cnpis
     cnpis_file = os.path.join(data_file, 'cnpis.pkl')
     with open(cnpis_file, 'rb') as file:
         cnpis = pickle.load(file)
     args.num_cnpis = cnpis.shape[-1]
     cnpis = torch.from_numpy(cnpis).to(device)
+    # load mask
+    cnpi_mask_file = os.path.join(data_file, 'cnpi_mask.pkl')
+    with open(cnpi_mask_file, 'rb') as file:
+        cnpi_mask = pickle.load(file)
+    cnpi_mask = torch.from_numpy(cnpi_mask).type('torch.LongTensor').to(device)
+    cnpi_mask = cnpi_mask.unsqueeze(-1).expand(cnpis.size())    # match cnpis' shape to apply masking
+
 else:
     cnpis = None
+    cnpi_mask = None
 
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, train_sources, train_labels,
@@ -404,7 +413,7 @@ def train(epoch):
         # print("forward passing ...")
 
         loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, embs_batch,
-            times_batch, sources_batch, labels_batch, cnpis, train_rnn_inp, args.num_docs_train)
+            times_batch, sources_batch, labels_batch, cnpis, cnpi_mask, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
 
@@ -527,19 +536,19 @@ def get_theta(eta, embs, times, sources):
     model.eval()
     with torch.no_grad():
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
-        # inp = torch.cat([embs, eta_std], dim=1)
-        # q_theta = model.q_theta(inp)
-        if args.one_hot_qtheta_emb and args.q_theta_arc != 'electra':
-            embs = model.q_theta_emb(embs)
-        if model.q_theta_arc == 'trm':
-            embs = model.pos_encode(embs)
-            q_theta_out = model.q_theta(embs)        
-        else:
-            q_theta_out = model.q_theta(embs)[0]
-        # q_theta_out = model.q_theta_att(key=q_theta_out, query=model.q_theta_att_query, value=q_theta_out)[1].squeeze()
-        # q_theta = model.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
-        q_theta_out = torch.max(q_theta_out, dim=1)[0]
-        q_theta = torch.cat([q_theta_out, eta_std], dim=1)
+        inp = torch.cat([embs, eta_std], dim=1)
+        q_theta = model.q_theta(inp)
+        # if args.one_hot_qtheta_emb and args.q_theta_arc != 'electra':
+        #     embs = model.q_theta_emb(embs)
+        # if model.q_theta_arc == 'trm':
+        #     embs = model.pos_encode(embs)
+        #     q_theta_out = model.q_theta(embs)        
+        # else:
+        #     q_theta_out = model.q_theta(embs)[0]
+        # # q_theta_out = model.q_theta_att(key=q_theta_out, query=model.q_theta_att_query, value=q_theta_out)[1].squeeze()
+        # # q_theta = model.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
+        # q_theta_out = torch.max(q_theta_out, dim=1)[0]
+        # q_theta = torch.cat([q_theta_out, eta_std], dim=1)
         mu_theta = model.mu_q_theta(q_theta)
         theta = F.softmax(mu_theta, dim=-1)   
         # print(q_theta)   
@@ -581,8 +590,8 @@ def get_completion_ppl(source):
                 else:
                     normalized_data_batch = data_batch
                 
-                theta = get_theta(eta, embs_batch, times_batch, sources_batch)
-                # theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
+                # theta = get_theta(eta, embs_batch, times_batch, sources_batch)
+                theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
                                 
                 beta = model.get_beta(alpha)
                 nll = -torch.log(torch.mm(theta, beta)) * data_batch

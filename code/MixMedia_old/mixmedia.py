@@ -83,13 +83,13 @@ class MixMedia(nn.Module):
         self.theta_act = self.get_activation(args.theta_act)
 
         # LSTM params for q_theta
-        self.one_hot_qtheta_emb = args.one_hot_qtheta_emb
-        self.q_theta_arc = args.q_theta_arc
-        self.q_theta_layers = args.q_theta_layers
-        self.q_theta_input_dim = args.q_theta_input_dim
-        self.q_theta_hidden_size = args.q_theta_hidden_size
-        self.q_theta_bi = bool(args.q_theta_bi)
-        self.q_theta_drop = args.q_theta_drop
+        # self.one_hot_qtheta_emb = args.one_hot_qtheta_emb
+        # self.q_theta_arc = args.q_theta_arc
+        # self.q_theta_layers = args.q_theta_layers
+        # self.q_theta_input_dim = args.q_theta_input_dim
+        # self.q_theta_hidden_size = args.q_theta_hidden_size
+        # self.q_theta_bi = bool(args.q_theta_bi)
+        # self.q_theta_drop = args.q_theta_drop
 
         # params for cnpi prediction
         self.cnpi_hidden_size = args.cnpi_hidden_size
@@ -359,7 +359,7 @@ class MixMedia(nn.Module):
 
         return pred_loss    
 
-    def get_cnpi_prediction_loss(self, eta, cnpis):
+    def get_cnpi_prediction_loss(self, eta, cnpis, cnpi_mask):
         # get unique combinations of (source, time) as indices
         # indices = torch.tensor(list(dict.fromkeys(list(zip(sources.tolist(), times.tolist())))), dtype=torch.long)
         # get corresponding etas
@@ -367,9 +367,9 @@ class MixMedia(nn.Module):
         predictions = self.cnpi_lstm(eta)[0]
         # predictions = torch.max(predictions, dim=1)[0]
         predictions = self.cnpi_out(predictions)
-        return self.cnpi_criterion(predictions, cnpis)
+        return self.cnpi_criterion(predictions * cnpi_mask, cnpis * cnpi_mask)
 
-    def forward(self, bows, normalized_bows, embs, times, sources, labels, cnpis, rnn_inp, num_docs):        
+    def forward(self, bows, normalized_bows, embs, times, sources, labels, cnpis, cnpi_mask, rnn_inp, num_docs):        
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz
@@ -398,7 +398,7 @@ class MixMedia(nn.Module):
             nelbo = nll + kl_alpha + kl_eta + kl_theta
 
         if self.predict_cnpi:
-            nelbo += self.get_cnpi_prediction_loss(eta, cnpis)
+            nelbo += self.get_cnpi_prediction_loss(eta, cnpis, cnpi_mask)
         
         return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss
 

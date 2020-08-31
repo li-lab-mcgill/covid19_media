@@ -527,7 +527,12 @@ def get_cnpis(countries_to_idx, time2id, labels_filename):
             except KeyError:
                 invalid_cnt += 1            
 
-    return cnpis
+    # randomly masking half for evaluation
+    mask = np.zeros(len(countries_to_idx) * len(time2id))
+    mask[:int(np.floor(mask.size / 2))] = 1
+    mask = np.random.permutation(mask).reshape((len(countries_to_idx), len(time2id)))
+
+    return {'cnpis': cnpis, 'mask': mask}
 
 def remove_empty(in_docs, in_labels, in_ids):
     preserve_idxs = [idx for idx, doc in enumerate(in_docs) if doc!=[]]
@@ -820,7 +825,7 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     countries_tr, countries_ts, countries_ts_h1, countries_ts_h2, countries_va, countries_to_idx, ids_tr, ids_va, ids_ts, full_data, 
     timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list,
     labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, label_map, id2word, id2time, 
-    q_theta_data, cnpis):
+    q_theta_data, cnpi_data):
 
     # Write the vocabulary to a file
     path_save = save_dir + 'min_df_' + str(min_df) + '/'
@@ -896,8 +901,9 @@ def save_data(save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, 
     del q_theta_data["docs_electra_idxs_ts_h2"]
 
     # save cnpis
-    if cnpis is not None:
-        pickle_save(os.path.join(path_save, "cnpis.pkl"), cnpis)
+    if cnpi_data is not None:
+        pickle_save(os.path.join(path_save, "cnpis.pkl"), cnpi_data['cnpis'])
+        pickle_save(os.path.join(path_save, "cnpi_mask.pkl"), cnpi_data['mask'])
         print("Country NPIs saved")
     
     # all countries
@@ -1021,9 +1027,9 @@ if __name__ == '__main__':
 
     # get cnpis
     if args.cnpi_labels_path:
-        cnpis = get_cnpis(countries_to_idx, time2id, args.cnpi_labels_path)
+        cnpi_data = get_cnpis(countries_to_idx, time2id, args.cnpi_labels_path)
     else:
-        cnpis = None
+        cnpi_data = None
 
     # split data into train, test and validation and corresponding countries in BOW format
     print("Splitting data..\n")
@@ -1033,4 +1039,4 @@ if __name__ == '__main__':
 
     print("Saving data..\n")
     save_data(args.save_dir, vocab, bow_tr, n_docs_tr, bow_ts, n_docs_ts, bow_ts_h1, n_docs_ts_h1, bow_ts_h2, n_docs_ts_h2, bow_va, n_docs_va, c_tr, c_ts, c_ts_h1, c_ts_h2, c_va, countries_to_idx, ids_tr, ids_va, ids_ts, args.full_data, timestamps_tr, timestamps_ts, timestamps_ts_h1, timestamps_ts_h2, timestamps_va, time_list, labels_tr, labels_ts, labels_ts_h1, labels_ts_h2, labels_va, label_map, id2word, id2time, \
-        q_theta_data, cnpis)
+        q_theta_data, cnpi_data)
