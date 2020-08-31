@@ -204,13 +204,22 @@ else:
 
 # get cnpis
 if args.predict_cnpi:
+    # load cnpis
     cnpis_file = os.path.join(data_file, 'cnpis.pkl')
     with open(cnpis_file, 'rb') as file:
         cnpis = pickle.load(file)
     args.num_cnpis = cnpis.shape[-1]
     cnpis = torch.from_numpy(cnpis).to(device)
+    # load mask
+    cnpi_mask_file = os.path.join(data_file, 'cnpi_mask.pkl')
+    with open(cnpi_mask_file, 'rb') as file:
+        cnpi_mask = pickle.load(file)
+    cnpi_mask = torch.from_numpy(cnpi_mask).type('torch.LongTensor').to(device)
+    cnpi_mask = cnpi_mask.unsqueeze(-1).expand(cnpis.size())    # match cnpis' shape to apply masking
+
 else:
     cnpis = None
+    cnpi_mask = None
 
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, train_sources, train_labels,
@@ -404,7 +413,7 @@ def train(epoch):
         # print("forward passing ...")
 
         loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, embs_batch,
-            times_batch, sources_batch, labels_batch, cnpis, train_rnn_inp, args.num_docs_train)
+            times_batch, sources_batch, labels_batch, cnpis, cnpi_mask, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
 

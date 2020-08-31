@@ -358,7 +358,7 @@ class MixMedia(nn.Module):
 
         return pred_loss    
 
-    def get_cnpi_prediction_loss(self, eta, cnpis):
+    def get_cnpi_prediction_loss(self, eta, cnpis, cnpi_mask):
         # get unique combinations of (source, time) as indices
         # indices = torch.tensor(list(dict.fromkeys(list(zip(sources.tolist(), times.tolist())))), dtype=torch.long)
         # get corresponding etas
@@ -366,9 +366,9 @@ class MixMedia(nn.Module):
         predictions = self.cnpi_lstm(eta)[0]
         # predictions = torch.max(predictions, dim=1)[0]
         predictions = self.cnpi_out(predictions)
-        return self.cnpi_criterion(predictions, cnpis)
+        return self.cnpi_criterion(predictions * cnpi_mask, cnpis * cnpi_mask)
 
-    def forward(self, bows, normalized_bows, embs, times, sources, labels, cnpis, rnn_inp, num_docs):        
+    def forward(self, bows, normalized_bows, embs, times, sources, labels, cnpis, cnpi_mask, rnn_inp, num_docs):        
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz
@@ -397,7 +397,7 @@ class MixMedia(nn.Module):
             nelbo = nll + kl_alpha + kl_eta + kl_theta
 
         if self.predict_cnpi:
-            nelbo += self.get_cnpi_prediction_loss(eta, cnpis)
+            nelbo += self.get_cnpi_prediction_loss(eta, cnpis, cnpi_mask)
         
         return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss
 
