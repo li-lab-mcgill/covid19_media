@@ -650,7 +650,7 @@ def get_completion_ppl(source):
                 else:
                     normalized_data_batch_1 = data_batch_1
                 
-                theta = get_theta(eta_1, embs_batch_1, times_batch_1, sources_batch_1)
+                theta = get_theta(eta_1, normalized_data_batch_1, times_batch_1, sources_batch_1)
 
                 data_batch_2, embs_batch_2, times_batch_2, sources_batch_2, labels_batch_2 = data.get_batch(
                     tokens_2, counts_2, embs_2, ind, test_sources, test_labels,
