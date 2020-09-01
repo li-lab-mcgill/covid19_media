@@ -163,14 +163,30 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
         #print(gphin_data.timestamps)
         #Updating gphin_data.timestamps to give weeks instead
         for timestamp in gphin_data['DATE ADDED']:
-            try:
-                d = datetime.strptime(timestamp, '%m/%d/%Y')
-            except:
+            # below is some dangerous experiment code
+            # try:
+            #     d = datetime.strptime(timestamp, '%m/%d/%Y')
+            # except:
+            #     try:
+            #         d = datetime.strptime(timestamp, '%d/%m/%Y')
+            #     except:
+            #         t = timestamp[0:3]+timestamp[3:]
+            #         d = datetime.strptime(t.replace(':','').replace('--','-'), '%Y-%m-%d')
+
+            if not args.who_flag:
+                # gphin
                 try:
-                    d = datetime.strptime(timestamp, '%d/%m/%Y')
+                    if timestamp in ['29/01/2020', '30/01/2020']:
+                        d = datetime.strptime(timestamp, '%d/%m/%Y')    
+                    else:
+                        d = datetime.strptime(timestamp, '%m/%d/%Y')
                 except:
                     t = timestamp[0:3]+timestamp[3:]
                     d = datetime.strptime(t.replace(':','').replace('--','-'), '%Y-%m-%d')
+            else:
+                # who
+                d = datetime.strptime(timestamp, '%d/%m/%Y')
+
             #Get the week of the month
             week_month = get_week_of_month(d.year,d.month,d.day)
             
@@ -188,7 +204,7 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
             # d = "{}-0{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
             d = "{}-{}-{}".format(d.isocalendar()[0], d.month, week_month) #Week number instead of days
             all_times.append(d)
-        
+
 		#Update column value with weeks array : 
         gphin_data['DATE ADDED'] = all_times
 
@@ -223,7 +239,8 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
         # In order to use some other feature, replace 'country' with the appropriate feature (column) in the dataset
         g_data = {'data':[], 'country':[], 'index':[], 'timestamps':[], 'labels':[]}
         countries = gphin_data.country.unique()
-        countries_to_idx = {country: str(idx) for idx, country in enumerate(gphin_data.country.unique())}
+        # keep idx as int
+        countries_to_idx = {country: idx for idx, country in enumerate(gphin_data.country.unique())}
         #print(gphin_data.columns)
         #exit()
         if who_flag:
@@ -496,6 +513,7 @@ def get_features(init_timestamps, init_docs, stops, min_df=min_df, max_df=max_df
 
 def get_cnpis(countries_to_idx, time2id, labels_filename):
     cnpis_df = pd.read_csv(labels_filename, index_col=0).dropna()
+    cnpis_df.country_territory_area = cnpis_df.country_territory_area.apply(lambda text: text.lower())
     # only look at implementation of new measures
     new_cnpis_df = cnpis_df[cnpis_df.stage_label == 'new']
     new_cnpi_to_idx = {cnpi: idx for idx, cnpi in enumerate(new_cnpis_df.npi_label.unique())}
@@ -525,7 +543,7 @@ def get_cnpis(countries_to_idx, time2id, labels_filename):
                 label_vec = new_labels_dict[country_name][time]
                 cnpis[country_id, time_id] = label_vec
             except KeyError:
-                invalid_cnt += 1            
+                invalid_cnt += 1         
 
     # randomly masking half for evaluation
     mask = np.zeros(len(countries_to_idx) * len(time2id))
