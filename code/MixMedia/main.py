@@ -12,6 +12,7 @@ import random
 # import matplotlib.pyplot as plt 
 # import seaborn as sns
 import scipy.io
+import pandas as pd
 
 import data 
 
@@ -741,6 +742,37 @@ def get_topic_quality():
 
         return TQ, TC, TD
 
+def compute_top_k_recall(labels, predictions, k=5):
+    '''
+    inputs:
+    - labels: tensor, (number of samples, number of classes)
+    - predictions: tensor, (number of samples, number of classes)
+    output:
+    - top-k recall of the batch
+    '''
+    idxs = torch.argsort(predictions, dim=1, descending=True)[:, 0: k]
+    return (torch.gather(labels, 1, idxs).sum(1) / labels.sum(1)).mean().item()
+
+def get_cnpi_top_k_recall(cnpis, cnpi_mask, mode):
+    assert mode in ['val', 'test'], 'mode must be val or test'
+
+    eta = get_eta(mode)
+    predictions = model.cnpi_lstm(eta)[0]
+    predictions = model.cnpi_out(predictions)
+    cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
+    cnpis_masked = cnpis * cnpi_mask
+    raise Exception(cnpis.sum())
+    predictions_masked = predictions * cnpi_mask    # taking indices only so not computing sigmoid
+    return {
+        5: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5),
+        10: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10),
+        20: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 20),
+        30: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 30),
+        }
 
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
@@ -825,8 +857,26 @@ else:
 print('computing validation perplexity...')
 val_ppl, val_pdl = get_completion_ppl('val')
 
+if args.predict_cnpi:
+    # cnpi top k recall on validation set
+    val_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'val')
+    print('\ntop-k recalls on val:')
+    for k, recall in val_cnpi_top_ks.items():
+        print(f'top-{k}: {recall}')
+    val_cnpi_top_ks_df = pd.DataFrame.from_dict(val_cnpi_top_ks, index=[0])
+    val_cnpi_top_ks_df.to_csv(ckpt + '_val_cnpi_top_ks.csv', index=False)
+
 print('computing test perplexity...')
 test_ppl, test_pdl = get_completion_ppl('test')
+
+if args.predict_cnpi:
+    # cnpi top k recall on test set
+    test_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'test')
+    print('\ntop-k recalls on test:')
+    for k, recall in test_cnpi_top_ks.items():
+        print(f'top-{k}: {recall}')
+    test_cnpi_top_ks_df = pd.DataFrame.from_dict(test_cnpi_top_ks, index=[0])
+    test_cnpi_top_ks_df.to_csv(ckpt + '_test_cnpi_top_ks.csv', index=False)
 
 f=open(ckpt+'_test_ppl.txt','w')
 f.write(str(test_ppl))
