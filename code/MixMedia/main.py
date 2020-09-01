@@ -750,6 +750,10 @@ def compute_top_k_recall(labels, predictions, k=5):
     output:
     - top-k recall of the batch
     '''
+    # remove ones without positive labels
+    has_pos_labels = labels.sum(1) != 0
+    labels = labels[has_pos_labels, :]
+    predictions = predictions[has_pos_labels, :]
     idxs = torch.argsort(predictions, dim=1, descending=True)[:, 0: k]
     return (torch.gather(labels, 1, idxs).sum(1) / labels.sum(1)).mean().item()
 
@@ -761,17 +765,16 @@ def get_cnpi_top_k_recall(cnpis, cnpi_mask, mode):
     predictions = model.cnpi_out(predictions)
     cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
     cnpis_masked = cnpis * cnpi_mask
-    raise Exception(cnpis.sum())
     predictions_masked = predictions * cnpi_mask    # taking indices only so not computing sigmoid
     return {
-        5: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5),
-        10: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10),
-        20: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 20),
-        30: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 30),
+        1: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1)],
+        3: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 3)],
+        5: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5)],
+        10: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10)],
         }
 
 if args.mode == 'train':
@@ -863,7 +866,7 @@ if args.predict_cnpi:
     print('\ntop-k recalls on val:')
     for k, recall in val_cnpi_top_ks.items():
         print(f'top-{k}: {recall}')
-    val_cnpi_top_ks_df = pd.DataFrame.from_dict(val_cnpi_top_ks, index=[0])
+    val_cnpi_top_ks_df = pd.DataFrame.from_dict(val_cnpi_top_ks)
     val_cnpi_top_ks_df.to_csv(ckpt + '_val_cnpi_top_ks.csv', index=False)
 
 print('computing test perplexity...')
@@ -875,7 +878,7 @@ if args.predict_cnpi:
     print('\ntop-k recalls on test:')
     for k, recall in test_cnpi_top_ks.items():
         print(f'top-{k}: {recall}')
-    test_cnpi_top_ks_df = pd.DataFrame.from_dict(test_cnpi_top_ks, index=[0])
+    test_cnpi_top_ks_df = pd.DataFrame.from_dict(test_cnpi_top_ks)
     test_cnpi_top_ks_df.to_csv(ckpt + '_test_cnpi_top_ks.csv', index=False)
 
 f=open(ckpt+'_test_ppl.txt','w')
