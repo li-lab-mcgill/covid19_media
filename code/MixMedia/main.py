@@ -389,6 +389,7 @@ def train(epoch):
     acc_kl_eta_loss = 0
     acc_kl_alpha_loss = 0
     acc_pred_loss = 0 # classification loss
+    acc_cnpi_pred_loss = 0
     cnt = 0
 
     # indices = torch.randperm(args.num_docs_train)
@@ -413,7 +414,7 @@ def train(epoch):
 
         # print("forward passing ...")
 
-        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, embs_batch,
+        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss, cnpi_pred_loss = model(data_batch, normalized_data_batch, embs_batch,
             times_batch, sources_batch, labels_batch, cnpis, cnpi_mask, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
@@ -440,6 +441,7 @@ def train(epoch):
         acc_kl_alpha_loss += torch.sum(kl_alpha).item()
 
         acc_pred_loss += torch.sum(pred_loss).item()
+        acc_cnpi_pred_loss += torch.sum(cnpi_pred_loss).item()
 
         cnt += 1
 
@@ -450,18 +452,19 @@ def train(epoch):
         cur_kl_alpha = round(acc_kl_alpha_loss / cnt, 2)
 
         cur_pred_loss = round(acc_pred_loss / cnt, 2) 
+        cur_cnpi_pred_loss = round(acc_cnpi_pred_loss / cnt, 2) 
 
         if idx % args.log_interval == 0 and idx > 0:
 
             lr = optimizer.param_groups[0]['lr']
-            print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. NELBO: {}'.format(
-                epoch, idx, len(indices), lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_loss))
+            print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. CNPI_loss: {} .. NELBO: {}'.format(
+                epoch, idx, len(indices), lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_cnpi_pred_loss, cur_loss))
     
 
     lr = optimizer.param_groups[0]['lr']
     print('*'*100)
-    print('Epoch----->{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. NELBO: {}'.format(
-            epoch, lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_loss))
+    print('Epoch----->{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. CNPI_loss: {} .. NELBO: {}'.format(
+            epoch, lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_cnpi_pred_loss, cur_loss))
     print('*'*100)
 
 

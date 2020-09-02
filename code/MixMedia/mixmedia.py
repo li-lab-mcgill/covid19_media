@@ -397,9 +397,10 @@ class MixMedia(nn.Module):
             nelbo = nll + kl_alpha + kl_eta + kl_theta
 
         if self.predict_cnpi:
-            nelbo += self.get_cnpi_prediction_loss(eta, cnpis, cnpi_mask)
+            cnpi_pred_loss = self.get_cnpi_prediction_loss(eta, cnpis, cnpi_mask)
+            nelbo += cnpi_pred_loss
         
-        return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss
+        return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss, cnpi_pred_loss
 
 
     def init_hidden(self):
