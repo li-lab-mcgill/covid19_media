@@ -28,6 +28,8 @@ from utils import nearest_neighbors, get_topic_coherence
 import sys, importlib
 importlib.reload(sys.modules['data'])
 
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter()
 
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
@@ -460,6 +462,15 @@ def train(epoch):
             print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. CNPI_loss: {} .. NELBO: {}'.format(
                 epoch, idx, len(indices), lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_cnpi_pred_loss, cur_loss))
     
+    # tensorboard stuff
+    writer.add_scalar('LR', lr, epoch)
+    writer.add_scalar('KL_theta', cur_kl_theta, epoch)
+    writer.add_scalar('KL_eta', cur_kl_eta, epoch)
+    writer.add_scalar('KL_alpha', cur_kl_alpha, epoch)
+    writer.add_scalar('Rec_loss', cur_nll, epoch)
+    writer.add_scalar('Pred_loss', cur_pred_loss, epoch)
+    writer.add_scalar('CNPI_loss', cur_cnpi_pred_loss, epoch)
+    writer.add_scalar('NELBO', cur_loss, epoch)
 
     lr = optimizer.param_groups[0]['lr']
     print('*'*100)
@@ -799,6 +810,14 @@ if args.mode == 'train':
         # print(model.classifier.weight)
 
         val_ppl, val_pdl = get_completion_ppl('val')
+
+        # tensorboard stuff
+        writer.add_scalar('PPL/val', val_ppl, epoch)
+        if args.predict_cnpi:
+            # cnpi top k recall on validation set
+            val_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'val')
+            for k, recall in val_cnpi_top_ks.items():
+                writer.add_scalar(f"Val_top_k_recall/{k}", recall[0], epoch)
         
         if val_ppl < best_val_ppl:
             with open(ckpt, 'wb') as f:
