@@ -168,10 +168,11 @@ class MixMedia(nn.Module):
         self.criterion = nn.CrossEntropyLoss(reduction='sum')
 
         # predicting country-level npi
-        self.cnpi_lstm = nn.LSTM(args.num_topics, hidden_size=self.cnpi_hidden_size, \
-            bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
-        self.cnpi_out = nn.Linear(self.cnpi_hidden_size, args.num_cnpis, bias=True).to(device)
-        self.cnpi_criterion = nn.BCEWithLogitsLoss(reduction='sum')
+        if self.predict_cnpi:
+            self.cnpi_lstm = nn.LSTM(args.num_topics, hidden_size=self.cnpi_hidden_size, \
+                bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
+            self.cnpi_out = nn.Linear(self.cnpi_hidden_size, args.num_cnpis, bias=True).to(device)
+            self.cnpi_criterion = nn.BCEWithLogitsLoss(reduction='sum')
 
     def get_activation(self, act):
         if act == 'tanh':
@@ -298,7 +299,10 @@ class MixMedia(nn.Module):
         
         # max-pooling and concat with eta_std to get q_theta
         # q_theta_out = self.q_theta_att(key=q_theta_out, query=self.q_theta_att_query, value=q_theta_out)[1].squeeze()
-        q_theta_out = torch.max(q_theta_out, dim=1)[0]
+        if self.q_theta_arc == 'electra':
+            q_theta_out = q_theta_out[:, 0, :]
+        else:
+            q_theta_out = torch.max(q_theta_out, dim=1)[0]
         q_theta = torch.cat([q_theta_out, eta_std], dim=1)
         # q_theta = self.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
         # q_theta = torch.cat([torch.max(q_theta_out, dim=1)[0], eta_std], dim=1)
@@ -387,6 +391,7 @@ class MixMedia(nn.Module):
         nll = nll.sum() * coeff        
 
         pred_loss = torch.tensor(0.0)
+        cnpi_pred_loss = torch.tensor(0.0)
 
         nelbo = nll + kl_alpha + kl_eta + kl_theta
         
