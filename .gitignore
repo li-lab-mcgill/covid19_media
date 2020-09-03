@@ -4,3 +4,5 @@ code/MixMedia/run_MixMedia.sh
 *.txt
 code/MixMedia/__pycache__/data.cpython-37.pyc
 code/run_MixMedia.sh
+code/MixMedia/__pycache__/utils.cpython-37.pyc
+code/MixMedia/runs/*
