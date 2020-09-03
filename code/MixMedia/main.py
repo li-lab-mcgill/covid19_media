@@ -12,7 +12,8 @@ import random
 # import matplotlib.pyplot as plt 
 # import seaborn as sns
 import scipy.io
-import pandas as pd
+import json
+import time
 
 import data 
 
@@ -29,7 +30,10 @@ import sys, importlib
 importlib.reload(sys.modules['data'])
 
 from torch.utils.tensorboard import SummaryWriter
-writer = SummaryWriter()
+time_stamp = time.strftime("%m-%d-%H-%M", time.localtime())
+print(f"Experiment time stamp: {time_stamp}")
+
+writer = SummaryWriter(f"runs/{time_stamp}")
 
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
@@ -322,37 +326,13 @@ print('=*'*100)
 print('Training a MixMedia Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
 print('=*'*100)
 
-## define checkpoint
-if not os.path.exists(args.save_path):
-    os.makedirs(args.save_path)
-
 if args.mode == 'eval':
     ckpt = args.load_from
 else:
-    if args.q_theta_arc == 'trm':
-        ckpt = os.path.join(args.save_path, 
-            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}_qthetaLayers_{}_qthetaHidden_{}_qthetaHeads_{}_qthetaDrop_{}'.format(
-            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
-                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
-                args.train_embeddings, args.predict_labels,
-                args.time_prior, args.source_prior,
-                args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_heads, args.q_theta_drop))
-    elif args.q_theta_arc == 'lstm':
-        ckpt = os.path.join(args.save_path, 
-            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}_qthetaLayers_{}_qthetaHidden_{}_qthetaBi_{}_qthetaDrop_{}'.format(
-            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
-                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
-                args.train_embeddings, args.predict_labels,
-                args.time_prior, args.source_prior,
-                args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_bi, args.q_theta_drop))
-    else:
-        ckpt = os.path.join(args.save_path, 
-            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}'.format(
-            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
-                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
-                args.train_embeddings, args.predict_labels,
-                args.time_prior, args.source_prior,
-                args.q_theta_arc))
+    ckpt = os.path.join(args.save_path, time_stamp)
+
+if not os.path.exists(ckpt):
+    os.makedirs(ckpt)
 
 ## define model and optimizer
 if args.load_from != '':
@@ -820,7 +800,7 @@ if args.mode == 'train':
                 writer.add_scalar(f"Val_top_k_recall/{k}", recall[0], epoch)
         
         if val_ppl < best_val_ppl:
-            with open(ckpt, 'wb') as f:
+            with open(os.path.join(ckpt, 'model.pt'), 'wb') as f:
                 torch.save(model, f) # UNCOMMENT FOR REAL RUN
             best_epoch = epoch
             best_val_ppl = val_ppl
@@ -843,33 +823,36 @@ if args.mode == 'train':
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha).cpu().detach().numpy()
-        np.save(ckpt+'_beta.npy', beta, allow_pickle=False)
-
+        # np.save(ckpt+'_beta.npy', beta, allow_pickle=False)
+        np.save(os.path.join(ckpt, 'beta.npy'), beta, allow_pickle=False)
         
         print('saving alpha...')
         alpha = model.mu_q_alpha.cpu().detach().numpy()
-        np.save(ckpt+'_alpha.npy', alpha, allow_pickle=False)
-
+        # np.save(ckpt+'_alpha.npy', alpha, allow_pickle=False)
+        np.save(os.path.join(ckpt, 'alpha.npy'), alpha, allow_pickle=False)
 
         print('saving classifer weights...')
         classifer_weights = model.classifier.weight.cpu().detach().numpy()
-        np.save(ckpt+'_classifer.npy', classifer_weights, allow_pickle=False)
+        # np.save(ckpt+'_classifer.npy', classifer_weights, allow_pickle=False)
+        np.save(os.path.join(ckpt, 'classifer.npy'), classifer_weights, allow_pickle=False)
 
         print('saving eta ...')
         eta = get_eta('train').cpu().detach().numpy()
-        np.save(ckpt+'_eta.npy', eta, allow_pickle=False)
+        # np.save(ckpt+'_eta.npy', eta, allow_pickle=False)
+        np.save(os.path.join(ckpt, 'eta.npy'), eta, allow_pickle=False)
 
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
             rho = model.rho.weight.cpu().detach().numpy()
-            np.save(ckpt+'_rho.npy', rho, allow_pickle=False)
+            # np.save(ckpt+'_rho.npy', rho, allow_pickle=False)
+            np.save(os.path.join(ckpt, 'rho.npy'), rho, allow_pickle=False)
 
-        f=open(ckpt+'_val_ppl.txt','w')
+        f=open(os.path.join(ckpt, 'val_ppl.txt'),'w')
         s1='\n'.join([str(i) for i in all_val_ppls])        
         f.write(s1)
         f.close()
 
-        f=open(ckpt+'_val_pdl.txt','w')
+        f=open(os.path.join(ckpt, 'val_pdl.txt'),'w')
         s1='\n'.join([str(i) for i in all_val_pdls])        
         f.write(s1)
         f.close()
@@ -878,6 +861,41 @@ else:
         model = torch.load(f)
     model = model.to(device)
 
+# dumping configurations to disk
+config_dict = {
+    'model_type': 'mixmedia',
+    'dataset': args.dataset,
+    'K': args.num_topics,
+    'theta_hidden_size': args.t_hidden_size,
+    'clipping': args.clip,
+    'lr': args.lr,
+    'batch_size': args.batch_size,
+    'rho_size': args.rho_size,
+    'eta_nlayers': args.eta_nlayers,
+    'min_df': args.min_df,
+    'train_embeddings': args.train_embeddings,
+    'predict_labels': args.predict_labels,
+    'time_prior': args.time_prior,
+    'source_prior': args.source_prior,
+    'q_theta_arc': args.q_theta_arc,
+}
+
+if args.q_theta_arc in ['trm', 'lstm']:
+    config_dict['q_theta_layers'] = args.q_theta_layers
+    config_dict['q_theta_hidden_size'] = args.q_theta_hidden_size
+    config_dict['q_theta_drop'] = args.q_theta_drop
+    if args.q_theta_arc == 'trm':
+        config_dict['q_theta_heads'] = args.q_theta_heads
+    else:
+        config_dict['q_theta_bi'] = args.q_theta_bi
+
+if args.predict_cnpi:
+    config_dict['cnpi_hidden_size'] = args.cnpi_hidden_size
+    config_dict['cnpi_drop'] = args.cnpi_drop
+    config_dict['cnpi_layers'] = args.cnpi_layers
+
+with open(os.path.join(ckpt, 'config.json'), 'w') as file:
+    json.dump(config_dict, file)
 
 print('computing validation perplexity...')
 val_ppl, val_pdl = get_completion_ppl('val')
@@ -888,8 +906,8 @@ if args.predict_cnpi:
     print('\ntop-k recalls on val:')
     for k, recall in val_cnpi_top_ks.items():
         print(f'top-{k}: {recall}')
-    val_cnpi_top_ks_df = pd.DataFrame.from_dict(val_cnpi_top_ks)
-    val_cnpi_top_ks_df.to_csv(ckpt + '_val_cnpi_top_ks.csv', index=False)
+    with open('val_cnpi_top_ks.json', 'w') as file:
+        json.dump(val_cnpi_top_ks, file)
 
 print('computing test perplexity...')
 test_ppl, test_pdl = get_completion_ppl('test')
@@ -900,27 +918,27 @@ if args.predict_cnpi:
     print('\ntop-k recalls on test:')
     for k, recall in test_cnpi_top_ks.items():
         print(f'top-{k}: {recall}')
-    test_cnpi_top_ks_df = pd.DataFrame.from_dict(test_cnpi_top_ks)
-    test_cnpi_top_ks_df.to_csv(ckpt + '_test_cnpi_top_ks.csv', index=False)
+    with open('test_cnpi_top_ks.json', 'w') as file:
+        json.dump(test_cnpi_top_ks, file)
 
-f=open(ckpt+'_test_ppl.txt','w')
+f=open(os.path.join(ckpt, 'test_ppl.txt'),'w')
 f.write(str(test_ppl))
 f.close()
 
-f=open(ckpt+'_test_pdl.txt','w')
+f=open(os.path.join(ckpt, 'test_pdl.txt'),'w')
 f.write(str(test_pdl))
 f.close()    
 
 tq, tc, td = get_topic_quality()
 
-f=open(ckpt+'_tq.txt','w')
+f=open(os.path.join(ckpt, 'tq.txt'),'w')
 s1="Topic Quality: "+str(tq)
 s2="Topic Coherence: "+str(tc)
 s3="Topic Diversity: "+str(td)
 f.write(s1+'\n'+s2+'\n'+s3+'\n')
 f.close()
 
-f=open(ckpt+'_tq.txt','r')
+f=open(os.path.join(ckpt, 'tq.txt'),'r')
 [print(i,end='') for i in f.readlines()]
 f.close()
 
