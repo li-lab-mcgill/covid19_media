@@ -227,6 +227,7 @@ if args.predict_cnpi:
 else:
     cnpis = None
     cnpi_mask = None
+    args.num_cnpis = None
 
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, train_sources, train_labels,
@@ -317,7 +318,7 @@ for i, word in enumerate(vocab):
         words_found += 1
     except KeyError:
         word_embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
-word_embeddings = torch.from_numpy(word_embeddings).to(device)
+word_embeddings = torch.from_numpy(word_embeddings)
 args.embeddings_dim = word_embeddings.size()
 
 
@@ -793,6 +794,11 @@ if args.mode == 'train':
 
         # tensorboard stuff
         writer.add_scalar('PPL/val', val_ppl, epoch)
+        if (epoch - 1) % 5 == 0:
+            tq, tc, td = get_topic_quality()
+            writer.add_scalar('Topic/quality', tq, epoch)
+            writer.add_scalar('Topic/coherence', tc, epoch)
+            writer.add_scalar('Topic/diversity', td, epoch)
         if args.predict_cnpi:
             # cnpi top k recall on validation set
             val_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'val')
@@ -906,7 +912,7 @@ if args.predict_cnpi:
     print('\ntop-k recalls on val:')
     for k, recall in val_cnpi_top_ks.items():
         print(f'top-{k}: {recall}')
-    with open('val_cnpi_top_ks.json', 'w') as file:
+    with open(os.path.join(ckpt, 'val_cnpi_top_ks.json'), 'w') as file:
         json.dump(val_cnpi_top_ks, file)
 
 print('computing test perplexity...')
@@ -918,7 +924,7 @@ if args.predict_cnpi:
     print('\ntop-k recalls on test:')
     for k, recall in test_cnpi_top_ks.items():
         print(f'top-{k}: {recall}')
-    with open('test_cnpi_top_ks.json', 'w') as file:
+    with open(os.path.join(ckpt, 'test_cnpi_top_ks.json'), 'w') as file:
         json.dump(test_cnpi_top_ks, file)
 
 f=open(os.path.join(ckpt, 'test_ppl.txt'),'w')
