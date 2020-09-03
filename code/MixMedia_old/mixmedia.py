@@ -168,10 +168,11 @@ class MixMedia(nn.Module):
         self.criterion = nn.CrossEntropyLoss(reduction='sum')
 
         # predicting country-level npi
-        self.cnpi_lstm = nn.LSTM(args.num_topics, hidden_size=self.cnpi_hidden_size, \
-            bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
-        self.cnpi_out = nn.Linear(self.cnpi_hidden_size, args.num_cnpis, bias=True).to(device)
-        self.cnpi_criterion = nn.BCEWithLogitsLoss(reduction='sum')
+        if self.predict_cnpi:
+            self.cnpi_lstm = nn.LSTM(args.num_topics, hidden_size=self.cnpi_hidden_size, \
+                bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
+            self.cnpi_out = nn.Linear(self.cnpi_hidden_size, args.num_cnpis, bias=True).to(device)
+            self.cnpi_criterion = nn.BCEWithLogitsLoss(reduction='sum')
 
     def get_activation(self, act):
         if act == 'tanh':
@@ -388,6 +389,7 @@ class MixMedia(nn.Module):
         nll = nll.sum() * coeff        
 
         pred_loss = torch.tensor(0.0)
+        cnpi_pred_loss = torch.tensor(0.0)
 
         nelbo = nll + kl_alpha + kl_eta + kl_theta
         
@@ -398,9 +400,10 @@ class MixMedia(nn.Module):
             nelbo = nll + kl_alpha + kl_eta + kl_theta
 
         if self.predict_cnpi:
-            nelbo += self.get_cnpi_prediction_loss(eta, cnpis, cnpi_mask)
+            cnpi_pred_loss = self.get_cnpi_prediction_loss(eta, cnpis, cnpi_mask)
+            nelbo += cnpi_pred_loss
         
-        return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss
+        return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss, cnpi_pred_loss
 
 
     def init_hidden(self):

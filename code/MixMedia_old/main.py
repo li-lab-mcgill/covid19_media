@@ -12,7 +12,8 @@ import random
 # import matplotlib.pyplot as plt 
 # import seaborn as sns
 import scipy.io
-import pandas as pd
+import json
+import time
 
 import data 
 
@@ -28,6 +29,11 @@ from utils import nearest_neighbors, get_topic_coherence
 import sys, importlib
 importlib.reload(sys.modules['data'])
 
+from torch.utils.tensorboard import SummaryWriter
+time_stamp = time.strftime("%m-%d-%H-%M", time.localtime())
+print(f"Experiment time stamp: {time_stamp}")
+
+writer = SummaryWriter(f"runs/{time_stamp}")
 
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
@@ -221,6 +227,7 @@ if args.predict_cnpi:
 else:
     cnpis = None
     cnpi_mask = None
+    args.num_cnpis = None
 
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, train_sources, train_labels,
@@ -311,7 +318,7 @@ for i, word in enumerate(vocab):
         words_found += 1
     except KeyError:
         word_embeddings[i] = np.random.normal(scale=0.6, size=(args.emb_size, ))
-word_embeddings = torch.from_numpy(word_embeddings).to(device)
+word_embeddings = torch.from_numpy(word_embeddings)
 args.embeddings_dim = word_embeddings.size()
 
 
@@ -320,37 +327,13 @@ print('=*'*100)
 print('Training a MixMedia Model on {} with the following settings: {}'.format(args.dataset.upper(), args))
 print('=*'*100)
 
-## define checkpoint
-if not os.path.exists(args.save_path):
-    os.makedirs(args.save_path)
-
 if args.mode == 'eval':
     ckpt = args.load_from
 else:
-    if args.q_theta_arc == 'trm':
-        ckpt = os.path.join(args.save_path, 
-            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}_qthetaLayers_{}_qthetaHidden_{}_qthetaHeads_{}_qthetaDrop_{}'.format(
-            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
-                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
-                args.train_embeddings, args.predict_labels,
-                args.time_prior, args.source_prior,
-                args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_heads, args.q_theta_drop))
-    elif args.q_theta_arc == 'lstm':
-        ckpt = os.path.join(args.save_path, 
-            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}_qthetaLayers_{}_qthetaHidden_{}_qthetaBi_{}_qthetaDrop_{}'.format(
-            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
-                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
-                args.train_embeddings, args.predict_labels,
-                args.time_prior, args.source_prior,
-                args.q_theta_arc, args.q_theta_layers, args.q_theta_hidden_size, args.q_theta_bi, args.q_theta_drop))
-    else:
-        ckpt = os.path.join(args.save_path, 
-            'mixmedia_{}_K_{}_Htheta_{}_Clip_{}_Lr_{}_Bsz_{}_RhoSize_{}_L_{}_minDF_{}_trainEmbeddings_{}_predictLabels_{}_useTime_{}_useSource_{}_qthetaArc_{}'.format(
-            args.dataset, args.num_topics, args.t_hidden_size, args.clip, 
-                args.lr, args.batch_size, args.rho_size, args.eta_nlayers, args.min_df, 
-                args.train_embeddings, args.predict_labels,
-                args.time_prior, args.source_prior,
-                args.q_theta_arc))
+    ckpt = os.path.join(args.save_path, time_stamp)
+
+if not os.path.exists(ckpt):
+    os.makedirs(ckpt)
 
 ## define model and optimizer
 if args.load_from != '':
@@ -389,6 +372,7 @@ def train(epoch):
     acc_kl_eta_loss = 0
     acc_kl_alpha_loss = 0
     acc_pred_loss = 0 # classification loss
+    acc_cnpi_pred_loss = 0
     cnt = 0
 
     # indices = torch.randperm(args.num_docs_train)
@@ -413,7 +397,7 @@ def train(epoch):
 
         # print("forward passing ...")
 
-        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss = model(data_batch, normalized_data_batch, embs_batch,
+        loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss, cnpi_pred_loss = model(data_batch, normalized_data_batch, embs_batch,
             times_batch, sources_batch, labels_batch, cnpis, cnpi_mask, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
@@ -440,6 +424,7 @@ def train(epoch):
         acc_kl_alpha_loss += torch.sum(kl_alpha).item()
 
         acc_pred_loss += torch.sum(pred_loss).item()
+        acc_cnpi_pred_loss += torch.sum(cnpi_pred_loss).item()
 
         cnt += 1
 
@@ -450,18 +435,28 @@ def train(epoch):
         cur_kl_alpha = round(acc_kl_alpha_loss / cnt, 2)
 
         cur_pred_loss = round(acc_pred_loss / cnt, 2) 
+        cur_cnpi_pred_loss = round(acc_cnpi_pred_loss / cnt, 2) 
 
         if idx % args.log_interval == 0 and idx > 0:
 
             lr = optimizer.param_groups[0]['lr']
-            print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. NELBO: {}'.format(
-                epoch, idx, len(indices), lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_loss))
-    
+            print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. CNPI_loss: {} .. NELBO: {}'.format(
+                epoch, idx, len(indices), lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_cnpi_pred_loss, cur_loss))
 
+    # tensorboard stuff
+    writer.add_scalar('LR', lr, epoch)
+    writer.add_scalar('KL_theta', cur_kl_theta, epoch)
+    writer.add_scalar('KL_eta', cur_kl_eta, epoch)
+    writer.add_scalar('KL_alpha', cur_kl_alpha, epoch)
+    writer.add_scalar('Rec_loss', cur_nll, epoch)
+    writer.add_scalar('Pred_loss', cur_pred_loss, epoch)
+    writer.add_scalar('CNPI_loss', cur_cnpi_pred_loss, epoch)
+    writer.add_scalar('NELBO', cur_loss, epoch)
+    
     lr = optimizer.param_groups[0]['lr']
     print('*'*100)
-    print('Epoch----->{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. NELBO: {}'.format(
-            epoch, lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_loss))
+    print('Epoch----->{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. CNPI_loss: {} .. NELBO: {}'.format(
+            epoch, lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_cnpi_pred_loss, cur_loss))
     print('*'*100)
 
 
@@ -796,9 +791,22 @@ if args.mode == 'train':
         # print(model.classifier.weight)
 
         val_ppl, val_pdl = get_completion_ppl('val')
+
+        # tensorboard stuff
+        writer.add_scalar('PPL/val', val_ppl, epoch)
+        if (epoch - 1) % 5 == 0:
+            tq, tc, td = get_topic_quality()
+            writer.add_scalar('Topic/quality', tq, epoch)
+            writer.add_scalar('Topic/coherence', tc, epoch)
+            writer.add_scalar('Topic/diversity', td, epoch)
+        if args.predict_cnpi:
+            # cnpi top k recall on validation set
+            val_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'val')
+            for k, recall in val_cnpi_top_ks.items():
+                writer.add_scalar(f"Val_top_k_recall/{k}", recall[0], epoch)
         
         if val_ppl < best_val_ppl:
-            with open(ckpt, 'wb') as f:
+            with open(os.path.join(ckpt, 'model.pt'), 'wb') as f:
                 torch.save(model, f) # UNCOMMENT FOR REAL RUN
             best_epoch = epoch
             best_val_ppl = val_ppl
@@ -821,33 +829,33 @@ if args.mode == 'train':
         print('saving topic matrix beta...')
         alpha = model.mu_q_alpha
         beta = model.get_beta(alpha).cpu().detach().numpy()
-        np.save(ckpt+'_beta.npy', beta, allow_pickle=False)
+        np.save(os.path.join(ckpt, 'beta.npy'), beta, allow_pickle=False)
 
         
         print('saving alpha...')
         alpha = model.mu_q_alpha.cpu().detach().numpy()
-        np.save(ckpt+'_alpha.npy', alpha, allow_pickle=False)
+        np.save(os.path.join(ckpt, 'alpha.npy'), alpha, allow_pickle=False)
 
 
         print('saving classifer weights...')
         classifer_weights = model.classifier.weight.cpu().detach().numpy()
-        np.save(ckpt+'_classifer.npy', classifer_weights, allow_pickle=False)
+        np.save(os.path.join(ckpt, 'classifer.npy'), classifer_weights, allow_pickle=False)
 
         print('saving eta ...')
         eta = get_eta('train').cpu().detach().numpy()
-        np.save(ckpt+'_eta.npy', eta, allow_pickle=False)
+        np.save(os.path.join(ckpt, 'eta.npy'), eta, allow_pickle=False)
 
         if args.train_embeddings:
             print('saving word embedding matrix rho...')
             rho = model.rho.weight.cpu().detach().numpy()
-            np.save(ckpt+'_rho.npy', rho, allow_pickle=False)
+            np.save(os.path.join(ckpt, 'rho.npy'), rho, allow_pickle=False)
 
-        f=open(ckpt+'_val_ppl.txt','w')
+        f=open(os.path.join(ckpt, 'val_ppl.txt'),'w')
         s1='\n'.join([str(i) for i in all_val_ppls])        
         f.write(s1)
         f.close()
 
-        f=open(ckpt+'_val_pdl.txt','w')
+        f=open(os.path.join(ckpt, 'val_pdl.txt'),'w')
         s1='\n'.join([str(i) for i in all_val_pdls])        
         f.write(s1)
         f.close()
@@ -856,6 +864,31 @@ else:
         model = torch.load(f)
     model = model.to(device)
 
+# dumping configurations to disk
+config_dict = {
+    'model_type': 'mixmedia',
+    'dataset': args.dataset,
+    'K': args.num_topics,
+    'theta_hidden_size': args.t_hidden_size,
+    'clipping': args.clip,
+    'lr': args.lr,
+    'batch_size': args.batch_size,
+    'rho_size': args.rho_size,
+    'eta_nlayers': args.eta_nlayers,
+    'min_df': args.min_df,
+    'train_embeddings': args.train_embeddings,
+    'predict_labels': args.predict_labels,
+    'time_prior': args.time_prior,
+    'source_prior': args.source_prior,
+}
+
+if args.predict_cnpi:
+    config_dict['cnpi_hidden_size'] = args.cnpi_hidden_size
+    config_dict['cnpi_drop'] = args.cnpi_drop
+    config_dict['cnpi_layers'] = args.cnpi_layers
+
+with open(os.path.join(ckpt, 'config.json'), 'w') as file:
+    json.dump(config_dict, file)
 
 print('computing validation perplexity...')
 val_ppl, val_pdl = get_completion_ppl('val')
@@ -866,8 +899,8 @@ if args.predict_cnpi:
     print('\ntop-k recalls on val:')
     for k, recall in val_cnpi_top_ks.items():
         print(f'top-{k}: {recall}')
-    val_cnpi_top_ks_df = pd.DataFrame.from_dict(val_cnpi_top_ks)
-    val_cnpi_top_ks_df.to_csv(ckpt + '_val_cnpi_top_ks.csv', index=False)
+    with open(os.path.join(ckpt, 'val_cnpi_top_ks.json'), 'w') as file:
+        json.dump(val_cnpi_top_ks, file)
 
 print('computing test perplexity...')
 test_ppl, test_pdl = get_completion_ppl('test')
@@ -878,27 +911,27 @@ if args.predict_cnpi:
     print('\ntop-k recalls on test:')
     for k, recall in test_cnpi_top_ks.items():
         print(f'top-{k}: {recall}')
-    test_cnpi_top_ks_df = pd.DataFrame.from_dict(test_cnpi_top_ks)
-    test_cnpi_top_ks_df.to_csv(ckpt + '_test_cnpi_top_ks.csv', index=False)
+    with open(os.path.join(ckpt, 'test_cnpi_top_ks.json'), 'w') as file:
+        json.dump(test_cnpi_top_ks, file)
 
-f=open(ckpt+'_test_ppl.txt','w')
+f=open(os.path.join(ckpt, 'test_ppl.txt'),'w')
 f.write(str(test_ppl))
 f.close()
 
-f=open(ckpt+'_test_pdl.txt','w')
+f=open(os.path.join(ckpt, 'test_pdl.txt'),'w')
 f.write(str(test_pdl))
 f.close()    
 
 tq, tc, td = get_topic_quality()
 
-f=open(ckpt+'_tq.txt','w')
+f=open(os.path.join(ckpt, 'tq.txt'),'w')
 s1="Topic Quality: "+str(tq)
 s2="Topic Coherence: "+str(tc)
 s3="Topic Diversity: "+str(td)
 f.write(s1+'\n'+s2+'\n'+s3+'\n')
 f.close()
 
-f=open(ckpt+'_tq.txt','r')
+f=open(os.path.join(ckpt, 'tq.txt'),'r')
 [print(i,end='') for i in f.readlines()]
 f.close()
 
