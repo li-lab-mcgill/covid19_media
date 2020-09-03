@@ -543,7 +543,10 @@ def get_theta(eta, embs, times, sources):
             q_theta_out = model.q_theta(embs)[0]
         # q_theta_out = model.q_theta_att(key=q_theta_out, query=model.q_theta_att_query, value=q_theta_out)[1].squeeze()
         # q_theta = model.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
-        q_theta_out = torch.max(q_theta_out, dim=1)[0]
+        if model.q_theta_arc == 'electra':
+            q_theta_out = q_theta_out[:, 0, :]
+        else:
+            q_theta_out = torch.max(q_theta_out, dim=1)[0]
         q_theta = torch.cat([q_theta_out, eta_std], dim=1)
         mu_theta = model.mu_q_theta(q_theta)
         theta = F.softmax(mu_theta, dim=-1)   
