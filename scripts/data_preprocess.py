@@ -677,6 +677,14 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_ts, labels_ts, ids_ts, preserve_idxs_ts = remove_empty(docs_ts, labels_ts, ids_ts)
     docs_va, labels_va, ids_va, preserve_idxs_va = remove_empty(docs_va, labels_va, ids_va)
 
+    # remove empty timestamps and sources
+    timestamps_tr = [timestamps_tr[idx] for idx in preserve_idxs_tr]
+    countries_tr = [countries_tr[idx] for idx in preserve_idxs_tr]
+    timestamps_ts = [timestamps_ts[idx] for idx in preserve_idxs_ts]
+    countries_ts = [countries_ts[idx] for idx in preserve_idxs_ts]
+    timestamps_va = [timestamps_va[idx] for idx in preserve_idxs_va]
+    countries_va = [countries_va[idx] for idx in preserve_idxs_va]
+
     docs_embs_tr = [docs_embs_tr[idx] for idx in preserve_idxs_tr]
     docs_embs_idxs_tr = [docs_embs_idxs_tr[idx] for idx in preserve_idxs_tr]
     docs_electra_idxs_tr = [docs_electra_idxs_tr[idx] for idx in preserve_idxs_tr]
@@ -695,6 +703,10 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
     docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
     docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
+
+    # remove test timestamps and sources with length=1
+    timestamps_ts = [timestamps_ts[idx] for idx in preserve_idxs_ts]
+    countries_ts = [countries_ts[idx] for idx in preserve_idxs_ts]
 
     print('  number of documents (train): {} [this should be equal to {}]'.format(len(docs_tr), trSize))
     print('  number of documents (test): {} [this should be equal to {}]'.format(len(docs_ts), tsSize))
