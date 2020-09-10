@@ -343,7 +343,7 @@ if args.load_from != '':
 else:
     model = MixMedia(args, word_embeddings)
 print('\nMS-DETM architecture: {}'.format(model))
-model.to(device)
+# model.to(device)
 
 
 if args.optimizer == 'adam':
@@ -825,7 +825,7 @@ if args.mode == 'train':
 
     # with open(ckpt, 'rb') as f:
     #     model = torch.load(f)
-    model = model.to(device)
+    # model = model.to(device)
     model.eval()
     with torch.no_grad():
                 
@@ -868,7 +868,7 @@ if args.mode == 'train':
 else: 
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
-    model = model.to(device)
+    # model = model.to(device)
 
 # dumping configurations to disk
 config_dict = {
