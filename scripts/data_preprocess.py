@@ -253,6 +253,9 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
             doc_label = gphin_data[gphin_data.country == country][label_columns]
             
             if who_flag:
+                # remove redundent white spaces
+                gphin_data.WHO_MEASURE = gphin_data.WHO_MEASURE.apply(lambda text: " ".join(text.split()))
+
                 sub_data = gphin_data[gphin_data.country == country]
                 summary = []
                 index = []
@@ -269,6 +272,7 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
                             c_labels[i][label_map[l]] = 1
                         except:
                             continue
+                
                 g_data['data'].extend(list(summary))
                 g_data['country'].extend([country]*len(summary))
                 g_data['index'].extend(list(index))
