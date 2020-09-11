@@ -32,6 +32,62 @@ np.random.seed(0)
 max_df = 0.7
 min_df = 10  # choose desired value for min_df
 
+# label_map for different datasets
+label_maps = {
+    "who": {'2.1_Environmental measures__Cleaning and disinfecting surfaces and objects': 0,
+                '1.5_Individual measures__Using other personal protective equipment': 1,
+                '1.4_Individual measures__Wearing a mask': 2,
+                '5.9_International travel measures__Closing international land borders': 3,
+                '5.5_International travel measures__Entry screening and isolation or quarantine': 4,
+                '5.1_International travel measures__Providing travel advice or warning': 5,
+                '5.3_International travel measures__Restricting entry': 6,
+                '5.7_International travel measures__Suspending or restricting international flights': 7,
+                '8.1_Other measures__Legal and policy regulations': 8,
+                '4.5.2_Social and physical distancing measures_Domestic travel_Stay-at-home order': 9,
+                '4.3.4_Social and physical distancing measures_Gatherings, businesses and services_Cancelling, restricting or adapting mass gatherings': 10,
+                '4.2.1_Social and physical distancing measures_Offices, businesses, institutions and operations_Adapting': 11,
+                '4.1.2_Social and physical distancing measures_School measures_Closing': 12,
+                '4.4.2_Social and physical distancing measures_Special populations_Protecting populations in closed settings': 13,
+                '3.1.2_Surveillance and response measures_Detecting and isolating cases_Active case detection': 14,
+                '3.1.1_Surveillance and response measures_Detecting and isolating cases_Passive case detection': 15,
+                '3.2.1_Surveillance and response measures_Tracing and quarantining contacts_Contact tracing': 16,
+                '3.2.2_Surveillance and response measures_Tracing and quarantining contacts_Quarantine of contacts': 17,
+                '4.2.2_Social and physical distancing measures_Offices, businesses, institutions and operations_Closing': 18,
+                '4.5.1_Social and physical distancing measures_Domestic travel_Suspending or restricting movement': 19,
+                '4.3.3_Social and physical distancing measures_Gatherings, businesses and services_Cancelling, closing, restricting or adapting public gatherings outside the home': 20,
+                '5.8_International travel measures__Suspending or restricting international ferries or ships': 21,
+                '8.4.1_Other measures_Communications and engagement_General public awareness campaigns': 22,
+                '4.1.1_Social and physical distancing measures_School measures_Adapting': 23,
+                '4.5.3_Social and physical distancing measures_Domestic travel_Restricting entry': 24,
+                '3.1.3_Surveillance and response measures_Detecting and isolating cases_Isolation': 25,
+                '5.2_International travel measures__Restricting visas': 26,
+                '4.3.2_Social and physical distancing measures_Gatherings, businesses and services_Cancelling, restricting or adapting private gatherings outside the home': 27,
+                '4.4.3_Social and physical distancing measures_Special populations_Protecting displaced populations': 28,
+                '4.4.1_Social and physical distancing measures_Special populations_Shielding vulnerable groups': 29,
+                '1.6_Individual measures__Physical distancing': 30,
+                '4.5.4_Social and physical distancing measures_Domestic travel_Closing internal land borders': 31,
+                '5.4_International travel measures__Restricting exit': 32,
+                '4.3.1_Social and physical distancing measures_Gatherings, businesses and services_Restricting private gatherings at home': 33,
+                '5.6_International travel measures__Exit screening and isolation or quarantine': 34,
+                '6.2_Drug-based measures__Using medications for treatment': 35,
+                '6.1_Drug-based measures__Using medications for prevention': 36,
+                '1.3_Individual measures__Performing respiratory etiquette': 37,
+                '1.1_Individual measures__Performing hand hygiene': 38,
+                '2.2_Environmental measures__Improving air ventilation': 39,
+                '8.2_Other measures__Scaling up': 40,
+                '8.3_Other measures__Financial packages': 41,
+                '8.5_Other measures__Other': 42,
+                '8.4.2_Other measures_Communications and engagement_Other communications': 43,
+                '8.4_Other measures_Communications and engagement_': 44},
+    "coronanet": {'Anti-Disinformation Measures':0,'Closure and Regulation of Schools':1,'Curfew':2,'Declaration of Emergency':3, 'External Border Restrictions':4,
+            'Health Monitoring':5, 'Health Resources':6,'Health Testing':7, 'Hygiene':8, 'Internal Border Restrictions':9,'Lockdown':10,
+            'New Task Force, Bureau or Administrative Configuration':11, 'Other Policy Not Listed Above':12, 'Public Awareness Measures':13, 'Quarantine':14, 
+            'Quarantine/Lockdown':15, 'Restriction and Regularion of Businesses':16, 'Restriction and Regularion of Government Services':17, 'Restrictions of Mass Gatherings':18,
+            'Social Distancing':19},
+    "gphin": ['LAND SCREENING','BORDER CLOSING','AIRPORT SCREENING: ENTRY','AIRPORT SCREENING: EXIT','TESTING & CASE DETECTION  ','QUARANTINE / MONITORING','TRAVEL ADVISORY','TRAVEL BAN / CANCELLATION',
+            'TRADE BANS','EDUCATION CAMPAIGN','MASS GATHERING CANCELLATION','RESTRICTING OR LIMITING GATHERINGS','CLOSING PUBLIC PLACES','LOCKDOWN OR CURFEW','EASIND RESTRICTIONS','VACCINE/MCM DEPLOYED','PPE']
+}
+
 def pickle_save(filename, data):
     with open(filename, "wb") as file:
         pickle.dump(data, file)
@@ -210,26 +266,12 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
 
         if who_flag:
             label_columns = ['WHO_MEASURE']
-            label_map = {'Active case detection': 0, 'Adapting': 1, 'Cancelling, closing, restricting or adapting public gatherings outside the home': 2, 
-            'Cancelling, restricting or adapting mass gatherings': 3, 'Cancelling, restricting or adapting private gatherings outside the home': 4, 
-            'Cleaning and disinfecting surfaces and objects': 5, 'Closing': 6, 'Closing internal land borders': 7, 'Closing international land borders': 8, 
-            'Coding required': 9, 'Contact tracing': 10, 'Entry screening and isolation or quarantine': 11, 'Exit screening and isolation or quarantine': 12, 
-            'Financial packages': 13, 'General public awareness campaigns': 14, 'Isolation': 15, 'Legal and policy regulations': 16, 'Limiting face touching': 17, 
-            'Not of interest': 18, 'Other': 19, 'Passive case detection': 20, 'Performing hand hygiene': 21, 'Performing respiratory etiquette': 22, 
-            'Physical distancing': 23, 'Protecting displaced populations': 24, 'Protecting populations in closed settings': 25, 'Providing travel advice or warning': 26, 
-            'Quarantine': 27, 'Restricting entry': 28, 'Restricting exit': 29, 'Restricting private gatherings at home': 30, 'Restricting visas': 31, 'Scaling up': 32, 
-            'Shielding vulnerable groups': 33, 'Stay-at-home order': 34, 'Suspending or restricting international ferries or ships': 35, 'Suspending or restricting international flights': 36, 
-            'Suspending or restricting movement': 37, 'Using antibodies for prevention': 38, 'Using medications for treatment': 39, 'Using other personal protective equipment': 40, 'Wearing a mask': 41}
+            label_map = label_maps["who"]
         elif coronanet_flag:
             label_columns = ['MEASURE']
-            label_map = {'Anti-Disinformation Measures':0,'Closure and Regulation of Schools':1,'Curfew':2,'Declaration of Emergency':3, 'External Border Restrictions':4,
-            'Health Monitoring':5, 'Health Resources':6,'Health Testing':7, 'Hygiene':8, 'Internal Border Restrictions':9,'Lockdown':10,
-            'New Task Force, Bureau or Administrative Configuration':11, 'Other Policy Not Listed Above':12, 'Public Awareness Measures':13, 'Quarantine':14, 
-            'Quarantine/Lockdown':15, 'Restriction and Regularion of Businesses':16, 'Restriction and Regularion of Government Services':17, 'Restrictions of Mass Gatherings':18,
-            'Social Distancing':19}
+            label_map = label_maps["coronanet"]
         else:
-            label_columns = ['LAND SCREENING','BORDER CLOSING','AIRPORT SCREENING: ENTRY','AIRPORT SCREENING: EXIT','TESTING & CASE DETECTION  ','QUARANTINE / MONITORING','TRAVEL ADVISORY','TRAVEL BAN / CANCELLATION',
-            'TRADE BANS','EDUCATION CAMPAIGN','MASS GATHERING CANCELLATION','RESTRICTING OR LIMITING GATHERINGS','CLOSING PUBLIC PLACES','LOCKDOWN OR CURFEW','EASIND RESTRICTIONS','VACCINE/MCM DEPLOYED','PPE']
+            label_columns = label_maps["gphin"]
             label_map = {}
             for i,l in enumerate(label_columns):
                 label_map[l] = i
@@ -253,8 +295,8 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
             doc_label = gphin_data[gphin_data.country == country][label_columns]
             
             if who_flag:
-                # remove redundent white spaces
-                gphin_data.WHO_MEASURE = gphin_data.WHO_MEASURE.apply(lambda text: " ".join(text.split()))
+                # remove redundent white spaces, unnecessary for Sept 10 version
+                # gphin_data.WHO_MEASURE = gphin_data.WHO_MEASURE.apply(lambda text: " ".join(text.split()))
 
                 sub_data = gphin_data[gphin_data.country == country]
                 summary = []
@@ -521,6 +563,10 @@ def get_cnpis(countries_to_idx, time2id, labels_filename):
     # only look at implementation of new measures
     new_cnpis_df = cnpis_df[cnpis_df.stage_label == 'new']
     new_cnpi_to_idx = {cnpi: idx for idx, cnpi in enumerate(new_cnpis_df.npi_label.unique())}
+
+    # use the same set of labels as document labels (WHO only)
+    assert sorted(new_cnpi_to_idx.keys()) == sorted(label_maps["who"].keys())
+    new_cnpi_to_idx = label_maps["who"]
     
     cnpis = np.zeros((len(countries_to_idx), len(time2id), len(new_cnpi_to_idx)))
 
