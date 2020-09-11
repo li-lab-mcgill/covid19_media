@@ -30,6 +30,16 @@ The pre-fitted embeddings can be found below:
 
 All the scripts to pre-process a dataset can be found in the folder 'scripts'. 
 
+## Using LSTM for q_theta
+
+Additional libraries:
+- Transformers: `pip install transformers`
+- fastText: `pip install fasttext`
+
+Both one-hot encodings and word embeddings are allowed as input (invalid for ELECTRA). Use `--one_hot_qtheta_emb` to specify whether to use one-hot encoding (default true). Other additional parameters include choice of architecture ('trm' for Transformer, 'lstm' for LSTM and 'electra' for ELECTRA), number of layers, hidden size, number of attention heads (for Transformer only), dropout rate and whether using bidirectional LSTM (for LSTM only). ELECTRA model uses pre-trained weights and architectures so all the specifications are invalid for it.
+
+For now the pre-trained embeddings are by default stored in `fasttext_cache/crawl-300d-2M-subword.bin` under the same folder as the processing script (`data_preprocess.py`). This is not added to repository due to its size. If you need this, please contact Bruce.
+
 ## Example
 
 To run the MixMedia on the WHO dataset you can run the command below. You can specify different values for other arguments, peek at the arguments list in main.py.

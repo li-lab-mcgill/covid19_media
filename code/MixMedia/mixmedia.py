@@ -7,12 +7,52 @@ import numpy as np
 import math 
 
 from torch import nn
+from torch.autograd import Variable
 
 # from IPython.core.debugger import set_trace
 from pdb import set_trace
 
+# q_theta models
+from transformers import ElectraModel
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+class SinCosPosEncoding(nn.Module):
+    def __init__(self, d_model, max_len=512, device='cpu'):
+        super(SinCosPosEncoding, self).__init__()
+        
+        # Compute the positional encodings once in log space.
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) *
+                             -(math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+        self.device = device
+        
+    def forward(self, x):
+        return x + Variable(self.pe[:, :x.size(1)], requires_grad=False).to(self.device)
+
+class Attention(nn.Module):
+    def __init__(self, d_model, query_in_size, dropout_rate=0):
+        super().__init__()
+        # self.query_map = nn.Linear(query_in_size, d_model)
+        self.W = nn.Parameter(torch.randn(d_model, d_model))    # (M * M)
+        self.bias = nn.Parameter(torch.randn(1))
+        self.dropout = nn.Dropout(dropout_rate) if dropout_rate != 0 else None
+
+    def forward(self, key, query, value):
+        # query = F.tanh(self.query_map(query))
+        if query.shape[0] > 1:  # not using a single vector as query for all samples in batch
+            query_W_key = torch.bmm(torch.matmul(query, self.W), key.transpose(-2, -1)) # (B * N * N)
+        else:
+            query_W_key = torch.matmul(key, torch.matmul(query, self.W).transpose(-2, -1)).transpose(-2, -1)
+        if self.dropout:
+            query_W_key = self.dropout(query_W_key)
+        weights = F.softmax(query_W_key + self.bias, dim=-1)  # (B * N * N)
+        return weights, torch.bmm(weights, value)
 
 class MixMedia(nn.Module):
     def __init__(self, args, word_embeddings):
@@ -40,9 +80,18 @@ class MixMedia(nn.Module):
 
         self.theta_act = self.get_activation(args.theta_act)
 
+        # LSTM params for q_theta
+        self.one_hot_qtheta_emb = args.one_hot_qtheta_emb
+        self.q_theta_arc = args.q_theta_arc
+        self.q_theta_layers = args.q_theta_layers
+        self.q_theta_input_dim = args.q_theta_input_dim
+        self.q_theta_hidden_size = args.q_theta_hidden_size
+        self.q_theta_bi = bool(args.q_theta_bi)
+        self.q_theta_drop = args.q_theta_drop
+
         ## define the word embedding matrix \rho: L x V
         if args.train_embeddings:
-            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False) # L x V
+            self.rho = nn.Linear(args.rho_size, args.vocab_size, bias=False).to(device) # L x V
         else:
             num_embeddings, emsize = word_embeddings.size()
             rho = nn.Embedding(num_embeddings, emsize)
@@ -51,34 +100,63 @@ class MixMedia(nn.Module):
     
 
         ## define the variational parameters for the topic embeddings over time (alpha) ... alpha is K x L
-        self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size))
-        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size))
+        self.mu_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size)).to(device)
+        self.logsigma_q_alpha = nn.Parameter(torch.randn(args.num_topics, args.rho_size)).to(device)
     
     
         ## define variational distribution for \theta_{1:D} via amortizartion... theta is K x D
-        self.q_theta = nn.Sequential(
-                    nn.Linear(args.vocab_size+args.num_topics, args.t_hidden_size), 
-                    self.theta_act,
-                    nn.Linear(args.t_hidden_size, args.t_hidden_size),
-                    self.theta_act,
-                )
-        self.mu_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
-        self.logsigma_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
+        # self.q_theta = nn.Sequential(
+        #             nn.Linear(args.vocab_size+args.num_topics, args.t_hidden_size), 
+        #             self.theta_act,
+        #             nn.Linear(args.t_hidden_size, args.t_hidden_size),
+        #             self.theta_act,
+        #         )
+        if self.one_hot_qtheta_emb and self.q_theta_arc != 'electra':
+            self.q_theta_emb = nn.Embedding(self.q_theta_input_dim, args.rho_size).to('cpu')
+            self.q_theta_input_dim = self.rho_size  # change q_theta input size to rho_size after embedding
+            # if args.q_theta_arc == 'trm':
+            #     self.q_theta = nn.TransformerEncoder(nn.TransformerEncoderLayer(d_model=self.rho_size, nhead=args.q_theta_heads, dropout=self.q_theta_drop), \
+            #         self.q_theta_layers).to(device)
+            #     q_theta_out_dim = self.rho_size
+            # else:
+            #     self.q_theta = nn.LSTM(self.rho_size, hidden_size=self.q_theta_hidden_size, \
+            #         bidirectional=self.q_theta_bi, dropout=self.q_theta_drop, num_layers=self.q_theta_layers, batch_first=True).to(device)
+        # else:
+        if self.q_theta_arc == 'trm':
+            self.pos_encode = SinCosPosEncoding(d_model=self.q_theta_input_dim, device=device)  # positional encoding
+            self.q_theta = nn.TransformerEncoder(nn.TransformerEncoderLayer(d_model=self.q_theta_input_dim, nhead=args.q_theta_heads, dropout=self.q_theta_drop), \
+                self.q_theta_layers).to(device)
+            q_theta_out_dim = self.q_theta_input_dim
+        elif self.q_theta_arc == 'lstm':
+            self.q_theta = nn.LSTM(self.q_theta_input_dim, hidden_size=self.q_theta_hidden_size, \
+                bidirectional=self.q_theta_bi, dropout=self.q_theta_drop, num_layers=self.q_theta_layers, batch_first=True).to(device)
+            q_theta_out_dim = 2 * self.q_theta_hidden_size if self.q_theta_bi else self.q_theta_hidden_size
+        else:
+            self.q_theta = ElectraModel.from_pretrained('google/electra-small-discriminator').to(device)
+            q_theta_out_dim = self.q_theta.config.hidden_size
+        self.q_theta_att_query = nn.Parameter(torch.randn(1, q_theta_out_dim)).to(device)
+        self.q_theta_att = Attention(q_theta_out_dim, args.num_topics, self.q_theta_drop).to(device)
+        # self.mu_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
+        # self.mu_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
+        self.mu_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
+        # self.logsigma_q_theta = nn.Linear(args.t_hidden_size, args.num_topics, bias=True)
+        # self.logsigma_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
+        self.logsigma_q_theta = nn.Linear(q_theta_out_dim + args.num_topics, args.num_topics, bias=True).to(device)
 
         ## define variational distribution for \eta via amortizartion... eta is K x T
-        self.q_eta_map = nn.Linear(args.vocab_size, args.eta_hidden_size)
+        self.q_eta_map = nn.Linear(args.vocab_size, args.eta_hidden_size).to(device)
         
-        self.q_eta = nn.LSTM(args.eta_hidden_size, args.eta_hidden_size, args.eta_nlayers, dropout=args.eta_dropout, batch_first=True)
+        self.q_eta = nn.LSTM(args.eta_hidden_size, args.eta_hidden_size, args.eta_nlayers, dropout=args.eta_dropout, batch_first=True).to(device)
 
-        self.mu_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
-        self.logsigma_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True)
+        self.mu_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True).to(device)
+        self.logsigma_q_eta = nn.Linear(args.eta_hidden_size+args.num_topics, args.num_topics, bias=True).to(device)
         
         self.max_logsigma_t = 10
         self.min_logsigma_t = -10
 
 
         ## define supervised component for predicting labels
-        self.classifier = nn.Linear(args.num_topics, args.num_labels, bias=True)
+        self.classifier = nn.Linear(args.num_topics, args.num_labels, bias=True).to(device)
         self.criterion = nn.CrossEntropyLoss(reduction='sum')
 
 
@@ -192,12 +270,25 @@ class MixMedia(nn.Module):
 
 
 
-    def get_theta(self, eta, bows, times, sources): ## amortized inference
+    def get_theta(self, eta, embs, times, sources): ## amortized inference
         """Returns the topic proportions.
         """
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
-        inp = torch.cat([bows, eta_std], dim=1)
-        q_theta = self.q_theta(inp)
+        # inp = torch.cat([bows, eta_std], dim=1)
+        if self.one_hot_qtheta_emb and self.q_theta_arc != 'electra':
+            embs = self.q_theta_emb(embs)
+        if self.q_theta_arc == 'trm':
+            embs = self.pos_encode(embs)
+            q_theta_out = self.q_theta(embs)
+        else:
+            q_theta_out = self.q_theta(embs)[0]
+        
+        # max-pooling and concat with eta_std to get q_theta
+        # q_theta_out = self.q_theta_att(key=q_theta_out, query=self.q_theta_att_query, value=q_theta_out)[1].squeeze()
+        q_theta_out = torch.max(q_theta_out, dim=1)[0]
+        q_theta = torch.cat([q_theta_out, eta_std], dim=1)
+        # q_theta = self.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
+        # q_theta = torch.cat([torch.max(q_theta_out, dim=1)[0], eta_std], dim=1)
 
         if self.enc_drop > 0:
             q_theta = self.t_drop(q_theta)
@@ -255,7 +346,7 @@ class MixMedia(nn.Module):
         return pred_loss
 
 
-    def forward(self, bows, normalized_bows, times, sources, labels, rnn_inp, num_docs):        
+    def forward(self, bows, normalized_bows, embs, times, sources, labels, rnn_inp, num_docs):        
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz
@@ -263,7 +354,8 @@ class MixMedia(nn.Module):
         
         eta, kl_eta = self.get_eta(rnn_inp)
 
-        theta, kl_theta = self.get_theta(eta, normalized_bows, times, sources)
+        theta, kl_theta = self.get_theta(eta, embs, times, sources)
+        # theta, kl_theta = self.get_theta(eta, normalized_bows, times, sources)
         kl_theta = kl_theta.sum() * coeff
         
         beta = self.get_beta(alpha)
