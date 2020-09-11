@@ -195,6 +195,8 @@ def train(epoch):
         else:
             normalized_data_batch = data_batch
         recon_loss, kld_theta = model(data_batch, normalized_data_batch)
+
+        # NELBO = -(loglikelihood - KL[q||p]) = -loglikelihood + KL[q||p]
         total_loss = recon_loss + kld_theta
         total_loss.backward()
 

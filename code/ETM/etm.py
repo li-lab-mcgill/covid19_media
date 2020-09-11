@@ -22,14 +22,16 @@ class ETM(nn.Module):
         self.t_drop = nn.Dropout(enc_drop)
 
         self.theta_act = self.get_activation(theta_act)
+
+        self.train_embeddings = train_embeddings
         
         ## define the word embedding matrix \rho
-        if train_embeddings:
-            self.rho = nn.Linear(rho_size, vocab_size, bias=False)
+        if self.train_embeddings:
+            self.rho = nn.Parameter(rho_size, vocab_size) # L x V
         else:
-            num_embeddings, emsize = embeddings.size()
-            rho = nn.Embedding(num_embeddings, emsize)
-            self.rho = embeddings.clone().float().to(device)
+            # num_embeddings, emsize = embeddings.size()
+            # rho = nn.Embedding(num_embeddings, emsize)
+            self.rho = embeddings.clone().float().to(device) # V x L
 
         ## define the matrix containing the topic embeddings
         self.alphas = nn.Linear(rho_size, num_topics, bias=False)#nn.Parameter(torch.randn(rho_size, num_topics))
@@ -66,6 +68,7 @@ class ETM(nn.Module):
             act = nn.Tanh()
         return act 
 
+    # theta ~ mu + std N(0,1)
     def reparameterize(self, mu, logvar):
         """Returns a sample from a Gaussian distribution via reparameterization.
         """
@@ -88,15 +91,14 @@ class ETM(nn.Module):
             q_theta = self.t_drop(q_theta)
         mu_theta = self.mu_q_theta(q_theta)
         logsigma_theta = self.logsigma_q_theta(q_theta)
+
+        # KL[q(theta)||p(theta)] = lnq(theta) - lnp(theta)
         kl_theta = -0.5 * torch.sum(1 + logsigma_theta - mu_theta.pow(2) - logsigma_theta.exp(), dim=-1).mean()
         return mu_theta, logsigma_theta, kl_theta
 
     def get_beta(self):
-        try:
-            logit = self.alphas(self.rho.weight) # torch.mm(self.rho, self.alphas)
-        except:
-            logit = self.alphas(self.rho)
-        beta = F.softmax(logit, dim=0).transpose(1, 0) ## softmax over vocab dimension
+        ## softmax over vocab dimension
+        beta = F.softmax(self.alphas(self.rho), dim=0).transpose(1, 0)
         return beta
 
     def get_theta(self, normalized_bows):

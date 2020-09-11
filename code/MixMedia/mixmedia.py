@@ -129,7 +129,7 @@ class MixMedia(nn.Module):
 
     def get_alpha(self): ## mean field
 
-        alphas = torch.zeros(self.num_topics, self.rho_size).to(device)
+        # alphas = torch.zeros(self.num_topics, self.rho_size).to(device)
         kl_alpha = []
 
         alphas = self.reparameterize(self.mu_q_alpha, self.logsigma_q_alpha)
