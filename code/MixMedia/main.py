@@ -343,7 +343,7 @@ if args.load_from != '':
 else:
     model = MixMedia(args, word_embeddings)
 print('\nMS-DETM architecture: {}'.format(model))
-# model.to(device)
+model.to(device)
 
 
 if args.optimizer == 'adam':
@@ -758,12 +758,13 @@ def compute_top_k_recall(labels, predictions, k=5):
 def get_cnpi_top_k_recall(cnpis, cnpi_mask, mode):
     assert mode in ['val', 'test'], 'mode must be val or test'
 
-    eta = get_eta(mode)
-    predictions = model.cnpi_lstm(eta)[0]
-    predictions = model.cnpi_out(predictions)
-    cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
-    cnpis_masked = cnpis * cnpi_mask
-    predictions_masked = predictions * cnpi_mask    # taking indices only so not computing sigmoid
+    with torch.no_grad():
+        eta = get_eta(mode)
+        predictions = model.cnpi_lstm(eta)[0]
+        predictions = model.cnpi_out(predictions)
+        cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
+        cnpis_masked = cnpis * cnpi_mask
+        predictions_masked = predictions * cnpi_mask    # taking indices only so not computing sigmoid
     return {
         1: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
             predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1)],
@@ -825,7 +826,7 @@ if args.mode == 'train':
 
     # with open(ckpt, 'rb') as f:
     #     model = torch.load(f)
-    # model = model.to(device)
+    model = model.to(device)
     model.eval()
     with torch.no_grad():
                 
@@ -868,7 +869,7 @@ if args.mode == 'train':
 else: 
     with open(ckpt, 'rb') as f:
         model = torch.load(f)
-    # model = model.to(device)
+    model = model.to(device)
 
 # dumping configurations to disk
 config_dict = {
