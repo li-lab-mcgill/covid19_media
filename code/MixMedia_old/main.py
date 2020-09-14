@@ -33,8 +33,6 @@ from torch.utils.tensorboard import SummaryWriter
 time_stamp = time.strftime("%m-%d-%H-%M", time.localtime())
 print(f"Experiment time stamp: {time_stamp}")
 
-writer = SummaryWriter(f"runs/{time_stamp}")
-
 parser = argparse.ArgumentParser(description='The Embedded Topic Model')
 
 ### data and file related arguments
@@ -138,6 +136,8 @@ parser.add_argument('--source_prior', type=int, default=1, help='whether to use 
 
 args = parser.parse_args()
 
+if args.mode == 'train':
+    writer = SummaryWriter(f"runs/{time_stamp}")
 
 # pca seems unused
 # pca = PCA(n_components=2)
@@ -338,7 +338,7 @@ if not os.path.exists(ckpt):
 ## define model and optimizer
 if args.load_from != '':
     print('Loading checkpoint from {}'.format(args.load_from))
-    with open(args.load_from, 'rb') as f:
+    with open(os.path.join(ckpt, 'model.pt'), 'rb') as f:
         model = torch.load(f)
 else:
     model = MixMedia(args, word_embeddings)
@@ -737,6 +737,21 @@ def get_topic_quality():
 
         return TQ, TC, TD
 
+def compute_top_k_precision(labels, predictions, k=5):
+    '''
+    inputs:
+    - labels: tensor, (number of samples, number of classes)
+    - predictions: tensor, (number of samples, number of classes)
+    output:
+    - top-k precision of the batch
+    '''
+    # remove ones without positive labels
+    has_pos_labels = labels.sum(1) != 0
+    labels = labels[has_pos_labels, :]
+    predictions = predictions[has_pos_labels, :]
+    idxs = torch.argsort(predictions, dim=1, descending=True)[:, 0: k]
+    return (torch.gather(labels, 1, idxs).sum(1) / k).mean().item()
+
 def compute_top_k_recall(labels, predictions, k=5):
     '''
     inputs:
@@ -772,6 +787,53 @@ def get_cnpi_top_k_recall(cnpis, cnpi_mask, mode):
         10: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
             predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10)],
         }
+
+def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'precision', 'f1']):
+    assert mode in ['val', 'test'], 'mode must be val or test'
+    assert all([return_val in ['recall', 'precision', 'f1'] for return_val in return_vals]), \
+        'return values must be recall, precision or f1'
+    assert return_vals, 'no return value is specified'
+
+    with torch.no_grad():
+        eta = get_eta(mode)
+        predictions = model.cnpi_lstm(eta)[0]
+        predictions = model.cnpi_out(predictions)
+        cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
+        cnpis_masked = cnpis * cnpi_mask
+        predictions_masked = predictions * cnpi_mask    # taking indices only so not computing sigmoid
+
+    results = {}
+    top_k_recalls = {
+        1: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1)],
+        3: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 3)],
+        5: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5)],
+        10: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10)],
+        }
+    if 'recall' in return_vals:
+        results['recall'] = top_k_recalls
+    top_k_precs = {
+        1: [compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1)],
+        3: [compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 3)],
+        5: [compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5)],
+        10: [compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10)],
+        }
+    if 'precision' in return_vals:
+        results['precision'] = top_k_precs
+    top_k_f1s = {
+        k: [(2 * top_k_recalls[k][0] * top_k_precs[k][0]) / (top_k_recalls[k][0] + top_k_precs[k][0])] \
+            for k in [1, 3, 5, 10]
+        }
+    if 'f1' in return_vals:
+        results['f1'] = top_k_f1s
+    return results
 
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
@@ -888,32 +950,43 @@ if args.predict_cnpi:
     config_dict['cnpi_drop'] = args.cnpi_drop
     config_dict['cnpi_layers'] = args.cnpi_layers
 
-with open(os.path.join(ckpt, 'config.json'), 'w') as file:
-    json.dump(config_dict, file)
+if args.mode == 'train':
+    with open(os.path.join(ckpt, 'config.json'), 'w') as file:
+        json.dump(config_dict, file)
 
 print('computing validation perplexity...')
 val_ppl, val_pdl = get_completion_ppl('val')
 
 if args.predict_cnpi:
     # cnpi top k recall on validation set
-    val_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'val')
-    print('\ntop-k recalls on val:')
-    for k, recall in val_cnpi_top_ks.items():
-        print(f'top-{k}: {recall}')
-    with open(os.path.join(ckpt, 'val_cnpi_top_ks.json'), 'w') as file:
-        json.dump(val_cnpi_top_ks, file)
+    # val_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'val')
+    val_cnpi_results = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'val')
+    print('\ntop-k f1s on val:')
+    for k, f1 in val_cnpi_results['f1'].items():
+        print(f'top-{k}: {f1}')
+    with open(os.path.join(ckpt, 'val_cnpi_top_k_recalls.json'), 'w') as file:
+        json.dump(val_cnpi_results['recall'], file)
+    with open(os.path.join(ckpt, 'val_cnpi_top_k_precs.json'), 'w') as file:
+        json.dump(val_cnpi_results['precision'], file)
+    with open(os.path.join(ckpt, 'val_cnpi_top_k_f1s.json'), 'w') as file:
+        json.dump(val_cnpi_results['f1'], file)
 
 print('computing test perplexity...')
 test_ppl, test_pdl = get_completion_ppl('test')
 
 if args.predict_cnpi:
     # cnpi top k recall on test set
-    test_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'test')
-    print('\ntop-k recalls on test:')
-    for k, recall in test_cnpi_top_ks.items():
-        print(f'top-{k}: {recall}')
-    with open(os.path.join(ckpt, 'test_cnpi_top_ks.json'), 'w') as file:
-        json.dump(test_cnpi_top_ks, file)
+    # test_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'test')
+    test_cnpi_results = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'test')
+    print('\ntop-k f1s on test:')
+    for k, f1 in test_cnpi_results['f1'].items():
+        print(f'top-{k}: {f1}')
+    with open(os.path.join(ckpt, 'test_cnpi_top_k_recalls.json'), 'w') as file:
+        json.dump(test_cnpi_results['recall'], file)
+    with open(os.path.join(ckpt, 'test_cnpi_top_k_precs.json'), 'w') as file:
+        json.dump(test_cnpi_results['precision'], file)
+    with open(os.path.join(ckpt, 'test_cnpi_top_k_f1s.json'), 'w') as file:
+        json.dump(test_cnpi_results['f1'], file)
 
 f=open(os.path.join(ckpt, 'test_ppl.txt'),'w')
 f.write(str(test_ppl))
