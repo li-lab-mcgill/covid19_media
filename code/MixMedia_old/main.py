@@ -923,7 +923,7 @@ if args.mode == 'train':
         f.write(s1)
         f.close()
 else: 
-    with open(ckpt, 'rb') as f:
+    with open(os.path.join(ckpt, 'model.pt'), 'rb') as f:
         model = torch.load(f)
     model = model.to(device)
 
