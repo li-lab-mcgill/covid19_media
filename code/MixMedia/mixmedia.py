@@ -284,7 +284,7 @@ class MixMedia(nn.Module):
 
 
 
-    def get_theta(self, eta, embs, times, sources): ## amortized inference
+    def get_theta(self, eta, embs, att_mask, times, sources): ## amortized inference
         """Returns the topic proportions.
         """
         eta_std = eta[sources.type('torch.LongTensor'), times.type('torch.LongTensor')] # D x K
@@ -293,16 +293,15 @@ class MixMedia(nn.Module):
             embs = self.q_theta_emb(embs)
         if self.q_theta_arc == 'trm':
             embs = self.pos_encode(embs)
-            q_theta_out = self.q_theta(embs)
+            q_theta_out = self.q_theta(embs, mask=att_mask)
+        elif self.q_theta_arc == 'electra':
+            q_theta_out = self.q_theta(embs, attention_mask=att_mask)[0]
         else:
             q_theta_out = self.q_theta(embs)[0]
         
         # max-pooling and concat with eta_std to get q_theta
         # q_theta_out = self.q_theta_att(key=q_theta_out, query=self.q_theta_att_query, value=q_theta_out)[1].squeeze()
-        if self.q_theta_arc == 'electra':
-            q_theta_out = q_theta_out[:, 0, :]
-        else:
-            q_theta_out = torch.max(q_theta_out, dim=1)[0]
+        q_theta_out = torch.max(q_theta_out, dim=1)[0]
         q_theta = torch.cat([q_theta_out, eta_std], dim=1)
         # q_theta = self.q_theta_att(key=q_theta_out, query=eta_std.unsqueeze(1), value=q_theta_out)[1].squeeze()
         # q_theta = torch.cat([torch.max(q_theta_out, dim=1)[0], eta_std], dim=1)
@@ -372,7 +371,7 @@ class MixMedia(nn.Module):
         predictions = self.cnpi_out(predictions)
         return self.cnpi_criterion(predictions * cnpi_mask, cnpis * cnpi_mask)
 
-    def forward(self, bows, normalized_bows, embs, times, sources, labels, cnpis, cnpi_mask, rnn_inp, num_docs):        
+    def forward(self, bows, normalized_bows, embs, att_mask, times, sources, labels, cnpis, cnpi_mask, rnn_inp, num_docs):        
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz
@@ -380,7 +379,7 @@ class MixMedia(nn.Module):
         
         eta, kl_eta = self.get_eta(rnn_inp)
 
-        theta, kl_theta = self.get_theta(eta, embs, times, sources)
+        theta, kl_theta = self.get_theta(eta, embs, att_mask, times, sources)
         # theta, kl_theta = self.get_theta(eta, normalized_bows, times, sources)
         kl_theta = kl_theta.sum() * coeff
         

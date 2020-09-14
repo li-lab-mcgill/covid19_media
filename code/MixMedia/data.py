@@ -155,6 +155,7 @@ def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300
     batch_size = len(ind)
     data_batch = np.zeros((batch_size, vocab_size))
     embs_batch = []
+    masks_batch = []
     
     if temporal:
         times_batch = np.zeros((batch_size, ))
@@ -198,6 +199,7 @@ def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300
             if if_one_hot:
                 # embs_batch.append(torch.tensor(idxs_to_one_hot(embs[doc_id], emb_vocab_size), dtype=torch.float32))
                 embs_batch.append(torch.tensor(embs[doc_id][: 512], dtype=torch.long))
+                masks_batch.append(torch.ones(len(embs[doc_id][: 512])))
             else:
                 embs_batch.append(torch.tensor(embs[doc_id][: 512], dtype=torch.float32))
     
@@ -205,16 +207,18 @@ def get_batch(tokens, counts, embs, ind, sources, labels, vocab_size, emsize=300
     if get_emb:
         # embs_batch = torch.tensor(embs_batch).to(device)
         embs_batch_padded = torch.nn.utils.rnn.pad_sequence(embs_batch, batch_first=True).to(device)
+        att_mask = torch.nn.utils.rnn.pad_sequence(masks_batch, batch_first=True).to(device)
     else:
         embs_batch_padded = []
+        att_mask = []
     sources_batch = torch.from_numpy(sources_batch).to(device)
     labels_batch = torch.from_numpy(labels_batch).to(device)
 
     if temporal:
         times_batch = torch.from_numpy(times_batch).to(device)
-        return data_batch, embs_batch_padded, times_batch, sources_batch, labels_batch
+        return data_batch, embs_batch_padded, att_mask, times_batch, sources_batch, labels_batch
 
-    return data_batch, embs_batch_padded, sources_batch, labels_batch
+    return data_batch, embs_batch_padded, att_mask, sources_batch, labels_batch
 
 
 ## get source-specific word frequencies at each time point t
@@ -229,7 +233,7 @@ def get_rnn_input(tokens, counts, times, sources, labels, num_times, num_sources
 
     for idx, ind in enumerate(indices):
         
-        data_batch, _, times_batch, sources_batch, labels_batch = get_batch(tokens, counts, None, ind, sources, labels, vocab_size, temporal=True, times=times, get_emb=False)
+        data_batch, _, _, times_batch, sources_batch, labels_batch = get_batch(tokens, counts, None, ind, sources, labels, vocab_size, temporal=True, times=times, get_emb=False)
 
         for t in range(num_times):
             for src in range(num_sources):
