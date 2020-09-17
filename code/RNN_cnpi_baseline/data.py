@@ -1,9 +1,11 @@
 #/usr/bin/python
 
-import os
+import os, pickle
 from tqdm import tqdm
+import torch
 from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
+import numpy as np
 
 class COVID_Dataset(Dataset):
     def __init__(self, source_to_timestamp_to_tokens, source_to_timestamp_to_counts, \
@@ -23,25 +25,39 @@ class COVID_Dataset(Dataset):
     def __len__(self):
         return self.num_sources
 
-    def __getitem__(self, idxs):
-        # idxs are country indices
-        batch_size = len(idxs)
-        data_batch = np.zeros((batch_size, self.num_times, self.vocab_size))
-        masks_batch = []
-        times_batch = np.zeros((batch_size, ))
-        sources_batch = np.zeros((batch_size, ))
+    # def __getitem__(self, idxs):
+    #     # idxs are country indices
+    #     batch_size = len(idxs)
+    #     data_batch = np.zeros((batch_size, self.num_times, self.vocab_size))
+    #     masks_batch = []
+    #     times_batch = np.zeros((batch_size, ))
+    #     sources_batch = np.zeros((batch_size, ))
 
-        for i, country_idx in enumerate(idxs):    
-            for time_idx, tokens in self.source_to_timestamp_to_tokens[country_idx].items():
-                bow = np.zeros(self.vocab_size)
-                bow[tokens] = self.source_to_timestamp_to_counts[country_idx][time_idx]
-                data_batch[i, time_idx] += bow
+    #     for i, country_idx in enumerate(idxs):    
+    #         for time_idx, tokens in self.source_to_timestamp_to_tokens[country_idx].items():
+    #             bow = np.zeros(self.vocab_size)
+    #             for idx, token in tokens:
+    #                 bow[token] += self.source_to_timestamp_to_counts[country_idx][time_idx][idx]
+    #             data_batch[i, time_idx] += bow
         
-        data_batch = torch.from_numpy(data_batch).float() 
-        labels_batch = self.cnpis[idxs]
-        mask_batch = self.cnpi_mask[idxs]
+    #     data_batch = torch.from_numpy(data_batch).float() 
+    #     labels_batch = self.cnpis[idxs]
+    #     mask_batch = self.cnpi_mask[idxs]
 
-        return data_batch, labels_batch, mask_batch
+    #     return data_batch, labels_batch, mask_batch
+    def __getitem__(self, country_idx):
+        data = np.zeros((self.num_times, self.vocab_size))
+        for time_idx, tokens in self.source_to_timestamp_to_tokens[country_idx].items():
+            bow = np.zeros(self.vocab_size)
+            for idx, token in enumerate(tokens):
+                bow[token] += self.source_to_timestamp_to_counts[country_idx][time_idx][idx]
+            data[time_idx] += bow
+
+        data = torch.from_numpy(data).float()
+        labels = self.cnpis[country_idx]
+        mask = self.cnpi_mask[country_idx, :, :]
+
+        return data, labels, mask
 
 class COVID_Data_Module(pl.LightningDataModule):
     def __init__(self, configs):
@@ -71,19 +87,21 @@ class COVID_Data_Module(pl.LightningDataModule):
             time_file = os.path.join(self.path, 'bow_ts_timestamps.pkl')
             source_file = os.path.join(self.path, 'bow_ts_sources.pkl') 
         
-        tokens = pickle_load(token_file)
-        counts = pickle_load(count_file)
+        with open(token_file, 'rb') as file:
+            tokens = pickle.load(file)
+        with open(count_file, 'rb') as file:
+            counts = pickle.load(file)
         
-        times = pickle_load(time_file)
+        with open(time_file, 'rb') as file:
+            times = pickle.load(file)
 
-        sources = pickle_load(source_file, 'rb')
+        with open(source_file, 'rb') as file:
+            sources = pickle.load(file)
 
         return {'tokens': tokens, 'counts': counts, 'times': times, 'sources': sources}
 
     def prepare_data(self):
         # load data as in MixMedia
-        with open(os.path.join(self.path, 'vocab.pkl'), 'rb') as f:
-            vocab = pickle.load(f)
 
         train_dict = self.fetch('train')
         valid_dict = self.fetch('valid')
@@ -91,10 +109,10 @@ class COVID_Data_Module(pl.LightningDataModule):
 
         # merge them together since the split in on (country, time) pairs
         data_dict = {
-            'tokens': train_dict['tokens'] + train_dict['tokens'] + train_dict['tokens'],
-            'counts': train_dict['counts'] + train_dict['counts'] + train_dict['counts'],
-            'times': train_dict['times'] + train_dict['times'] + train_dict['times'],
-            'sources': train_dict['sources'] + train_dict['sources'] + train_dict['sources'],
+            'tokens': np.concatenate([train_dict['tokens'], valid_dict['tokens'], test_dict['tokens']]),
+            'counts': np.concatenate([train_dict['counts'], valid_dict['counts'], test_dict['counts']]),
+            'times': np.concatenate([train_dict['times'], valid_dict['times'], test_dict['times']]),
+            'sources': np.concatenate([train_dict['sources'], valid_dict['sources'], test_dict['sources']]),
         }
 
         # construct a dict of countries and their indices
@@ -131,22 +149,22 @@ class COVID_Data_Module(pl.LightningDataModule):
         with open(cnpis_file, 'rb') as file:
             cnpis = pickle.load(file)
         num_cnpis = cnpis.shape[-1]
-        data_dict['cnpis'] = torch.from_numpy(cnpis)
+        cnpis = torch.from_numpy(cnpis)
         # load mask
         cnpi_mask_file = os.path.join(self.path, 'cnpi_mask.pkl')
         with open(cnpi_mask_file, 'rb') as file:
             cnpi_mask = pickle.load(file)
         cnpi_mask = torch.from_numpy(cnpi_mask).type('torch.LongTensor')
-        data_dict['cnpi_mask'] = cnpi_mask.unsqueeze(-1).expand(cnpis.size())    # match cnpis' shape to apply masking
+        cnpi_mask = cnpi_mask.unsqueeze(-1).expand(cnpis.size())    # match cnpis' shape to apply masking
 
         # construct training and validation datasets
         self.train_dataset = COVID_Dataset(source_to_timestamp_to_tokens, source_to_timestamp_to_counts, \
-            cnpis, cnpi_mask, len(vocab), num_times, num_sources)
+            cnpis, cnpi_mask, self.configs['vocab_size'], num_times, num_sources)
         self.eval_dataset = COVID_Dataset(source_to_timestamp_to_tokens, source_to_timestamp_to_counts, \
-            cnpis, 1 - cnpi_mask, len(vocab), num_times, num_sources)
+            cnpis, 1 - cnpi_mask, self.configs['vocab_size'], num_times, num_sources)
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.configs['batch_size'])
+        return DataLoader(self.train_dataset, batch_size=self.configs['batch_size'], shuffle=True)
 
     def val_dataloader(self):
-        return DataLoader(self.eval_dataset, batch_size=self.configs['batch_size'])
+        return DataLoader(self.eval_dataset, batch_size=self.configs['batch_size'], shuffle=True)
