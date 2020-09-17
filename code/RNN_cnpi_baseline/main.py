@@ -1,6 +1,6 @@
 #/usr/bin/python
 
-import os, argparse, pickle
+import os, argparse, pickle, time, json
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -8,6 +8,7 @@ from torch import nn, optim
 # from torch.utils.data import DataLoader
 
 import pytorch_lightning as pl
+from pytorch_lightning import loggers as pl_loggers
 
 from data import COVID_Data_Module
 
@@ -139,6 +140,16 @@ if __name__ == '__main__':
     args = parse_args()
     configs = vars(args)
 
+    time_stamp = time.strftime("%m-%d-%H-%M", time.localtime())
+    print(f"Experiment time stamp: {time_stamp}")
+
+    if not os.path.exists(os.path.join(configs['save_path'], time_stamp)):
+        os.makedirs(os.path.join(configs['save_path'], time_stamp))
+
+    # save configs
+    with open(os.path.join(configs['save_path'], time_stamp, 'configs.json'), 'w') as file:
+        json.dump(configs, file)
+
     with open(os.path.join(configs['data_path'], 'min_df_{}'.format(configs['min_df']), 'vocab.pkl'), 'rb') as f:
         vocab = pickle.load(f)
     configs['vocab_size'] = len(vocab)
@@ -156,14 +167,17 @@ if __name__ == '__main__':
 
     # initiate data module
     data_module = COVID_Data_Module(configs)
-    data_module.prepare_data()
-    train_dataloader = data_module.train_dataloader()
-    val_dataloader = data_module.val_dataloader()
 
     # initiate model
     model = RNN_CNPI_BaseModel(configs)
 
     # train
-    trainer = pl.Trainer(gradient_clip_val=args.clip, max_epochs=args.epochs, gpus=1)
-    # trainer.fit(model, data_module)
-    trainer.fit(model, train_dataloader, val_dataloader)
+    tb_logger = pl_loggers.TensorBoardLogger(f"lightning_logs/{time_stamp}")
+    trainer = pl.Trainer(
+        gradient_clip_val=args.clip, 
+        max_epochs=args.epochs, 
+        gpus=1, 
+        logger=tb_logger,
+        weights_save_path=os.path.join(configs['save_path'], time_stamp)
+        )
+    trainer.fit(model, data_module)
