@@ -93,6 +93,7 @@ parser.add_argument('--q_theta_bi', type=int, default=1, help='whether to use bi
 parser.add_argument('--cnpi_hidden_size', type=int, default=64, help='country npi lstm hidden size')
 parser.add_argument('--cnpi_drop', type=float, default=0.1, help='dropout rate for country npi lstm')
 parser.add_argument('--cnpi_layers', type=int, default=1, help='number of layers for country npi lstm')
+parser.add_argument('--use_doc_labels', type=int, default=0, help='whether to use document labels as input for cnpi prediction (default 0)')
 
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
@@ -209,26 +210,6 @@ if args.predict_labels:
 else:
     args.num_labels = 0
 
-# get cnpis
-if args.predict_cnpi:
-    # load cnpis
-    cnpis_file = os.path.join(data_file, 'cnpis.pkl')
-    with open(cnpis_file, 'rb') as file:
-        cnpis = pickle.load(file)
-    args.num_cnpis = cnpis.shape[-1]
-    cnpis = torch.from_numpy(cnpis).to(device)
-    # load mask
-    cnpi_mask_file = os.path.join(data_file, 'cnpi_mask.pkl')
-    with open(cnpi_mask_file, 'rb') as file:
-        cnpi_mask = pickle.load(file)
-    cnpi_mask = torch.from_numpy(cnpi_mask).type('torch.LongTensor').to(device)
-    cnpi_mask = cnpi_mask.unsqueeze(-1).expand(cnpis.size())    # match cnpis' shape to apply masking
-
-else:
-    cnpis = None
-    cnpi_mask = None
-    args.num_cnpis = None
-
 train_rnn_inp = data.get_rnn_input(
     train_tokens, train_counts, train_times, train_sources, train_labels,
     args.num_times, args.num_sources, 
@@ -297,6 +278,36 @@ test_2_rnn_inp = data.get_rnn_input(
     args.num_times, args.num_sources, 
     args.vocab_size, args.num_docs_test)
 
+# get cnpi related data
+if args.predict_cnpi:
+    cnpi_data = {}
+    # load cnpis
+    cnpis_file = os.path.join(data_file, 'cnpis.pkl')
+    with open(cnpis_file, 'rb') as file:
+        cnpis = pickle.load(file)
+    args.num_cnpis = cnpis.shape[-1]
+    cnpis = torch.from_numpy(cnpis).to(device)
+    cnpi_data['cnpis'] = cnpis
+    # load mask
+    cnpi_mask_file = os.path.join(data_file, 'cnpi_mask.pkl')
+    with open(cnpi_mask_file, 'rb') as file:
+        cnpi_mask = pickle.load(file)
+    cnpi_mask = torch.from_numpy(cnpi_mask).type('torch.LongTensor').to(device)
+    cnpi_mask = cnpi_mask.unsqueeze(-1).expand(cnpis.size())    # match cnpis' shape to apply masking
+    cnpi_data['cnpi_mask'] = cnpi_mask
+
+    # load document labels
+    if args.use_doc_labels:
+        cnpi_data['train_labels'] = data.get_doc_labels_for_cnpi(train_labels, train_sources, train_times, \
+            args.num_sources, args.num_times, args.num_cnpis).to(device)
+        cnpi_data['valid_labels'] = data.get_doc_labels_for_cnpi(valid_labels, valid_sources, valid_times, \
+            args.num_sources, args.num_times, args.num_cnpis).to(device)
+        cnpi_data['test_labels'] = data.get_doc_labels_for_cnpi(test_labels, test_sources, test_times, \
+            args.num_sources, args.num_times, args.num_cnpis).to(device)
+else:
+    cnpis = None
+    cnpi_mask = None
+    args.num_cnpis = None
 
 ## get word embeddings 
 print('Getting word embeddings ...')
@@ -398,7 +409,7 @@ def train(epoch):
         # print("forward passing ...")
 
         loss, nll, kl_alpha, kl_eta, kl_theta, pred_loss, cnpi_pred_loss = model(data_batch, normalized_data_batch, embs_batch, att_mask,
-            times_batch, sources_batch, labels_batch, cnpis, cnpi_mask, train_rnn_inp, args.num_docs_train)
+            times_batch, sources_batch, labels_batch, cnpi_data, train_rnn_inp, args.num_docs_train)
 
         # set_trace()
 
@@ -769,26 +780,27 @@ def compute_top_k_recall(labels, predictions, k=5):
     idxs = torch.argsort(predictions, dim=1, descending=True)[:, 0: k]
     return (torch.gather(labels, 1, idxs).sum(1) / labels.sum(1)).mean().item()
 
-def get_cnpi_top_k_recall(cnpis, cnpi_mask, mode):
-    assert mode in ['val', 'test'], 'mode must be val or test'
+# use get_cnpi_top_k_metrics instead
+# def get_cnpi_top_k_recall(cnpis, cnpi_mask, mode):
+#     assert mode in ['val', 'test'], 'mode must be val or test'
 
-    with torch.no_grad():
-        eta = get_eta(mode)
-        predictions = model.cnpi_lstm(eta)[0]
-        predictions = model.cnpi_out(predictions)
-        cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
-        cnpis_masked = cnpis * cnpi_mask
-        predictions_masked = predictions * cnpi_mask    # taking indices only so not computing sigmoid
-    return {
-        1: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1)],
-        3: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 3)],
-        5: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5)],
-        10: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10)],
-        }
+#     with torch.no_grad():
+#         eta = get_eta(mode)
+#         predictions = model.cnpi_lstm(eta)[0]
+#         predictions = model.cnpi_out(predictions)
+#         cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
+#         cnpis_masked = cnpis * cnpi_mask
+#         predictions_masked = predictions * cnpi_mask    # taking indices only so not computing sigmoid
+#     return {
+#         1: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+#             predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1)],
+#         3: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+#             predictions_masked.reshape(-1, predictions_masked.shape[-1]), 3)],
+#         5: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+#             predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5)],
+#         10: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+#             predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10)],
+#         }
 
 def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'precision', 'f1']):
     assert mode in ['val', 'test'], 'mode must be val or test'
@@ -798,7 +810,11 @@ def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'preci
 
     with torch.no_grad():
         eta = get_eta(mode)
-        predictions = model.cnpi_lstm(eta)[0]
+        if args.use_doc_labels:
+            label_key = 'valid_labels' if mode == 'val' else 'test_labels'
+            predictions = model.cnpi_lstm(torch.cat([eta, cnpi_data[label_key]], dim=-1))[0]
+        else:
+            predictions = model.cnpi_lstm(eta)[0]
         predictions = model.cnpi_out(predictions)
         cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
         cnpis_masked = cnpis * cnpi_mask
@@ -964,6 +980,7 @@ if args.predict_cnpi:
     config_dict['cnpi_hidden_size'] = args.cnpi_hidden_size
     config_dict['cnpi_drop'] = args.cnpi_drop
     config_dict['cnpi_layers'] = args.cnpi_layers
+    config_dict['use_doc_labels'] = args.use_doc_labels
 
 if args.mode == 'train':
     with open(os.path.join(ckpt, 'config.json'), 'w') as file:
