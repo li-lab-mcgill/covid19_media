@@ -266,7 +266,7 @@ def get_doc_labels_for_cnpi(labels, sources, times, num_sources, num_times, num_
         source_idx = sources[idx]
     
         docs_labels[source_idx, time_idx] += labels[idx]
-    return torch.from_numpy(docs_labels)
+    return torch.from_numpy(docs_labels).float()
 
 
 

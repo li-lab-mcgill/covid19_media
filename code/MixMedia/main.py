@@ -137,6 +137,8 @@ parser.add_argument('--source_prior', type=int, default=1, help='whether to use 
 
 args = parser.parse_args()
 
+assert not (args.use_doc_labels and args.predict_labels), "cannot predict document labels and use them as input at the same time"
+
 if args.mode == 'train':
     writer = SummaryWriter(f"runs/{time_stamp}")
 
@@ -882,9 +884,13 @@ if args.mode == 'train':
             writer.add_scalar('Topic/diversity', td, epoch)
         if args.predict_cnpi:
             # cnpi top k recall on validation set
-            val_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'val')
-            for k, recall in val_cnpi_top_ks.items():
+            val_cnpi_results = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'val')
+            for k, recall in val_cnpi_results['recall'].items():
                 writer.add_scalar(f"Val_top_k_recall/{k}", recall[0], epoch)
+            for k, prec in val_cnpi_results['precision'].items():
+                writer.add_scalar(f"Val_top_k_precision/{k}", prec[0], epoch)
+            for k, f1 in val_cnpi_results['f1'].items():
+                writer.add_scalar(f"Val_top_k_f1/{k}", f1[0], epoch)
         
         if val_ppl < best_val_ppl:
             with open(os.path.join(ckpt, 'model.pt'), 'wb') as f:
