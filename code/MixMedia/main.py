@@ -298,6 +298,11 @@ if args.predict_cnpi:
     cnpi_mask = cnpi_mask.unsqueeze(-1).expand(cnpis.size())    # match cnpis' shape to apply masking
     cnpi_data['cnpi_mask'] = cnpi_mask
 
+    # load label_map if haven't
+    if not args.predict_labels:
+        with open(os.path.join(data_file, 'labels_map.pkl'), 'rb') as file:
+            labels_map = pickle.load(file)        
+
     # load document labels
     if args.use_doc_labels:
         cnpi_data['train_labels'] = data.get_doc_labels_for_cnpi(train_labels, train_sources, train_times, \
@@ -752,35 +757,61 @@ def get_topic_quality():
 
         return TQ, TC, TD
 
-def compute_top_k_precision(labels, predictions, k=5):
+def compute_top_k_precision(labels, predictions, k=5, breakdown_by=None):
     '''
     inputs:
     - labels: tensor, (number of samples, number of classes)
     - predictions: tensor, (number of samples, number of classes)
+    - breakdown_by: optional, string. breakdown by measure.
     output:
     - top-k precision of the batch
     '''
+    if breakdown_by:
+        assert breakdown_by in ['measure'], 'can only breankdown by measure'
     # remove ones without positive labels
     has_pos_labels = labels.sum(1) != 0
     labels = labels[has_pos_labels, :]
     predictions = predictions[has_pos_labels, :]
     idxs = torch.argsort(predictions, dim=1, descending=True)[:, 0: k]
-    return (torch.gather(labels, 1, idxs).sum(1) / k).mean().item()
+    if not breakdown_by:
+        return [(torch.gather(labels, 1, idxs).sum(1) / k).mean().item()]
+    elif breakdown_by == 'measure':
+        precs = []
+        for label in range(labels.shape[1]):
+            true_positive = (labels[:, label] * torch.any(label == idxs, dim=1)).sum().item()
+            try:
+                precs.append(true_positive / torch.any(label == idxs, dim=1).sum().item())
+            except ZeroDivisionError:
+                precs.append(None)
+        return precs
 
-def compute_top_k_recall(labels, predictions, k=5):
+def compute_top_k_recall(labels, predictions, k=5, breakdown_by=None):
     '''
     inputs:
     - labels: tensor, (number of samples, number of classes)
     - predictions: tensor, (number of samples, number of classes)
+    - breakdown_by: optional, string. breakdown by measure.
     output:
     - top-k recall of the batch
     '''
+    if breakdown_by:
+        assert breakdown_by in ['measure'], 'can only breankdown by measure'
     # remove ones without positive labels
     has_pos_labels = labels.sum(1) != 0
     labels = labels[has_pos_labels, :]
     predictions = predictions[has_pos_labels, :]
     idxs = torch.argsort(predictions, dim=1, descending=True)[:, 0: k]
-    return (torch.gather(labels, 1, idxs).sum(1) / labels.sum(1)).mean().item()
+    if not breakdown_by:
+        return [(torch.gather(labels, 1, idxs).sum(1) / labels.sum(1)).mean().item()]
+    elif breakdown_by == 'measure':
+        recalls = []
+        for label in range(labels.shape[1]):
+            true_positive = (labels[:, label] * torch.any(label == idxs, dim=1)).sum().item()
+            try:
+                recalls.append(true_positive / labels[:, label].sum().item())
+            except ZeroDivisionError:
+                recalls.append(None)
+        return recalls
 
 # use get_cnpi_top_k_metrics instead
 # def get_cnpi_top_k_recall(cnpis, cnpi_mask, mode):
@@ -804,7 +835,7 @@ def compute_top_k_recall(labels, predictions, k=5):
 #             predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10)],
 #         }
 
-def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'precision', 'f1']):
+def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'precision', 'f1'], breakdown_by=None):
     assert mode in ['val', 'test'], 'mode must be val or test'
     assert all([return_val in ['recall', 'precision', 'f1'] for return_val in return_vals]), \
         'return values must be recall, precision or f1'
@@ -824,34 +855,46 @@ def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'preci
 
     results = {}
     top_k_recalls = {
-        1: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1)],
-        3: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 3)],
-        5: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5)],
-        10: [compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10)],
+        1: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1, breakdown_by),
+        3: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 3, breakdown_by),
+        5: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5, breakdown_by),
+        10: compute_top_k_recall(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10, breakdown_by),
         }
     if 'recall' in return_vals:
         results['recall'] = top_k_recalls
     top_k_precs = {
-        1: [compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1)],
-        3: [compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 3)],
-        5: [compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5)],
-        10: [compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10)],
+        1: compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 1, breakdown_by),
+        3: compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 3, breakdown_by),
+        5: compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 5, breakdown_by),
+        10: compute_top_k_precision(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]), 10, breakdown_by),
         }
     if 'precision' in return_vals:
         results['precision'] = top_k_precs
-    top_k_f1s = {
-        k: [(2 * top_k_recalls[k][0] * top_k_precs[k][0]) / (top_k_recalls[k][0] + top_k_precs[k][0])] \
-            for k in [1, 3, 5, 10]
-        }
     if 'f1' in return_vals:
+        def get_f1(recall, prec):
+            if recall and prec:
+                return (2 * recall * prec) / (recall + prec)
+            else:
+                return None
+
+        if not breakdown_by:
+            top_k_f1s = {
+                k: [get_f1(top_k_recalls[k][0], top_k_precs[k][0])] \
+                    for k in [1, 3, 5, 10]
+                }
+        else:
+            top_k_f1s = {}
+            for k in [1, 3, 5, 10]:
+                top_k_f1s[k] = [get_f1(top_k_recalls[k][label], top_k_precs[k][label]) \
+                    for label in range(cnpis_masked.shape[-1])]
         results['f1'] = top_k_f1s
     return results
 
@@ -1009,6 +1052,37 @@ if args.predict_cnpi:
     with open(os.path.join(ckpt, 'val_cnpi_top_k_f1s.json'), 'w') as file:
         json.dump(val_cnpi_results['f1'], file)
 
+    label_idx_to_label = {value: key for key, value in labels_map.items()}
+
+    # breakdown by measure
+    val_cnpi_results_breakdown = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'val', breakdown_by='measure')
+    val_cnpi_recalls_breakdown_out = {
+        k: {label_idx_to_label[label_idx]: recall \
+            for label_idx, recall in enumerate(val_cnpi_results_breakdown['recall'][k]) \
+            if val_cnpi_results_breakdown['recall'][k][label_idx] is not None} \
+                for k in [1, 3, 5, 10]
+    }
+    with open(os.path.join(ckpt, 'val_cnpi_top_k_recalls_breakdown.json'), 'w') as file:
+        json.dump(val_cnpi_recalls_breakdown_out, file)
+        
+    val_cnpi_precs_breakdown_out = {
+        k: {label_idx_to_label[label_idx]: prec \
+            for label_idx, prec in enumerate(val_cnpi_results_breakdown['precision'][k]) \
+            if val_cnpi_results_breakdown['precision'][k][label_idx] is not None} \
+                for k in [1, 3, 5, 10]
+    }
+    with open(os.path.join(ckpt, 'val_cnpi_top_k_precs_breakdown.json'), 'w') as file:
+        json.dump(val_cnpi_precs_breakdown_out, file)
+
+    val_cnpi_f1s_breakdown_out = {
+        k: {label_idx_to_label[label_idx]: f1 \
+            for label_idx, f1 in enumerate(val_cnpi_results_breakdown['f1'][k]) \
+            if val_cnpi_results_breakdown['f1'][k][label_idx] is not None} \
+                for k in [1, 3, 5, 10]
+    }
+    with open(os.path.join(ckpt, 'val_cnpi_top_k_f1s_breakdown.json'), 'w') as file:
+        json.dump(val_cnpi_f1s_breakdown_out, file)
+
 print('computing test perplexity...')
 test_ppl, test_pdl = get_completion_ppl('test')
 
@@ -1025,6 +1099,35 @@ if args.predict_cnpi:
         json.dump(test_cnpi_results['precision'], file)
     with open(os.path.join(ckpt, 'test_cnpi_top_k_f1s.json'), 'w') as file:
         json.dump(test_cnpi_results['f1'], file)
+
+    # breakdown by measure
+    test_cnpi_results_breakdown = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'test', breakdown_by='measure')
+    test_cnpi_recalls_breakdown_out = {
+        k: {label_idx_to_label[label_idx]: recall \
+            for label_idx, recall in enumerate(test_cnpi_results_breakdown['recall'][k]) \
+            if test_cnpi_results_breakdown['recall'][k][label_idx] is not None} \
+                for k in [1, 3, 5, 10]
+    }
+    with open(os.path.join(ckpt, 'test_cnpi_top_k_recalls_breakdown.json'), 'w') as file:
+        json.dump(test_cnpi_recalls_breakdown_out, file)
+        
+    test_cnpi_precs_breakdown_out = {
+        k: {label_idx_to_label[label_idx]: prec \
+            for label_idx, prec in enumerate(test_cnpi_results_breakdown['precision'][k]) \
+            if test_cnpi_results_breakdown['precision'][k][label_idx] is not None} \
+                for k in [1, 3, 5, 10]
+    }
+    with open(os.path.join(ckpt, 'test_cnpi_top_k_precs_breakdown.json'), 'w') as file:
+        json.dump(test_cnpi_precs_breakdown_out, file)
+
+    test_cnpi_f1s_breakdown_out = {
+        k: {label_idx_to_label[label_idx]: f1 \
+            for label_idx, f1 in enumerate(test_cnpi_results_breakdown['f1'][k]) \
+        if test_cnpi_results_breakdown['f1'][k][label_idx] is not None} \
+            for k in [1, 3, 5, 10]
+    }
+    with open(os.path.join(ckpt, 'test_cnpi_top_k_f1s_breakdown.json'), 'w') as file:
+        json.dump(test_cnpi_f1s_breakdown_out, file)
 
 f=open(os.path.join(ckpt, 'test_ppl.txt'),'w')
 f.write(str(test_ppl))
