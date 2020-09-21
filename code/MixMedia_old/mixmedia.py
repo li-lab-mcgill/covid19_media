@@ -96,6 +96,7 @@ class MixMedia(nn.Module):
         self.cnpi_drop = args.cnpi_drop
         self.cnpi_layers = args.cnpi_layers
         self.num_cnpis = args.num_cnpis
+        self.use_doc_labels = args.use_doc_labels
 
         ## define the word embedding matrix \rho: L x V
         if args.train_embeddings:
@@ -169,7 +170,8 @@ class MixMedia(nn.Module):
 
         # predicting country-level npi
         if self.predict_cnpi:
-            self.cnpi_lstm = nn.LSTM(args.num_topics, hidden_size=self.cnpi_hidden_size, \
+            cnpi_input_size = args.num_topics + args.num_cnpis if self.use_doc_labels else args.num_topics
+            self.cnpi_lstm = nn.LSTM(cnpi_input_size, hidden_size=self.cnpi_hidden_size, \
                 bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
             self.cnpi_out = nn.Linear(self.cnpi_hidden_size, args.num_cnpis, bias=True).to(device)
             self.cnpi_criterion = nn.BCEWithLogitsLoss(reduction='sum')
@@ -360,17 +362,23 @@ class MixMedia(nn.Module):
 
         return pred_loss    
 
-    def get_cnpi_prediction_loss(self, eta, cnpis, cnpi_mask):
+    def get_cnpi_prediction_loss(self, eta, cnpi_data):
         # get unique combinations of (source, time) as indices
         # indices = torch.tensor(list(dict.fromkeys(list(zip(sources.tolist(), times.tolist())))), dtype=torch.long)
         # get corresponding etas
         # current_eta = eta[indices[:, 0], indices[:, 1]] # D' x K
-        predictions = self.cnpi_lstm(eta)[0]
+        cnpis = cnpi_data['cnpis']
+        cnpi_mask = cnpi_data['cnpi_mask']
+        if self.use_doc_labels:
+            # this function is only called in training
+            predictions = self.cnpi_lstm(torch.cat([eta, cnpi_data['train_labels']], dim=-1))[0]
+        else:
+            predictions = self.cnpi_lstm(eta)[0]
         # predictions = torch.max(predictions, dim=1)[0]
         predictions = self.cnpi_out(predictions)
         return self.cnpi_criterion(predictions * cnpi_mask, cnpis * cnpi_mask)
 
-    def forward(self, bows, normalized_bows, embs, times, sources, labels, cnpis, cnpi_mask, rnn_inp, num_docs):        
+    def forward(self, bows, normalized_bows, embs, times, sources, labels, cnpi_data, rnn_inp, num_docs):        
 
         bsz = normalized_bows.size(0)
         coeff = num_docs / bsz
@@ -400,7 +408,7 @@ class MixMedia(nn.Module):
             nelbo = nll + kl_alpha + kl_eta + kl_theta
 
         if self.predict_cnpi:
-            cnpi_pred_loss = self.get_cnpi_prediction_loss(eta, cnpis, cnpi_mask)
+            cnpi_pred_loss = self.get_cnpi_prediction_loss(eta, cnpi_data)
             nelbo += cnpi_pred_loss
         
         return nelbo, nll, kl_alpha, kl_eta, kl_theta, pred_loss, cnpi_pred_loss

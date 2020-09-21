@@ -250,7 +250,19 @@ def get_rnn_input(tokens, counts, times, sources, labels, num_times, num_sources
 
     return rnn_input
 
-
+# get document labels to use as inputs for predicting cnpis
+def get_doc_labels_for_cnpi(labels, sources, times, num_sources, num_times, num_cnpis):
+    docs_labels = np.zeros((num_sources, num_times, num_cnpis))
+    # add labels
+    for idx in range(labels.shape[0]):
+        if np.sum(labels[idx]) == 0:
+            continue
+            
+        time_idx = times[idx]
+        source_idx = sources[idx]
+    
+        docs_labels[source_idx, time_idx] += labels[idx]
+    return torch.from_numpy(docs_labels).float()
 
 
 
