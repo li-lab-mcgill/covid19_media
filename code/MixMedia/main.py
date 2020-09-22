@@ -15,6 +15,8 @@ import scipy.io
 import json
 import time
 
+from sklearn.metrics import average_precision_score
+
 import data 
 
 # from sklearn.decomposition import PCA
@@ -898,6 +900,41 @@ def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'preci
         results['f1'] = top_k_f1s
     return results
 
+def compute_auprc_breakdown(labels, predictions):
+    '''
+    inputs:
+    - labels: tensor, (number of samples, number of classes)
+    - predictions: tensor, (number of samples, number of classes)
+    output:
+    - auprcs: array, (number of classes)
+    '''
+    # remove ones without positive labels
+    has_pos_labels = labels.sum(1) != 0
+    labels = labels[has_pos_labels, :]
+    predictions = predictions[has_pos_labels, :]
+    
+    labels = labels.cpu().numpy()
+    predictions = predictions.cpu().numpy()
+    return average_precision_score(labels, predictions, average=None)
+
+def get_cnpi_auprcs(cnpis, cnpi_mask, mode):
+    assert mode in ['val', 'test'], 'mode must be val or test'
+
+    with torch.no_grad():
+        eta = get_eta(mode)
+        if args.use_doc_labels:
+            label_key = 'valid_labels' if mode == 'val' else 'test_labels'
+            predictions = model.cnpi_lstm(torch.cat([eta, cnpi_data[label_key]], dim=-1))[0]
+        else:
+            predictions = model.cnpi_lstm(eta)[0]
+        predictions = model.cnpi_out(predictions)
+        cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
+        cnpis_masked = cnpis * cnpi_mask
+        predictions_masked = torch.sigmoid(predictions * cnpi_mask)
+
+    return compute_auprc_breakdown(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+        predictions_masked.reshape(-1, predictions_masked.shape[-1]))
+
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
     best_epoch = 0
@@ -1054,34 +1091,41 @@ if args.predict_cnpi:
 
     label_idx_to_label = {value: key for key, value in labels_map.items()}
 
-    # breakdown by measure
-    val_cnpi_results_breakdown = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'val', breakdown_by='measure')
-    val_cnpi_recalls_breakdown_out = {
-        k: {label_idx_to_label[label_idx]: recall \
-            for label_idx, recall in enumerate(val_cnpi_results_breakdown['recall'][k]) \
-            if val_cnpi_results_breakdown['recall'][k][label_idx] is not None} \
-                for k in [1, 3, 5, 10]
-    }
-    with open(os.path.join(ckpt, 'val_cnpi_top_k_recalls_breakdown.json'), 'w') as file:
-        json.dump(val_cnpi_recalls_breakdown_out, file)
+    # # breakdown by measure
+    # val_cnpi_results_breakdown = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'val', breakdown_by='measure')
+    # val_cnpi_recalls_breakdown_out = {
+    #     k: {label_idx_to_label[label_idx]: recall \
+    #         for label_idx, recall in enumerate(val_cnpi_results_breakdown['recall'][k]) \
+    #         if val_cnpi_results_breakdown['recall'][k][label_idx] is not None} \
+    #             for k in [1, 3, 5, 10]
+    # }
+    # with open(os.path.join(ckpt, 'val_cnpi_top_k_recalls_breakdown.json'), 'w') as file:
+    #     json.dump(val_cnpi_recalls_breakdown_out, file)
         
-    val_cnpi_precs_breakdown_out = {
-        k: {label_idx_to_label[label_idx]: prec \
-            for label_idx, prec in enumerate(val_cnpi_results_breakdown['precision'][k]) \
-            if val_cnpi_results_breakdown['precision'][k][label_idx] is not None} \
-                for k in [1, 3, 5, 10]
-    }
-    with open(os.path.join(ckpt, 'val_cnpi_top_k_precs_breakdown.json'), 'w') as file:
-        json.dump(val_cnpi_precs_breakdown_out, file)
+    # val_cnpi_precs_breakdown_out = {
+    #     k: {label_idx_to_label[label_idx]: prec \
+    #         for label_idx, prec in enumerate(val_cnpi_results_breakdown['precision'][k]) \
+    #         if val_cnpi_results_breakdown['precision'][k][label_idx] is not None} \
+    #             for k in [1, 3, 5, 10]
+    # }
+    # with open(os.path.join(ckpt, 'val_cnpi_top_k_precs_breakdown.json'), 'w') as file:
+    #     json.dump(val_cnpi_precs_breakdown_out, file)
 
-    val_cnpi_f1s_breakdown_out = {
-        k: {label_idx_to_label[label_idx]: f1 \
-            for label_idx, f1 in enumerate(val_cnpi_results_breakdown['f1'][k]) \
-            if val_cnpi_results_breakdown['f1'][k][label_idx] is not None} \
-                for k in [1, 3, 5, 10]
-    }
-    with open(os.path.join(ckpt, 'val_cnpi_top_k_f1s_breakdown.json'), 'w') as file:
-        json.dump(val_cnpi_f1s_breakdown_out, file)
+    # val_cnpi_f1s_breakdown_out = {
+    #     k: {label_idx_to_label[label_idx]: f1 \
+    #         for label_idx, f1 in enumerate(val_cnpi_results_breakdown['f1'][k]) \
+    #         if val_cnpi_results_breakdown['f1'][k][label_idx] is not None} \
+    #             for k in [1, 3, 5, 10]
+    # }
+    # with open(os.path.join(ckpt, 'val_cnpi_top_k_f1s_breakdown.json'), 'w') as file:
+    #     json.dump(val_cnpi_f1s_breakdown_out, file)
+
+    # breakdown by measure
+    val_cnpi_auprcs_breakdown = get_cnpi_auprcs(cnpis, cnpi_mask, 'val')
+    val_cnpi_auprcs_breakdown_out = {label_idx_to_label[label_idx]: val_cnpi_auprcs_breakdown[label_idx] \
+            for label_idx, auprc in enumerate(val_cnpi_auprcs_breakdown) if not np.isnan(auprc)}
+    with open(os.path.join(ckpt, 'val_cnpi_auprcs.json'), 'w') as file:
+        json.dump(val_cnpi_auprcs_breakdown_out, file)
 
 print('computing test perplexity...')
 test_ppl, test_pdl = get_completion_ppl('test')
@@ -1100,34 +1144,41 @@ if args.predict_cnpi:
     with open(os.path.join(ckpt, 'test_cnpi_top_k_f1s.json'), 'w') as file:
         json.dump(test_cnpi_results['f1'], file)
 
-    # breakdown by measure
-    test_cnpi_results_breakdown = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'test', breakdown_by='measure')
-    test_cnpi_recalls_breakdown_out = {
-        k: {label_idx_to_label[label_idx]: recall \
-            for label_idx, recall in enumerate(test_cnpi_results_breakdown['recall'][k]) \
-            if test_cnpi_results_breakdown['recall'][k][label_idx] is not None} \
-                for k in [1, 3, 5, 10]
-    }
-    with open(os.path.join(ckpt, 'test_cnpi_top_k_recalls_breakdown.json'), 'w') as file:
-        json.dump(test_cnpi_recalls_breakdown_out, file)
+    # # breakdown by measure
+    # test_cnpi_results_breakdown = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'test', breakdown_by='measure')
+    # test_cnpi_recalls_breakdown_out = {
+    #     k: {label_idx_to_label[label_idx]: recall \
+    #         for label_idx, recall in enumerate(test_cnpi_results_breakdown['recall'][k]) \
+    #         if test_cnpi_results_breakdown['recall'][k][label_idx] is not None} \
+    #             for k in [1, 3, 5, 10]
+    # }
+    # with open(os.path.join(ckpt, 'test_cnpi_top_k_recalls_breakdown.json'), 'w') as file:
+    #     json.dump(test_cnpi_recalls_breakdown_out, file)
         
-    test_cnpi_precs_breakdown_out = {
-        k: {label_idx_to_label[label_idx]: prec \
-            for label_idx, prec in enumerate(test_cnpi_results_breakdown['precision'][k]) \
-            if test_cnpi_results_breakdown['precision'][k][label_idx] is not None} \
-                for k in [1, 3, 5, 10]
-    }
-    with open(os.path.join(ckpt, 'test_cnpi_top_k_precs_breakdown.json'), 'w') as file:
-        json.dump(test_cnpi_precs_breakdown_out, file)
+    # test_cnpi_precs_breakdown_out = {
+    #     k: {label_idx_to_label[label_idx]: prec \
+    #         for label_idx, prec in enumerate(test_cnpi_results_breakdown['precision'][k]) \
+    #         if test_cnpi_results_breakdown['precision'][k][label_idx] is not None} \
+    #             for k in [1, 3, 5, 10]
+    # }
+    # with open(os.path.join(ckpt, 'test_cnpi_top_k_precs_breakdown.json'), 'w') as file:
+    #     json.dump(test_cnpi_precs_breakdown_out, file)
 
-    test_cnpi_f1s_breakdown_out = {
-        k: {label_idx_to_label[label_idx]: f1 \
-            for label_idx, f1 in enumerate(test_cnpi_results_breakdown['f1'][k]) \
-        if test_cnpi_results_breakdown['f1'][k][label_idx] is not None} \
-            for k in [1, 3, 5, 10]
-    }
-    with open(os.path.join(ckpt, 'test_cnpi_top_k_f1s_breakdown.json'), 'w') as file:
-        json.dump(test_cnpi_f1s_breakdown_out, file)
+    # test_cnpi_f1s_breakdown_out = {
+    #     k: {label_idx_to_label[label_idx]: f1 \
+    #         for label_idx, f1 in enumerate(test_cnpi_results_breakdown['f1'][k]) \
+    #     if test_cnpi_results_breakdown['f1'][k][label_idx] is not None} \
+    #         for k in [1, 3, 5, 10]
+    # }
+    # with open(os.path.join(ckpt, 'test_cnpi_top_k_f1s_breakdown.json'), 'w') as file:
+    #     json.dump(test_cnpi_f1s_breakdown_out, file)
+
+    # breakdown by measure
+    test_cnpi_auprcs_breakdown = get_cnpi_auprcs(cnpis, cnpi_mask, 'test')
+    test_cnpi_auprcs_breakdown_out = {label_idx_to_label[label_idx]: test_cnpi_auprcs_breakdown[label_idx] \
+            for label_idx, auprc in enumerate(test_cnpi_auprcs_breakdown) if not np.isnan(auprc)}
+    with open(os.path.join(ckpt, 'test_cnpi_auprcs.json'), 'w') as file:
+        json.dump(test_cnpi_auprcs_breakdown_out, file)
 
 f=open(os.path.join(ckpt, 'test_ppl.txt'),'w')
 f.write(str(test_ppl))
