@@ -42,9 +42,10 @@ python main.py --dataset WHO --data_path PATH_TO_DATA --emb_path PATH_TO_EMBEDDI
 ## Citation
 ```
 @article{li2020mixmedia,
-  title={MixMedia},
-  author={Li et al},
-  journal={arXiv preprint},
+  title={Global Surveillance of COVID-19 by mining news media using a multi-source dynamic embedded topic model
+},
+  author={Yue Li, Pratheeksha Nair, Zhi Wen, Imane Chafi, Anya Okhmatovskaia, Guido Powell, David Buckeridge},
+  journal={ACM-BCB},
   year={2020}
 }
 ```
