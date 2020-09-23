@@ -1,6 +1,1 @@
 .vscode/settings.json
-scripts/fasttext_cache/crawl-300d-2M-subword.bin
-code/MixMedia/run_MixMedia.sh
-*.txt
-code/MixMedia/__pycache__/data.cpython-37.pyc
-code/run_MixMedia.sh
