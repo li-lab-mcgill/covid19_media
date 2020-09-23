@@ -1,3 +1,0 @@
-Topic Quality: 0.09732714753592889
-Topic Coherence: 0.14229115136831708
-Topic Diversity: 0.684

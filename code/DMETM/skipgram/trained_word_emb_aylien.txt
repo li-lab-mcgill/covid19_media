@@ -1,1 +1,0 @@
-/Users/yueli/Projects/covid19_media/data/trained_word_emb_aylien.txt

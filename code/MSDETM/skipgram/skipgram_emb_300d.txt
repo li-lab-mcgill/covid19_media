@@ -1,1 +1,0 @@
-/Users/yueli/Projects/covid19_media/data/skipgram_emb_300d.txt
