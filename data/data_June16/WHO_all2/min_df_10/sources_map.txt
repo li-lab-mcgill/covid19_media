@@ -1,2 +1,0 @@
-media : 0
-official : 1
