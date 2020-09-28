@@ -2,7 +2,7 @@
 
 model_path=$1
 K=$2
-predict_cnpi=$2
+predict_labels=$2
 seed=$3
 cuda=$4
 
@@ -36,13 +36,13 @@ CUDA_VISIBLE_DEVICES=${cuda} python main.py \
     --eval_batch_size 128 \
     --time_prior 1 \
     --source_prior 1 \
-    --predict_cnpi $predict_cnpi \
+    --predict_cnpi 1 \
     --multiclass_labels 1 \
     --one_hot_qtheta_emb 1 \
     --q_theta_arc ${q_theta_arc} \
     --cnpi_layers 3 \
     --cnpi_hidden_size 128 \
-    --predict_labels 0 \
+    --predict_labels ${predict_labels} \
     # --q_theta_hidden_size 256 \
     # --q_theta_heads 3 \
     # --q_theta_layers 3 \
