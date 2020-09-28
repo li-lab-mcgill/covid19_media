@@ -88,6 +88,8 @@ label_maps = {
             'TRADE BANS','EDUCATION CAMPAIGN','MASS GATHERING CANCELLATION','RESTRICTING OR LIMITING GATHERINGS','CLOSING PUBLIC PLACES','LOCKDOWN OR CURFEW','EASIND RESTRICTIONS','VACCINE/MCM DEPLOYED','PPE']
 }
 
+who_ids = []
+
 def pickle_save(filename, data):
     with open(filename, "wb") as file:
         pickle.dump(data, file)
@@ -288,6 +290,8 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
         if who_flag:
             label_columns.append('WHO_ID')
 
+        global who_ids
+
         for country in tqdm(countries):
             summary = gphin_data[gphin_data.country == country].SUMMARY.values
             timestamp = gphin_data['DATE ADDED'].values #Check this in detail
@@ -314,6 +318,8 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
                             c_labels[i][label_map[l]] = 1
                         except:
                             continue
+
+                who_ids += [grp[1].WHO_ID.values[0]] * len(list(summary))
                 
                 g_data['data'].extend(list(summary))
                 g_data['country'].extend([country]*len(summary))
@@ -454,17 +460,17 @@ def preprocess(train_data, test_data, full_data):
     tokenizer.build_word_index(init_docs)
     tokenizer.build_embedding_matrix()
     init_docs_embs, init_docs_embs_idxs = [], []
-    for doc in tqdm(init_docs):
-        embs, embs_idxs = tokenizer.prepare_sequence(doc)
-        init_docs_embs.append(embs)
-        init_docs_embs_idxs.append(embs_idxs)
+    # for doc in tqdm(init_docs):
+    #     embs, embs_idxs = tokenizer.prepare_sequence(doc)
+    #     init_docs_embs.append(embs)
+    #     init_docs_embs_idxs.append(embs_idxs)
 
     # prepare ELECTRA word embeddings
     electra_tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
     init_docs_electra_idxs = []
-    for doc in tqdm(init_docs):
-        electra_idxs = electra_tokenizer.encode(" ".join(doc))
-        init_docs_electra_idxs.append(electra_idxs)
+    # for doc in tqdm(init_docs):
+    #     electra_idxs = electra_tokenizer.encode(" ".join(doc))
+    #     init_docs_electra_idxs.append(electra_idxs)
 
     # put q_theta stuff in a dictionary
     q_theta_data = {
@@ -653,12 +659,14 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
     # Split in train/test/valid
     docs_tr = [[word2id[w] for w in init_docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
-    docs_embs_tr = [all_docs_embs[idx_permute[idx_d]] for idx_d in range(trSize)]
-    docs_embs_idxs_tr = [all_docs_embs_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
-    docs_electra_idxs_tr = [all_docs_electra_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
+    # docs_embs_tr = [all_docs_embs[idx_permute[idx_d]] for idx_d in range(trSize)]
+    # docs_embs_idxs_tr = [all_docs_embs_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
+    # docs_electra_idxs_tr = [all_docs_electra_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
     # create list of unseen idxs in trainning set
-    embs_idxs_seen = set(idx for docs_embs_idx_tr in docs_embs_idxs_tr for idx in docs_embs_idx_tr)
-    print("q_theta vocab size", len(embs_idxs_seen))
+    # embs_idxs_seen = set(idx for docs_embs_idx_tr in docs_embs_idxs_tr for idx in docs_embs_idx_tr)
+    # print("q_theta vocab size", len(embs_idxs_seen))
+
+    who_ids_tr = [who_ids[idx_permute[idx_d]] for idx_d in range(trSize)]
 
     timestamps_tr = [time2id[init_timestamps[idx_permute[idx_d]]] for idx_d in range(trSize)]
     if not full_data:
@@ -672,14 +680,17 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     labels_tr = [data_labels[idx_permute[idx_d]] for idx_d in range(trSize)]
 
     docs_va = [[word2id[w] for w in init_docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(vaSize)]
-    docs_embs_va = [all_docs_embs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
-    docs_embs_idxs_va = [all_docs_embs_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
-    docs_electra_idxs_va = [all_docs_electra_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
-    for doc_idx, docs_embs_idx_va in tqdm(enumerate(docs_embs_idxs_va)):
-        mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_va]
-        docs_embs_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_va, mask)))
-        docs_embs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_va[doc_idx], mask)))
-        docs_electra_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_va[doc_idx], mask)))
+    # docs_embs_va = [all_docs_embs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+    # docs_embs_idxs_va = [all_docs_embs_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+    # docs_electra_idxs_va = [all_docs_electra_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+
+    who_ids_va = [who_ids[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+
+    # for doc_idx, docs_embs_idx_va in tqdm(enumerate(docs_embs_idxs_va)):
+        # mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_va]
+        # docs_embs_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_va, mask)))
+        # docs_embs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_va[doc_idx], mask)))
+        # docs_electra_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_va[doc_idx], mask)))
     timestamps_va = [time2id[init_timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(vaSize)]
     if not full_data:
         countries_va = [source_map[init_countries[idx_permute[idx_d+trSize]]] for idx_d in range(vaSize)]
@@ -693,14 +704,17 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
 
     docs_ts = [[word2id[w] for w in init_docs[idx_d+num_docs_tr].split() if w in word2id] for idx_d in range(tsSize)]
-    docs_embs_ts = [all_docs_embs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
-    docs_embs_idxs_ts = [all_docs_embs_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
-    docs_electra_idxs_ts = [all_docs_electra_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
-    for doc_idx, docs_embs_idx_ts in tqdm(enumerate(docs_embs_idxs_ts)):
-        mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_ts]
-        docs_embs_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_ts, mask)))
-        docs_embs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_ts[doc_idx], mask)))
-        docs_electra_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_ts[doc_idx], mask)))
+    # docs_embs_ts = [all_docs_embs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    # docs_embs_idxs_ts = [all_docs_embs_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    # docs_electra_idxs_ts = [all_docs_electra_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+
+    who_ids_ts = [who_ids[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+
+    # for doc_idx, docs_embs_idx_ts in tqdm(enumerate(docs_embs_idxs_ts)):
+        # mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_ts]
+        # docs_embs_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_ts, mask)))
+        # docs_embs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_ts[doc_idx], mask)))
+        # docs_electra_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_ts[doc_idx], mask)))
     print(len(docs_ts))
     #exit()
     timestamps_ts = [time2id[init_timestamps[idx_d+num_docs_tr]] for idx_d in range(tsSize)]
@@ -727,6 +741,13 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     docs_ts, labels_ts, ids_ts, preserve_idxs_ts = remove_empty(docs_ts, labels_ts, ids_ts)
     docs_va, labels_va, ids_va, preserve_idxs_va = remove_empty(docs_va, labels_va, ids_va)
 
+    who_ids_tr = [who_ids_tr[idx] for idx in preserve_idxs_tr]
+    who_ids_va = [who_ids_va[idx] for idx in preserve_idxs_va]
+    who_ids_ts = [who_ids_ts[idx] for idx in preserve_idxs_ts]
+
+    pd.DataFrame(who_ids_tr, columns=['who_id']).to_csv('id_to_who_id_tr.csv')
+    pd.DataFrame(who_ids_va, columns=['who_id']).to_csv('id_to_who_id_va.csv')
+
     # remove empty timestamps and sources
     timestamps_tr = [timestamps_tr[idx] for idx in preserve_idxs_tr]
     countries_tr = [countries_tr[idx] for idx in preserve_idxs_tr]
@@ -735,24 +756,29 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     timestamps_va = [timestamps_va[idx] for idx in preserve_idxs_va]
     countries_va = [countries_va[idx] for idx in preserve_idxs_va]
 
-    docs_embs_tr = [docs_embs_tr[idx] for idx in preserve_idxs_tr]
-    docs_embs_idxs_tr = [docs_embs_idxs_tr[idx] for idx in preserve_idxs_tr]
-    docs_electra_idxs_tr = [docs_electra_idxs_tr[idx] for idx in preserve_idxs_tr]
-    docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
-    docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
-    docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
-    docs_embs_va = [docs_embs_va[idx] for idx in preserve_idxs_va]
-    docs_embs_idxs_va = [docs_embs_idxs_va[idx] for idx in preserve_idxs_va]
-    docs_electra_idxs_va = [docs_electra_idxs_va[idx] for idx in preserve_idxs_va]
+    # docs_embs_tr = [docs_embs_tr[idx] for idx in preserve_idxs_tr]
+    # docs_embs_idxs_tr = [docs_embs_idxs_tr[idx] for idx in preserve_idxs_tr]
+    # docs_electra_idxs_tr = [docs_electra_idxs_tr[idx] for idx in preserve_idxs_tr]
+    # docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
+    # docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
+    # docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
+    # docs_embs_va = [docs_embs_va[idx] for idx in preserve_idxs_va]
+    # docs_embs_idxs_va = [docs_embs_idxs_va[idx] for idx in preserve_idxs_va]
+    # docs_electra_idxs_va = [docs_electra_idxs_va[idx] for idx in preserve_idxs_va]
 
     # Remove test documents with length=1
     preserve_idxs_ts = [idx for idx, doc in enumerate(docs_ts) if len(doc)>1]
     docs_ts = [doc for doc in docs_ts if len(doc)>1]
     labels_ts = [lab for doc,lab in zip(docs_ts, labels_ts) if len(doc) > 1]
     id_ts = [id for doc, id in zip(docs_ts, ids_ts) if len(doc) > 1]
-    docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
-    docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
-    docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
+    # docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
+    # docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
+    # docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
+
+    who_ids_ts = [who_ids_ts[idx] for idx in preserve_idxs_ts]
+    pd.DataFrame(who_ids_ts, columns=['who_id']).to_csv('id_to_who_id_ts.csv')
+
+    raise Exception()
 
     # remove test timestamps and sources with length=1
     timestamps_ts = [timestamps_ts[idx] for idx in preserve_idxs_ts]

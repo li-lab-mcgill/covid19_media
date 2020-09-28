@@ -303,7 +303,12 @@ if args.predict_cnpi:
     # load label_map if haven't
     if not args.predict_labels:
         with open(os.path.join(data_file, 'labels_map.pkl'), 'rb') as file:
-            labels_map = pickle.load(file)        
+            labels_map = pickle.load(file)       
+
+    # load sources_map if haven't
+    if not args.source_prior:
+        with open(os.path.join(data_file, 'sources_map.pkl'), 'rb') as file:
+            sources_map = pickle.load(file)      
 
     # load document labels
     if args.use_doc_labels:
@@ -900,13 +905,14 @@ def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'preci
         results['f1'] = top_k_f1s
     return results
 
-def compute_auprc_breakdown(labels, predictions):
+def compute_auprc_breakdown(labels, predictions, average=None):
     '''
     inputs:
     - labels: tensor, (number of samples, number of classes)
     - predictions: tensor, (number of samples, number of classes)
+    - average: None or str, whether to take the average
     output:
-    - auprcs: array, (number of classes)
+    - auprcs: array, (number of classes) if average is None, or scalar otherwise
     '''
     # remove ones without positive labels
     has_pos_labels = labels.sum(1) != 0
@@ -914,11 +920,14 @@ def compute_auprc_breakdown(labels, predictions):
     predictions = predictions[has_pos_labels, :]
     
     labels = labels.cpu().numpy()
+    if labels.size == 0:    # empty
+        return np.nan
     predictions = predictions.cpu().numpy()
-    return average_precision_score(labels, predictions, average=None)
+    return average_precision_score(labels, predictions, average=average)
 
-def get_cnpi_auprcs(cnpis, cnpi_mask, mode):
+def get_cnpi_auprcs(cnpis, cnpi_mask, mode, breakdown_by='measure'):
     assert mode in ['val', 'test'], 'mode must be val or test'
+    assert breakdown_by in ['measure', 'source'], 'can only breankdown by measure or source'
 
     with torch.no_grad():
         eta = get_eta(mode)
@@ -932,8 +941,12 @@ def get_cnpi_auprcs(cnpis, cnpi_mask, mode):
         cnpis_masked = cnpis * cnpi_mask
         predictions_masked = torch.sigmoid(predictions * cnpi_mask)
 
-    return compute_auprc_breakdown(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
-        predictions_masked.reshape(-1, predictions_masked.shape[-1]))
+    if breakdown_by == 'measure':
+        return compute_auprc_breakdown(cnpis_masked.reshape(-1, cnpis_masked.shape[-1]), \
+            predictions_masked.reshape(-1, predictions_masked.shape[-1]))
+    else:
+        return np.array([compute_auprc_breakdown(cnpis_masked[source_idx, :, :], \
+            predictions_masked[source_idx, :, :], average='micro') for source_idx in range(cnpis_masked.shape[0])])
 
 if args.mode == 'train':
     ## train model on data by looping through multiple epochs
@@ -1090,6 +1103,7 @@ if args.predict_cnpi:
         json.dump(val_cnpi_results['f1'], file)
 
     label_idx_to_label = {value: key for key, value in labels_map.items()}
+    source_idx_to_source = {value: key for key, value in sources_map.items()}
 
     # # breakdown by measure
     # val_cnpi_results_breakdown = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'val', breakdown_by='measure')
@@ -1126,6 +1140,13 @@ if args.predict_cnpi:
             for label_idx, auprc in enumerate(val_cnpi_auprcs_breakdown) if not np.isnan(auprc)}
     with open(os.path.join(ckpt, 'val_cnpi_auprcs.json'), 'w') as file:
         json.dump(val_cnpi_auprcs_breakdown_out, file)
+
+    # breakdown by source
+    val_cnpi_auprcs_breakdown_source = get_cnpi_auprcs(cnpis, cnpi_mask, 'val', breakdown_by='source')
+    val_cnpi_auprcs_breakdown_source_out = {source_idx_to_source[source_idx]: val_cnpi_auprcs_breakdown_source[source_idx] \
+            for source_idx, auprc in enumerate(val_cnpi_auprcs_breakdown_source) if not np.isnan(auprc)}
+    with open(os.path.join(ckpt, 'val_cnpi_auprcs_source.json'), 'w') as file:
+        json.dump(val_cnpi_auprcs_breakdown_source_out, file)
 
 print('computing test perplexity...')
 test_ppl, test_pdl = get_completion_ppl('test')
@@ -1179,6 +1200,13 @@ if args.predict_cnpi:
             for label_idx, auprc in enumerate(test_cnpi_auprcs_breakdown) if not np.isnan(auprc)}
     with open(os.path.join(ckpt, 'test_cnpi_auprcs.json'), 'w') as file:
         json.dump(test_cnpi_auprcs_breakdown_out, file)
+
+    # breakdown by source
+    test_cnpi_auprcs_breakdown_source = get_cnpi_auprcs(cnpis, cnpi_mask, 'test', breakdown_by='source')
+    test_cnpi_auprcs_breakdown_source_out = {source_idx_to_source[source_idx]: test_cnpi_auprcs_breakdown_source[source_idx] \
+            for source_idx, auprc in enumerate(test_cnpi_auprcs_breakdown_source) if not np.isnan(auprc)}
+    with open(os.path.join(ckpt, 'test_cnpi_auprcs_source.json'), 'w') as file:
+        json.dump(test_cnpi_auprcs_breakdown_source_out, file)
 
 f=open(os.path.join(ckpt, 'test_ppl.txt'),'w')
 f.write(str(test_ppl))
