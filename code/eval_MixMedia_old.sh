@@ -43,6 +43,7 @@ CUDA_VISIBLE_DEVICES=${cuda} python main.py \
     --cnpi_layers 3 \
     --cnpi_hidden_size 128 \
     --predict_labels ${predict_labels} \
+    --use_doc_labels 1 \
     # --q_theta_hidden_size 256 \
     # --q_theta_heads 3 \
     # --q_theta_layers 3 \
