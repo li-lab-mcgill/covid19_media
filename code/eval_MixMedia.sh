@@ -2,9 +2,9 @@
 
 model_path=$1
 K=$2
-predict_labels=$2
-seed=$3
-cuda=$4
+predict_labels=$3
+seed=$4
+cuda=$5
 
 cd MixMedia
 
