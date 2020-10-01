@@ -96,6 +96,7 @@ parser.add_argument('--cnpi_hidden_size', type=int, default=64, help='country np
 parser.add_argument('--cnpi_drop', type=float, default=0.1, help='dropout rate for country npi lstm')
 parser.add_argument('--cnpi_layers', type=int, default=1, help='number of layers for country npi lstm')
 parser.add_argument('--use_doc_labels', type=int, default=0, help='whether to use document labels as input for cnpi prediction (default 0)')
+parser.add_argument('--use_cnpi_lstm', type=int, default=1, help='whether to use lstm (default 1)')
 
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
@@ -848,11 +849,12 @@ def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'preci
 
     with torch.no_grad():
         eta = get_eta(mode)
-        if args.use_doc_labels:
-            label_key = 'valid_labels' if mode == 'val' else 'test_labels'
-            predictions = model.cnpi_lstm(torch.cat([eta, cnpi_data[label_key]], dim=-1))[0]
+        label_key = 'valid_labels' if mode == 'val' else 'test_labels'
+        cnpi_input = torch.cat([eta, cnpi_data[label_key]], dim=-1) if args.use_doc_labels else eta
+        if args.use_cnpi_lstm:
+            predictions = model.cnpi_lstm(cnpi_input)[0]
         else:
-            predictions = model.cnpi_lstm(eta)[0]
+            predictions = cnpi_input
         predictions = model.cnpi_out(predictions)
         cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
         cnpis_masked = cnpis * cnpi_mask
@@ -929,11 +931,12 @@ def get_cnpi_auprcs(cnpis, cnpi_mask, mode, breakdown_by='measure'):
 
     with torch.no_grad():
         eta = get_eta(mode)
-        if args.use_doc_labels:
-            label_key = 'valid_labels' if mode == 'val' else 'test_labels'
-            predictions = model.cnpi_lstm(torch.cat([eta, cnpi_data[label_key]], dim=-1))[0]
+        label_key = 'valid_labels' if mode == 'val' else 'test_labels'
+        cnpi_input = torch.cat([eta, cnpi_data[label_key]], dim=-1) if args.use_doc_labels else eta
+        if args.use_cnpi_lstm:
+            predictions = model.cnpi_lstm(cnpi_input)[0]
         else:
-            predictions = model.cnpi_lstm(eta)[0]
+            predictions = cnpi_input
         predictions = model.cnpi_out(predictions)
         cnpi_mask = 1 - cnpi_mask   # invert the mask to use unseen data points for evaluation
         cnpis_masked = cnpis * cnpi_mask
@@ -1065,6 +1068,7 @@ if args.predict_cnpi:
     config_dict['cnpi_drop'] = args.cnpi_drop
     config_dict['cnpi_layers'] = args.cnpi_layers
     config_dict['use_doc_labels'] = args.use_doc_labels
+    config_dict['use_cnpi_lstm'] = args.use_cnpi_lstm
 
 if args.mode == 'train':
     with open(os.path.join(ckpt, 'config.json'), 'w') as file:

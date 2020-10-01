@@ -97,6 +97,7 @@ class MixMedia(nn.Module):
         self.cnpi_layers = args.cnpi_layers
         self.num_cnpis = args.num_cnpis
         self.use_doc_labels = args.use_doc_labels
+        self.use_cnpi_lstm = args.use_cnpi_lstm
 
         ## define the word embedding matrix \rho: L x V
         if args.train_embeddings:
@@ -171,9 +172,12 @@ class MixMedia(nn.Module):
         # predicting country-level npi
         if self.predict_cnpi:
             cnpi_input_size = args.num_topics + args.num_cnpis if self.use_doc_labels else args.num_topics
-            self.cnpi_lstm = nn.LSTM(cnpi_input_size, hidden_size=self.cnpi_hidden_size, \
-                bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
-            self.cnpi_out = nn.Linear(self.cnpi_hidden_size, args.num_cnpis, bias=True).to(device)
+            if self.use_cnpi_lstm:
+                self.cnpi_lstm = nn.LSTM(cnpi_input_size, hidden_size=self.cnpi_hidden_size, \
+                    bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
+                self.cnpi_out = nn.Linear(self.cnpi_hidden_size, args.num_cnpis, bias=True).to(device)
+            else:
+                self.cnpi_out = nn.Linear(cnpi_input_size, args.num_cnpis, bias=True).to(device)
             self.cnpi_criterion = nn.BCEWithLogitsLoss(reduction='sum')
 
     def get_activation(self, act):
@@ -370,11 +374,13 @@ class MixMedia(nn.Module):
         # current_eta = eta[indices[:, 0], indices[:, 1]] # D' x K
         cnpis = cnpi_data['cnpis']
         cnpi_mask = cnpi_data['cnpi_mask']
-        if self.use_doc_labels:
-            # this function is only called in training
-            predictions = self.cnpi_lstm(torch.cat([eta, cnpi_data['train_labels']], dim=-1))[0]
+
+        # this function is only called in training
+        cnpi_input = torch.cat([eta, cnpi_data['train_labels']], dim=-1) if self.use_doc_labels else eta
+        if self.use_cnpi_lstm:
+            predictions = self.cnpi_lstm(cnpi_input)[0]
         else:
-            predictions = self.cnpi_lstm(eta)[0]
+            predictions = cnpi_input
         # predictions = torch.max(predictions, dim=1)[0]
         predictions = self.cnpi_out(predictions)
         return self.cnpi_criterion(predictions * cnpi_mask, cnpis * cnpi_mask)
