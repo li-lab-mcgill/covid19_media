@@ -980,11 +980,14 @@ if args.mode == 'train':
             # cnpi top k recall on validation set
             val_cnpi_results = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'val')
             for k, recall in val_cnpi_results['recall'].items():
-                writer.add_scalar(f"Val_top_k_recall/{k}", recall[0], epoch)
+                if not recall[0] is None:
+                    writer.add_scalar(f"Val_top_k_recall/{k}", recall[0], epoch)
             for k, prec in val_cnpi_results['precision'].items():
-                writer.add_scalar(f"Val_top_k_precision/{k}", prec[0], epoch)
+                if not prec[0] is None:
+                    writer.add_scalar(f"Val_top_k_precision/{k}", prec[0], epoch)
             for k, f1 in val_cnpi_results['f1'].items():
-                writer.add_scalar(f"Val_top_k_f1/{k}", f1[0], epoch)
+                if not f1[0] is None:
+                    writer.add_scalar(f"Val_top_k_f1/{k}", f1[0], epoch)
         
         if val_ppl < best_val_ppl:
             with open(os.path.join(ckpt, 'model.pt'), 'wb') as f:
