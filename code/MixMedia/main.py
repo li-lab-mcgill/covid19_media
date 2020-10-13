@@ -31,7 +31,12 @@ from utils import nearest_neighbors, get_topic_coherence
 import sys, importlib
 importlib.reload(sys.modules['data'])
 
+# tensorboard
 from torch.utils.tensorboard import SummaryWriter
+
+# w & b
+import wandb
+
 time_stamp = time.strftime("%m-%d-%H-%M", time.localtime())
 print(f"Experiment time stamp: {time_stamp}")
 
@@ -137,13 +142,26 @@ parser.add_argument('--predict_cnpi', type=int, default=1, help='whether to pred
 parser.add_argument('--time_prior', type=int, default=1, help='whether to use time-dependent topic prior')
 parser.add_argument('--source_prior', type=int, default=1, help='whether to use source-specific topic prior')
 
+parser.add_argument('--logger', help="choose logger. 'tb' for tensorboard (default), 'wb' for wandb. default None.", \
+    choices=['tb', 'wb'], default='tb')
 
 args = parser.parse_args()
 
 assert not (args.use_doc_labels and args.predict_labels), "cannot predict document labels and use them as input at the same time"
 
+# initialize logger
 if args.mode == 'train':
-    writer = SummaryWriter(f"runs/{time_stamp}")
+    logger_name = "tensorboard" if args.logger == 'tb' else "wandb"
+    print(f"Logger: {logger_name}")
+    if args.logger == 'tb':
+        writer = SummaryWriter(f"runs/{time_stamp}")
+    else:
+        tags = ['MixMedia LSTM', f"{args.num_topics} topics"]
+        if args.predict_cnpi:
+            tags.append('Country NPI')
+        if args.predict_labels:
+            tags.append('Document NPI')
+        wandb.init(name=f"{time_stamp}", notes="MixMedia LSTM", project="covid", config=args, tags=tags)
 
 # pca seems unused
 # pca = PCA(n_components=2)
@@ -320,8 +338,7 @@ if args.predict_cnpi:
         cnpi_data['test_labels'] = data.get_doc_labels_for_cnpi(test_labels, test_sources, test_times, \
             args.num_sources, args.num_times, args.num_cnpis).to(device)
 else:
-    cnpis = None
-    cnpi_mask = None
+    cnpi_data = None
     args.num_cnpis = None
 
 ## get word embeddings 
@@ -371,6 +388,9 @@ else:
 print('\nMS-DETM architecture: {}'.format(model))
 model.to(device)
 
+# w and b
+if args.mode == 'train':
+    wandb.watch(model)
 
 if args.optimizer == 'adam':
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wdecay)
@@ -469,15 +489,29 @@ def train(epoch):
             print('Epoch: {} .. batch: {}/{} .. LR: {} .. KL_theta: {} .. KL_eta: {} .. KL_alpha: {} .. Rec_loss: {} .. Pred_loss: {} .. CNPI_loss: {} .. NELBO: {}'.format(
                 epoch, idx, len(indices), lr, cur_kl_theta, cur_kl_eta, cur_kl_alpha, cur_nll, cur_pred_loss, cur_cnpi_pred_loss, cur_loss))
     
-    # tensorboard stuff
-    writer.add_scalar('LR', lr, epoch)
-    writer.add_scalar('KL_theta', cur_kl_theta, epoch)
-    writer.add_scalar('KL_eta', cur_kl_eta, epoch)
-    writer.add_scalar('KL_alpha', cur_kl_alpha, epoch)
-    writer.add_scalar('Rec_loss', cur_nll, epoch)
-    writer.add_scalar('Pred_loss', cur_pred_loss, epoch)
-    writer.add_scalar('CNPI_loss', cur_cnpi_pred_loss, epoch)
-    writer.add_scalar('NELBO', cur_loss, epoch)
+    if args.logger == 'tb':
+        # tensorboard stuff
+        writer.add_scalar('LR', lr, epoch)
+        writer.add_scalar('KL_theta', cur_kl_theta, epoch)
+        writer.add_scalar('KL_eta', cur_kl_eta, epoch)
+        writer.add_scalar('KL_alpha', cur_kl_alpha, epoch)
+        writer.add_scalar('Rec_loss', cur_nll, epoch)
+        writer.add_scalar('Pred_loss', cur_pred_loss, epoch)
+        writer.add_scalar('CNPI_loss', cur_cnpi_pred_loss, epoch)
+        writer.add_scalar('NELBO', cur_loss, epoch)
+    else:
+        # w and b
+        wandb.log({
+            'LR': lr,
+            'KL_theta': cur_kl_theta,
+            'KL_eta': cur_kl_eta,
+            'KL_alpha': cur_kl_alpha,
+            'Rec_loss': cur_nll,
+            'Pred_loss': cur_pred_loss,
+            'CNPI_loss': cur_cnpi_pred_loss,
+            'NELBO': cur_loss,
+            'epoch': epoch,
+        })
 
     lr = optimizer.param_groups[0]['lr']
     print('*'*100)
@@ -971,22 +1005,45 @@ if args.mode == 'train':
 
         val_ppl, val_pdl = get_completion_ppl('val')
 
-        # tensorboard stuff
-        writer.add_scalar('PPL/val', val_ppl, epoch)
+        # tensorboard or w and b stuff
+        if args.logger == 'tb':
+            writer.add_scalar('PPL/val', val_ppl, epoch)
+        else:
+            wandb.log({'PPL/val': val_ppl, 'epoch': epoch})
         if (epoch - 1) % 5 == 0:
             tq, tc, td = get_topic_quality()
-            writer.add_scalar('Topic/quality', tq, epoch)
-            writer.add_scalar('Topic/coherence', tc, epoch)
-            writer.add_scalar('Topic/diversity', td, epoch)
+            if args.logger == 'tb':
+                writer.add_scalar('Topic/quality', tq, epoch)
+                writer.add_scalar('Topic/coherence', tc, epoch)
+                writer.add_scalar('Topic/diversity', td, epoch)
+            else:
+                wandb.log({
+                    'Topic/quality': tq,
+                    'Topic/coherence': tc,
+                    'Topic/diversity': td,
+                    'epoch': epoch,
+                })
         if args.predict_cnpi:
             # cnpi top k recall on validation set
             val_cnpi_results = get_cnpi_top_k_metrics(cnpis, cnpi_mask, 'val')
             for k, recall in val_cnpi_results['recall'].items():
-                writer.add_scalar(f"Val_top_k_recall/{k}", recall[0], epoch)
+                if not recall[0] is None:
+                    if args.logger == 'tb':
+                        writer.add_scalar(f"Val_top_k_recall/{k}", recall[0], epoch)
+                    else:
+                        wandb.log({f"Val_top_k_recall/{k}": recall[0], 'epoch': epoch})
             for k, prec in val_cnpi_results['precision'].items():
-                writer.add_scalar(f"Val_top_k_precision/{k}", prec[0], epoch)
+                if not prec[0] is None:
+                    if args.logger == 'tb':
+                        writer.add_scalar(f"Val_top_k_precision/{k}", prec[0], epoch)
+                    else:
+                        wandb.log({f"Val_top_k_precision/{k}": prec[0], 'epoch': epoch})
             for k, f1 in val_cnpi_results['f1'].items():
-                writer.add_scalar(f"Val_top_k_f1/{k}", f1[0], epoch)
+                if not f1[0] is None:
+                    if args.logger == 'tb':
+                        writer.add_scalar(f"Val_top_k_f1/{k}", f1[0], epoch)
+                    else:
+                        wandb.log({f"Val_top_k_f1/{k}": f1[0], 'epoch': epoch})
         
         if val_ppl < best_val_ppl:
             with open(os.path.join(ckpt, 'model.pt'), 'wb') as f:
