@@ -8,3 +8,4 @@ code/MixMedia/__pycache__/utils.cpython-37.pyc
 code/MixMedia/runs/*
 code/MixMedia_old/runs/*
 code/RNN_cnpi_baseline/lightning_logs/*
+code/MixMedia_old/wandb/*
