@@ -79,6 +79,53 @@ label_maps = {
                 '8.5_Other measures__Other': 42,
                 '8.4.2_Other measures_Communications and engagement_Other communications': 43,
                 '8.4_Other measures_Communications and engagement_': 44},
+    "who_harm": {
+        '1.1_Individual measures__Performing hand hygiene': 7,
+        '1.3_Individual measures__Performing respiratory etiquette': 7,
+        '1.4_Individual measures__Wearing a mask': 9,
+        '1.5_Individual measures__Using other personal protective equipment': 7,
+        '1.6_Individual measures__Physical distancing': 7,
+        '2.1_Environmental measures__Cleaning and disinfecting surfaces and objects': 4,
+        '2.2_Environmental measures__Improving air ventilation': 4,
+        '3.1.1_Surveillance and response measures_Detecting and isolating cases_Passive case detection': 2,
+        '3.1.2_Surveillance and response measures_Detecting and isolating cases_Active case detection': 2,
+        '3.1.3_Surveillance and response measures_Detecting and isolating cases_Isolation': 2,
+        '3.2.1_Surveillance and response measures_Tracing and quarantining contacts_Contact tracing': 15,
+        '3.2.2_Surveillance and response measures_Tracing and quarantining contacts_Quarantine of contacts': 15,
+        '4.1.1_Social and physical distancing measures_School measures_Adapting': 12,
+        '4.1.2_Social and physical distancing measures_School measures_Closing': 12,
+        '4.2.1_Social and physical distancing measures_Offices, businesses, institutions and operations_Adapting': 10,
+        '4.2.2_Social and physical distancing measures_Offices, businesses, institutions and operations_Closing': 10,
+        '4.3.1_Social and physical distancing measures_Gatherings, businesses and services_Restricting private gatherings at home': 6,
+        '4.3.2_Social and physical distancing measures_Gatherings, businesses and services_Cancelling, restricting or adapting private gatherings outside the home': 6,
+        '4.3.3_Social and physical distancing measures_Gatherings, businesses and services_Cancelling, closing, restricting or adapting public gatherings outside the home': 6,
+        '4.3.4_Social and physical distancing measures_Gatherings, businesses and services_Cancelling, restricting or adapting mass gatherings': 6,
+        '4.4.1_Social and physical distancing measures_Special populations_Shielding vulnerable groups': 13,
+        '4.4.2_Social and physical distancing measures_Special populations_Protecting populations in closed settings': 13,
+        '4.4.3_Social and physical distancing measures_Special populations_Protecting displaced populations': 13,
+        '4.5.1_Social and physical distancing measures_Domestic travel_Suspending or restricting movement': 3,
+        '4.5.2_Social and physical distancing measures_Domestic travel_Stay-at-home order': 14,
+        '4.5.3_Social and physical distancing measures_Domestic travel_Restricting entry': 3,
+        '4.5.4_Social and physical distancing measures_Domestic travel_Closing internal land borders': 3,
+        '5.1_International travel measures__Providing travel advice or warning': 8,
+        '5.2_International travel measures__Restricting visas': 8,
+        '5.3_International travel measures__Restricting entry': 8,
+        '5.4_International travel measures__Restricting exit': 8,
+        '5.5_International travel measures__Entry screening and isolation or quarantine': 8,
+        '5.6_International travel measures__Exit screening and isolation or quarantine': 8,
+        '5.7_International travel measures__Suspending or restricting international flights': 8,
+        '5.8_International travel measures__Suspending or restricting international ferries or ships': 8,
+        '5.9_International travel measures__Closing international land borders': 8,
+        '6.1_Drug-based measures__Using medications for prevention': 11,
+        '6.2_Drug-based measures__Using medications for treatment': 11,
+        '8.1_Other measures__Legal and policy regulations': 11,
+        '8.2_Other measures__Scaling up': 11,
+        '8.3_Other measures__Financial packages': 5,
+        '8.4_Other measures_Communications and engagement_': 1,
+        '8.4.1_Other measures_Communications and engagement_General public awareness campaigns': 1,
+        '8.4.2_Other measures_Communications and engagement_Other communications': 1,
+        '8.5_Other measures__Other': 11
+ },
     "coronanet": {'Anti-Disinformation Measures':0,'Closure and Regulation of Schools':1,'Curfew':2,'Declaration of Emergency':3, 'External Border Restrictions':4,
             'Health Monitoring':5, 'Health Resources':6,'Health Testing':7, 'Hygiene':8, 'Internal Border Restrictions':9,'Lockdown':10,
             'New Task Force, Bureau or Administrative Configuration':11, 'Other Policy Not Listed Above':12, 'Public Awareness Measures':13, 'Quarantine':14, 
@@ -141,6 +188,7 @@ def get_args():
     parser.add_argument("--save_dir", type=str, default='new_debug_results/')
     parser.add_argument('--who_flag',type=bool, default=False)
     parser.add_argument('--coronanet_flag',type=bool, default=False)
+    parser.add_argument('--label_harm', type=bool, default=False, help='whether to use harmonized labels (default false)')
     parser.add_argument("--full_data", type=bool, default=False)
     return parser.parse_args()
 
@@ -178,7 +226,7 @@ def get_week_of_month(year, month, day):
     week_of_month = np.where(x==day)[0][0] + 1
     return(week_of_month) 
 
-def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
+def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False, label_harm=False):
     # Read data
     print('reading data...')
     print(data_file)
@@ -268,7 +316,7 @@ def read_data(data_file, who_flag=False, full_data=False, coronanet_flag=False):
 
         if who_flag:
             label_columns = ['WHO_MEASURE']
-            label_map = label_maps["who"]
+            label_map = label_maps["who_harm"] if label_harm else label_maps['who']
         elif coronanet_flag:
             label_columns = ['MEASURE']
             label_map = label_maps["coronanet"]
@@ -460,17 +508,17 @@ def preprocess(train_data, test_data, full_data):
     tokenizer.build_word_index(init_docs)
     tokenizer.build_embedding_matrix()
     init_docs_embs, init_docs_embs_idxs = [], []
-    # for doc in tqdm(init_docs):
-    #     embs, embs_idxs = tokenizer.prepare_sequence(doc)
-    #     init_docs_embs.append(embs)
-    #     init_docs_embs_idxs.append(embs_idxs)
+    for doc in tqdm(init_docs):
+        embs, embs_idxs = tokenizer.prepare_sequence(doc)
+        init_docs_embs.append(embs)
+        init_docs_embs_idxs.append(embs_idxs)
 
     # prepare ELECTRA word embeddings
     electra_tokenizer = ElectraTokenizer.from_pretrained('google/electra-small-discriminator')
     init_docs_electra_idxs = []
-    # for doc in tqdm(init_docs):
-    #     electra_idxs = electra_tokenizer.encode(" ".join(doc))
-    #     init_docs_electra_idxs.append(electra_idxs)
+    for doc in tqdm(init_docs):
+        electra_idxs = electra_tokenizer.encode(" ".join(doc))
+        init_docs_electra_idxs.append(electra_idxs)
 
     # put q_theta stuff in a dictionary
     q_theta_data = {
@@ -563,7 +611,7 @@ def get_features(init_timestamps, init_docs, stops, min_df=min_df, max_df=max_df
 #         return None
 #     return (np.sum(valid_label_vecs, axis=0) != 0).astype(int)
 
-def get_cnpis(countries_to_idx, time2id, labels_filename):
+def get_cnpis(countries_to_idx, time2id, labels_filename, label_map):
     cnpis_df = pd.read_csv(labels_filename, index_col=0).dropna()
     cnpis_df.country_territory_area = cnpis_df.country_territory_area.apply(lambda text: text.lower())
     # only look at implementation of new measures
@@ -571,8 +619,8 @@ def get_cnpis(countries_to_idx, time2id, labels_filename):
     new_cnpi_to_idx = {cnpi: idx for idx, cnpi in enumerate(new_cnpis_df.npi_label.unique())}
 
     # use the same set of labels as document labels (WHO only)
-    assert sorted(new_cnpi_to_idx.keys()) == sorted(label_maps["who"].keys())
-    new_cnpi_to_idx = label_maps["who"]
+    assert sorted(new_cnpi_to_idx.keys()) == sorted(label_map.keys())
+    new_cnpi_to_idx = label_map
     
     cnpis = np.zeros((len(countries_to_idx), len(time2id), len(new_cnpi_to_idx)))
 
@@ -659,12 +707,12 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
     # Split in train/test/valid
     docs_tr = [[word2id[w] for w in init_docs[idx_permute[idx_d]].split() if w in word2id] for idx_d in range(trSize)]
-    # docs_embs_tr = [all_docs_embs[idx_permute[idx_d]] for idx_d in range(trSize)]
-    # docs_embs_idxs_tr = [all_docs_embs_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
-    # docs_electra_idxs_tr = [all_docs_electra_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
+    docs_embs_tr = [all_docs_embs[idx_permute[idx_d]] for idx_d in range(trSize)]
+    docs_embs_idxs_tr = [all_docs_embs_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
+    docs_electra_idxs_tr = [all_docs_electra_idxs[idx_permute[idx_d]] for idx_d in range(trSize)]
     # create list of unseen idxs in trainning set
-    # embs_idxs_seen = set(idx for docs_embs_idx_tr in docs_embs_idxs_tr for idx in docs_embs_idx_tr)
-    # print("q_theta vocab size", len(embs_idxs_seen))
+    embs_idxs_seen = set(idx for docs_embs_idx_tr in docs_embs_idxs_tr for idx in docs_embs_idx_tr)
+    print("q_theta vocab size", len(embs_idxs_seen))
 
     who_ids_tr = [who_ids[idx_permute[idx_d]] for idx_d in range(trSize)]
 
@@ -680,17 +728,17 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     labels_tr = [data_labels[idx_permute[idx_d]] for idx_d in range(trSize)]
 
     docs_va = [[word2id[w] for w in init_docs[idx_permute[idx_d+trSize]].split() if w in word2id] for idx_d in range(vaSize)]
-    # docs_embs_va = [all_docs_embs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
-    # docs_embs_idxs_va = [all_docs_embs_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
-    # docs_electra_idxs_va = [all_docs_electra_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+    docs_embs_va = [all_docs_embs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+    docs_embs_idxs_va = [all_docs_embs_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
+    docs_electra_idxs_va = [all_docs_electra_idxs[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
 
     who_ids_va = [who_ids[idx_permute[idx_d+trSize]] for idx_d in range(vaSize)]
 
-    # for doc_idx, docs_embs_idx_va in tqdm(enumerate(docs_embs_idxs_va)):
-        # mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_va]
-        # docs_embs_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_va, mask)))
-        # docs_embs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_va[doc_idx], mask)))
-        # docs_electra_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_va[doc_idx], mask)))
+    for doc_idx, docs_embs_idx_va in tqdm(enumerate(docs_embs_idxs_va)):
+        mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_va]
+        docs_embs_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_va, mask)))
+        docs_embs_va[doc_idx] = np.array(list(itertools.compress(docs_embs_va[doc_idx], mask)))
+        docs_electra_idxs_va[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_va[doc_idx], mask)))
     timestamps_va = [time2id[init_timestamps[idx_permute[idx_d+trSize]]] for idx_d in range(vaSize)]
     if not full_data:
         countries_va = [source_map[init_countries[idx_permute[idx_d+trSize]]] for idx_d in range(vaSize)]
@@ -704,17 +752,17 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
 
 
     docs_ts = [[word2id[w] for w in init_docs[idx_d+num_docs_tr].split() if w in word2id] for idx_d in range(tsSize)]
-    # docs_embs_ts = [all_docs_embs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
-    # docs_embs_idxs_ts = [all_docs_embs_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
-    # docs_electra_idxs_ts = [all_docs_electra_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    docs_embs_ts = [all_docs_embs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    docs_embs_idxs_ts = [all_docs_embs_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
+    docs_electra_idxs_ts = [all_docs_electra_idxs[idx_d+num_docs_tr] for idx_d in range(tsSize)]
 
     who_ids_ts = [who_ids[idx_d+num_docs_tr] for idx_d in range(tsSize)]
 
-    # for doc_idx, docs_embs_idx_ts in tqdm(enumerate(docs_embs_idxs_ts)):
-        # mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_ts]
-        # docs_embs_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_ts, mask)))
-        # docs_embs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_ts[doc_idx], mask)))
-        # docs_electra_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_ts[doc_idx], mask)))
+    for doc_idx, docs_embs_idx_ts in tqdm(enumerate(docs_embs_idxs_ts)):
+        mask = [emb_idx in embs_idxs_seen for emb_idx in docs_embs_idx_ts]
+        docs_embs_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_idx_ts, mask)))
+        docs_embs_ts[doc_idx] = np.array(list(itertools.compress(docs_embs_ts[doc_idx], mask)))
+        docs_electra_idxs_ts[doc_idx] = np.array(list(itertools.compress(docs_electra_idxs_ts[doc_idx], mask)))
     print(len(docs_ts))
     #exit()
     timestamps_ts = [time2id[init_timestamps[idx_d+num_docs_tr]] for idx_d in range(tsSize)]
@@ -756,29 +804,27 @@ def split_data(init_docs, init_docs_tr, init_docs_ts, word2id, init_countries, i
     timestamps_va = [timestamps_va[idx] for idx in preserve_idxs_va]
     countries_va = [countries_va[idx] for idx in preserve_idxs_va]
 
-    # docs_embs_tr = [docs_embs_tr[idx] for idx in preserve_idxs_tr]
-    # docs_embs_idxs_tr = [docs_embs_idxs_tr[idx] for idx in preserve_idxs_tr]
-    # docs_electra_idxs_tr = [docs_electra_idxs_tr[idx] for idx in preserve_idxs_tr]
-    # docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
-    # docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
-    # docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
-    # docs_embs_va = [docs_embs_va[idx] for idx in preserve_idxs_va]
-    # docs_embs_idxs_va = [docs_embs_idxs_va[idx] for idx in preserve_idxs_va]
-    # docs_electra_idxs_va = [docs_electra_idxs_va[idx] for idx in preserve_idxs_va]
+    docs_embs_tr = [docs_embs_tr[idx] for idx in preserve_idxs_tr]
+    docs_embs_idxs_tr = [docs_embs_idxs_tr[idx] for idx in preserve_idxs_tr]
+    docs_electra_idxs_tr = [docs_electra_idxs_tr[idx] for idx in preserve_idxs_tr]
+    docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
+    docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
+    docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
+    docs_embs_va = [docs_embs_va[idx] for idx in preserve_idxs_va]
+    docs_embs_idxs_va = [docs_embs_idxs_va[idx] for idx in preserve_idxs_va]
+    docs_electra_idxs_va = [docs_electra_idxs_va[idx] for idx in preserve_idxs_va]
 
     # Remove test documents with length=1
     preserve_idxs_ts = [idx for idx, doc in enumerate(docs_ts) if len(doc)>1]
     docs_ts = [doc for doc in docs_ts if len(doc)>1]
     labels_ts = [lab for doc,lab in zip(docs_ts, labels_ts) if len(doc) > 1]
     id_ts = [id for doc, id in zip(docs_ts, ids_ts) if len(doc) > 1]
-    # docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
-    # docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
-    # docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
+    docs_embs_ts = [docs_embs_ts[idx] for idx in preserve_idxs_ts]
+    docs_embs_idxs_ts = [docs_embs_idxs_ts[idx] for idx in preserve_idxs_ts]
+    docs_electra_idxs_ts = [docs_electra_idxs_ts[idx] for idx in preserve_idxs_ts]
 
     who_ids_ts = [who_ids_ts[idx] for idx in preserve_idxs_ts]
     pd.DataFrame(who_ids_ts, columns=['who_id']).to_csv('id_to_who_id_ts.csv')
-
-    raise Exception()
 
     # remove test timestamps and sources with length=1
     timestamps_ts = [timestamps_ts[idx] for idx in preserve_idxs_ts]
@@ -1116,7 +1162,7 @@ if __name__ == '__main__':
 
     # read in the data file
     print("Read in data file...\n")
-    train, test, countries_to_idx, label_map = read_data(args.data_file_path, args.who_flag, args.full_data, args.coronanet_flag)
+    train, test, countries_to_idx, label_map = read_data(args.data_file_path, args.who_flag, args.full_data, args.coronanet_flag, args.label_harm)
 
     # preprocess the news articles
     print("Preprocessing the articles")
@@ -1133,7 +1179,7 @@ if __name__ == '__main__':
 
     # get cnpis
     if args.cnpi_labels_path:
-        cnpi_data = get_cnpis(countries_to_idx, time2id, args.cnpi_labels_path)
+        cnpi_data = get_cnpis(countries_to_idx, time2id, args.cnpi_labels_path, label_map)
     else:
         cnpi_data = None
 
