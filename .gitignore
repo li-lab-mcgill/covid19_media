@@ -9,3 +9,4 @@ code/MixMedia/runs/*
 code/MixMedia_old/runs/*
 code/RNN_cnpi_baseline/lightning_logs/*
 code/MixMedia_old/wandb/*
+code/MixMedia/wandb/*
