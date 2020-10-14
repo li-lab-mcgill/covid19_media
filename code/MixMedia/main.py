@@ -941,6 +941,79 @@ def get_cnpi_top_k_metrics(cnpis, cnpi_mask, mode, return_vals=['recall', 'preci
         results['f1'] = top_k_f1s
     return results
 
+def get_doc_labels_metrics(mode, return_vals=['recall', 'precision', 'f1']):
+    assert mode in ['val', 'test'], 'mode must be val or test'
+    assert all([return_val in ['recall', 'precision', 'f1'] for return_val in return_vals]), \
+        'return values must be recall, precision or f1'
+    assert return_vals, 'no return value is specified'
+
+    # get predictions
+    with torch.no_grad():
+        eta = get_eta(mode)
+        indices = torch.tensor(valid_indices_order) if mode == 'val' else torch.tensor(test_indices_order)
+        indices = torch.split(indices, args.eval_batch_size)
+        tokens = valid_tokens if mode == 'val' else test_tokens
+        counts = valid_counts if mode == 'val' else test_counts
+        embs = valid_embs if mode == 'val' else test_embs
+        times = valid_times if mode == 'val' else test_times
+        sources = valid_sources if mode == 'val' else test_sources
+        labels = valid_labels if mode == 'val' else test_labels
+
+        all_outputs = []
+        all_labels = []
+
+        for idx, ind in enumerate(indices):
+            data_batch, embs_batch, times_batch, sources_batch, labels_batch = data.get_batch(
+                tokens, counts, embs, ind, sources, labels, 
+                args.vocab_size, args.emb_size, temporal=True, times=times, if_one_hot=args.one_hot_qtheta_emb, emb_vocab_size=q_theta_input_dim)
+
+            sums = data_batch.sum(1).unsqueeze(1)
+
+            if args.bow_norm:
+                normalized_data_batch = data_batch / sums
+            else:
+                normalized_data_batch = data_batch
+
+            theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
+            all_outputs.append(model.classifier(theta))
+            all_labels.append(labels_batch)
+
+    all_outputs = torch.cat(all_outputs)
+    all_labels = torch.cat(all_labels)
+
+    results = {}
+    top_k_recalls = {
+        1: compute_top_k_recall(all_labels, all_outputs, 1),
+        3: compute_top_k_recall(all_labels, all_outputs, 3),
+        5: compute_top_k_recall(all_labels, all_outputs, 5),
+        10: compute_top_k_recall(all_labels, all_outputs, 10),
+        }
+    if 'recall' in return_vals:
+        results['recall'] = top_k_recalls
+
+    top_k_precs = {
+        1: compute_top_k_precision(all_labels, all_outputs, 1),
+        3: compute_top_k_precision(all_labels, all_outputs, 3),
+        5: compute_top_k_precision(all_labels, all_outputs, 5),
+        10: compute_top_k_precision(all_labels, all_outputs, 10),
+        }
+    if 'precision' in return_vals:
+        results['precision'] = top_k_precs
+
+    if 'f1' in return_vals:
+        def get_f1(recall, prec):
+            if recall and prec:
+                return (2 * recall * prec) / (recall + prec)
+            else:
+                return None
+        top_k_f1s = {
+                k: [get_f1(top_k_recalls[k][0], top_k_precs[k][0])] \
+                    for k in [1, 3, 5, 10]
+                }
+        results['f1'] = top_k_f1s
+
+    return results
+
 def compute_auprc_breakdown(labels, predictions, average=None):
     '''
     inputs:
@@ -1149,6 +1222,19 @@ if args.mode == 'train':
 print('computing validation perplexity...')
 val_ppl, val_pdl = get_completion_ppl('val')
 
+if args.predict_labels:
+    # document labels prediction on validation set
+    val_doc_labels_results = get_doc_labels_metrics('val')
+    print('\ntop-k document label prediction f1s on val:')
+    for k, f1 in val_doc_labels_results['f1'].items():
+        print(f'top-{k}: {f1}')
+    with open(os.path.join(ckpt, 'val_doc_top_k_recalls.json'), 'w') as file:
+        json.dump(val_doc_labels_results['recall'], file)
+    with open(os.path.join(ckpt, 'val_doc_top_k_precs.json'), 'w') as file:
+        json.dump(val_doc_labels_results['precision'], file)
+    with open(os.path.join(ckpt, 'val_doc_top_k_f1s.json'), 'w') as file:
+        json.dump(val_doc_labels_results['f1'], file)
+
 if args.predict_cnpi:
     # cnpi top k recall on validation set
     # val_cnpi_top_ks = get_cnpi_top_k_recall(cnpis, cnpi_mask, 'val')
@@ -1211,6 +1297,19 @@ if args.predict_cnpi:
 
 print('computing test perplexity...')
 test_ppl, test_pdl = get_completion_ppl('test')
+
+if args.predict_labels:
+    # document labels prediction on validation set
+    test_doc_labels_results = get_doc_labels_metrics('test')
+    print('\ntop-k document label prediction f1s on test:')
+    for k, f1 in test_doc_labels_results['f1'].items():
+        print(f'top-{k}: {f1}')
+    with open(os.path.join(ckpt, 'test_doc_top_k_recalls.json'), 'w') as file:
+        json.dump(test_doc_labels_results['recall'], file)
+    with open(os.path.join(ckpt, 'test_doc_top_k_precs.json'), 'w') as file:
+        json.dump(test_doc_labels_results['precision'], file)
+    with open(os.path.join(ckpt, 'test_doc_top_k_f1s.json'), 'w') as file:
+        json.dump(test_doc_labels_results['f1'], file)
 
 if args.predict_cnpi:
     # cnpi top k recall on test set
