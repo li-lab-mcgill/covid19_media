@@ -981,7 +981,7 @@ def get_doc_labels_metrics(mode, return_vals=['recall', 'precision', 'f1']):
             else:
                 normalized_data_batch = data_batch
 
-            theta = get_theta(eta, normalized_data_batch, times_batch, sources_batch)
+            theta = get_theta(eta, embs_batch, att_mask, times_batch, sources_batch)
             all_outputs.append(model.classifier(theta))
             all_labels.append(labels_batch)
 
