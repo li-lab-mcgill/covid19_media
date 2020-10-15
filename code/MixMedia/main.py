@@ -102,6 +102,7 @@ parser.add_argument('--cnpi_drop', type=float, default=0.1, help='dropout rate f
 parser.add_argument('--cnpi_layers', type=int, default=1, help='number of layers for country npi lstm')
 parser.add_argument('--use_doc_labels', type=int, default=0, help='whether to use document labels as input for cnpi prediction (default 0)')
 parser.add_argument('--use_cnpi_lstm', type=int, default=1, help='whether to use lstm (default 1)')
+parser.add_argument('--tie_clf', type=int, default=0, help='whether to tie the weights of document and country classifiers (default 0)')
 
 ### optimization-related arguments
 parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
@@ -148,6 +149,12 @@ parser.add_argument('--logger', help="choose logger. 'tb' for tensorboard (defau
 args = parser.parse_args()
 
 assert not (args.use_doc_labels and args.predict_labels), "cannot predict document labels and use them as input at the same time"
+
+if args.tie_clf:
+    if not args.predict_labels or not args.predict_cnpi:
+        raise Exception('tie_clf is effective only when predicting predicting document and country NPIs at the same time.')
+    if args.use_cnpi_lstm:
+        raise Exception('using lstm for country NPI prediction. cannot tie weights of a linear classifier and a lstm.')
 
 # initialize logger
 if args.mode == 'train':
@@ -963,7 +970,7 @@ def get_doc_labels_metrics(mode, return_vals=['recall', 'precision', 'f1']):
         all_labels = []
 
         for idx, ind in enumerate(indices):
-            data_batch, embs_batch, times_batch, sources_batch, labels_batch = data.get_batch(
+            data_batch, embs_batch, att_mask, times_batch, sources_batch, labels_batch = data.get_batch(
                 tokens, counts, embs, ind, sources, labels, 
                 args.vocab_size, args.emb_size, temporal=True, times=times, if_one_hot=args.one_hot_qtheta_emb, emb_vocab_size=q_theta_input_dim)
 
@@ -1214,6 +1221,7 @@ if args.predict_cnpi:
     config_dict['cnpi_layers'] = args.cnpi_layers
     config_dict['use_doc_labels'] = args.use_doc_labels
     config_dict['use_cnpi_lstm'] = args.use_cnpi_lstm
+    config_dict['tie_clf'] = args.tie_clf
 
 if args.mode == 'train':
     with open(os.path.join(ckpt, 'config.json'), 'w') as file:
