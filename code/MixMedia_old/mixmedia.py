@@ -177,7 +177,10 @@ class MixMedia(nn.Module):
                     bidirectional=False, dropout=self.cnpi_drop, num_layers=self.cnpi_layers, batch_first=True).to(device)
                 self.cnpi_out = nn.Linear(self.cnpi_hidden_size, args.num_cnpis, bias=True).to(device)
             else:
-                self.cnpi_out = nn.Linear(cnpi_input_size, args.num_cnpis, bias=True).to(device)
+                if args.tie_clf:
+                    self.cnpi_out = self.classifier
+                else:
+                    self.cnpi_out = nn.Linear(cnpi_input_size, args.num_cnpis, bias=True).to(device)
             self.cnpi_criterion = nn.BCEWithLogitsLoss(reduction='sum')
 
     def get_activation(self, act):
