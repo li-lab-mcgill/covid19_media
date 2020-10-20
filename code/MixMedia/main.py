@@ -143,7 +143,7 @@ parser.add_argument('--predict_cnpi', type=int, default=1, help='whether to pred
 parser.add_argument('--time_prior', type=int, default=1, help='whether to use time-dependent topic prior')
 parser.add_argument('--source_prior', type=int, default=1, help='whether to use source-specific topic prior')
 
-parser.add_argument('--logger', help="choose logger. 'tb' for tensorboard (default), 'wb' for wandb. default None.", \
+parser.add_argument('--logger', help="choose logger. 'tb' for tensorboard (default), 'wb' for wandb.", \
     choices=['tb', 'wb'], default='tb')
 
 args = parser.parse_args()
@@ -163,7 +163,7 @@ if args.mode == 'train':
     if args.logger == 'tb':
         writer = SummaryWriter(f"runs/{time_stamp}")
     else:
-        tags = ['MixMedia LSTM', f"{args.num_topics} topics"]
+        tags = [f"MixMedia {args.q_theta_arc.upper()}", f"{args.num_topics} topics", args.dataset]
         if args.predict_cnpi:
             tags.append('Country NPI')
         if args.predict_labels:
