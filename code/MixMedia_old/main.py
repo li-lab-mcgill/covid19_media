@@ -163,7 +163,7 @@ if args.mode == 'train':
     if args.logger == 'tb':
         writer = SummaryWriter(f"runs/{time_stamp}")
     else:
-        tags = ['MixMedia', f"{args.num_topics} topics"]
+        tags = ['MixMedia', f"{args.num_topics} topics", args.dataset]
         if args.predict_cnpi:
             tags.append('Country NPI')
         if args.predict_labels:
